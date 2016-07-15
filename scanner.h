@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-
+#include "util.h"
 #define MAX_WORKERS 10
 #define PACKETS_PER_SECOND 100
 
@@ -21,8 +21,9 @@ typedef struct scanner_socket_t {
 
 typedef struct scanner_worker_t {
   pthread_t *thread;
-  int worker_id;
   scanner_socket_t *ssocket;
+  list_t *addr_list;
+  int worker_id;
 } scanner_thread_t;
 
 typedef struct scanner_t {
