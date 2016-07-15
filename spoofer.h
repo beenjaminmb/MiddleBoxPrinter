@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+
 #define MAX_WORKERS 10
 #define PACKETS_PER_SECOND 100
 
@@ -26,11 +27,16 @@ typedef struct spoofer_t {
 
 typedef struct spoofer_packet_t {} spoofer_packet_t;
 
+/**
+ * Main loop for the spoofer code. ''main" calls this function.
+ */
 int spoofer_main_loop();
 
+/** 
+ * Either build a spoofer singleton or create a completely new one
+ *  if we have already built on in the past. This is simply an interfac
+ *  to get at the statically declared one.
+ */
 spoofer_t *new_spoofer_singleton();
-
-spoofer_packet_t *new_packet();
-
 
 #endif /* _SPOOFER_ */
