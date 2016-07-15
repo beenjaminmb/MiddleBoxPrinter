@@ -1,8 +1,12 @@
-// http://www.tenouk.com/Module43a.html
+/*
+  @author: Ben Mixon-Baca
+  @email: bmixonb1@cs.unm.edu
+   
+  packet header code and checksum from:
+  http://www.tenouk.com/Module43a.html
+ */
 #ifndef _PACKET_
 #define _PACKET_
-
-/* Must be run by root lol! Just datagram, no payload data */
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -11,6 +15,7 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <string.h>
+
 #define PACKET_LEN 8192
  
 typedef struct ipheader_t {
