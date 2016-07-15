@@ -58,7 +58,8 @@ typedef struct udpheader_t {
   unsigned short int udph_chksum;
 } udpheader_t;
 
-// Simple checksum function, may use others such as Cyclic Redundancy Check, CRC
+/* Simple checksum function, may use others such as Cyclic Redundancy 
+   Check, CRC */
 unsigned short csum(unsigned short *buf, int len);
 
 
