@@ -4,10 +4,10 @@
  */
 
 #include "main.h"
-#include "spoofer.h"
+#include "scanner.h"
 
 int main(int argc, char *argv)
 {
-  int ret = spoofer_main_loop();
+  int ret = scanner_main_loop();
   return ret;
 }
