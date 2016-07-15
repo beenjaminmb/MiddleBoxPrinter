@@ -1,12 +1,18 @@
 #ifndef _UTIL_
 #define _UTIL_
 
+
 typedef struct list_t {
   struct list_t *next;
-  struct list_t *end;
   void* data;
 } list_t;
 
+
+
+typedef struct list_head_t {
+  list_t *head;
+  list_t *end;
+} list_head_t;
 
 list_t *new_list();
 

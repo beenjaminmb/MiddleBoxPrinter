@@ -4,10 +4,10 @@ CFLAGS=-O0 -g -std=gnu99
 
 LDLIBS=-pthread
 
-targets = main.c spoofer.c packet.c util.c
+targets = main.c scanner.c packet.c util.c
 
 default : $(targets)
-	$(CC) $(CFLAGS) -o spoofer $(targets) $(LDLIBS)
+	$(CC) $(CFLAGS) -o scanner $(targets) $(LDLIBS)
 
 clean :
-	$(RM) -f *~ *.o core spoofer
+	$(RM) -f *~ *.o core scanner
