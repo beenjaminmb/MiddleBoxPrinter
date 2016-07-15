@@ -18,7 +18,7 @@ typedef struct spoofer_packet_t {} spoofer_packet_t;
 sint spoofer_main_loop();
 
 
-spoofer_t *new_spoofer();
+spoofer_t *new_spoofer_singleton();
 
 spoofer_packet_t *new_packet();
 
