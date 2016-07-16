@@ -4,7 +4,7 @@
 #include <pthread.h>
 /*https://stackoverflow.com/questions/2509679/how-to-generate-a-random-number-from-within-a-range */
 
-long range_random(long max);
+long range_random(long, struct random_data *, int32_t *);
 
 /* #define _RINGBUFFER 0 */
 

@@ -14,7 +14,8 @@
 #include <unistd.h>
 #include "util.h"
 
-long range_random(long max) {
+long range_random(long max, struct random_data * buf, 
+		  int32_t *result) {
   unsigned long
     num_bins = (unsigned long) max + 1,
     num_rand = (unsigned long) RAND_MAX + 1,
@@ -22,7 +23,7 @@ long range_random(long max) {
     defect   = num_rand % num_bins;
   long x;
   do {
-    x = random();
+    x = random_r(buf, result);
   }
   while (num_rand - defect <= (unsigned long)x);
   return x/bin_size;
