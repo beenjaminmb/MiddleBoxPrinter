@@ -14,9 +14,12 @@ typedef struct ringbuffer_cell {
 typedef struct ringbuffer {
   ringbuffer_cell_t *head, *tail;
   ringbuffer_cell_t *buf, *end;
+  pthread_mutex_t *rb_lock;
+  pthread_cond_t *rb_empty;
+  pthread_cond_t *rb_full;
 } ringbuffer_t;
 
-int ringbuffer_innit(ringbuffer_t *rb, int len);
+int ringbuffer_init(ringbuffer_t *rb, int len);
 int ringbuffer_destroy(ringbuffer_t *rb);
 int ringbuffer_append_single(ringbuffer_t *rb, void *item);
 int ringbuffer_remove_single(ringbuffer_t *rb, void **item);
