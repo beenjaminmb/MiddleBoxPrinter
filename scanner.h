@@ -14,9 +14,6 @@
 #define MAX_WORKERS 10
 #define PACKETS_PER_SECOND 100
 
-
-char *make_random_address();
-
 typedef struct scanner_socket_t {
   int sockfd;
 } scanner_socket_t;
