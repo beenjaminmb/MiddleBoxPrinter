@@ -8,6 +8,6 @@
 
 int main(int argc, char *argv)
 {
-  scanner_main_loop();
-  return 0;
+  int ret = scanner_main_loop();
+  return ret;
 }
