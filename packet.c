@@ -133,10 +133,11 @@ store that on the NFS mount for later analysis
 
 
 */
-int make_packet(unsigned char *packet_buffer, struct sockaddr_in *sin)
+int make_packet(unsigned char *packet_buffer, 
+		scanner_worker_t *worker)
 {
   memset(packet_buffer, 0, PACKET_LEN);
-  iphdr *ip = make_ipheader( packet_buffer, sin, 
+  iphdr *ip = make_ipheader( packet_buffer, worker->sin, 
 			     "192.168.0.1", 10);
   int make_tcp = 0;
   if (make_tcp) {

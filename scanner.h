@@ -10,22 +10,22 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include "packet.h"
-
+#include "worker.h"
 #define MAX_WORKERS 10
 #define PACKETS_PER_SECOND 100
 
-typedef struct scanner_socket_t {
-  int sockfd;
-} scanner_socket_t;
+/* typedef struct scanner_socket_t { */
+/*   int sockfd; */
+/* } scanner_socket_t; */
 
-typedef struct scanner_worker_t {
-  pthread_t *thread;
-  scanner_socket_t *ssocket;
-  struct random_data *random_data;
-  struct sockaddr_in *sin;
-  int worker_id;
-  // list_t *addr_list;
-} scanner_worker_t;
+/* typedef struct scanner_worker_t { */
+/*   pthread_t *thread; */
+/*   scanner_socket_t *ssocket; */
+/*   struct random_data *random_data; */
+/*   struct sockaddr_in *sin; */
+/*   int worker_id; */
+/*   // list_t *addr_list; */
+/* } scanner_worker_t; */
 
 typedef struct scanner_t {
   scanner_worker_t *workers;  
@@ -65,11 +65,10 @@ static inline void *worker_routine(void* vself)
   int scanning = 1;
   unsigned char packet_buffer[PACKET_LEN];
   int sockfd = self->ssocket->sockfd;
-  struct sockaddr_in *dest_addr;
   while ( scanning ) {
-    make_packet((unsigned char *)&packet_buffer, dest_addr);
+    make_packet((unsigned char *)&packet_buffer, self);
     send_scan_packet((unsigned char *)&packet_buffer, sockfd, 
-		     (struct sockaddr *)dest_addr);
+		     (struct sockaddr *)self->sin);
   }
   
   return NULL;

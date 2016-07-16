@@ -18,7 +18,7 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
+#include "worker.h"
 #define PACKET_LEN 8192
 #define START_TTL 2
 #define END_TTL 255
@@ -42,6 +42,7 @@ typedef struct pseudo_header
    Check, CRC */
 unsigned short csum(unsigned short *ptr, int nbytes);
 
-int make_packet(unsigned char *packet_buffer, struct sockaddr_in *sin);
+int make_packet(unsigned char *packet_buffer,
+		scanner_worker_t *worker);
 
 #endif /* _PACKET_ */
