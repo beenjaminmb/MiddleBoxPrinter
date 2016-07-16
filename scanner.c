@@ -5,20 +5,20 @@
 
 #include <stdlib.h>
 #include "scanner.h"
-
+#include "packet.h"
 static scanner_t *scanner = NULL;
 
 scanner_t *new_scanner_singleton() 
 {
-  if ( scanner ) return spcanner;
+  if ( scanner ) return scanner;
   
   scanner = malloc(sizeof(scanner_t));
   scanner->keep_scanning = 1;
-  scanner->workers = malloc(sizeof(scanner_thread_t) * MAX_WORKERS);
+  scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
   for (int i = 0 ; i < MAX_WORKERS; i++) {
     scanner->workers[i].ssocket = malloc(sizeof(scanner_socket_t));
-    scanner->workers[i].ssocket->sockfd = socket(AF_PACKET, 
-						 SOCK_DGRAM,
+    scanner->workers[i].ssocket->sockfd = socket(AF_INET, 
+						 SOCK_RAW,
 						 0);
   }
   return scanner;
@@ -43,35 +43,36 @@ While (1)
 
    if (TCP) 
        fill in TCP header as below
+
    if (UDP or other) 
        fill in rest of IP packet with random junk
        Send it in a TTL-limited fashion
 
 for TCP packets:
-50% chance of random dest port, 50% chance of common (22, 80,
-etc.)
-seq and ack numbers random
-Flags random but biased towards usually only 1 or 2 bits set
-with 10% chance add randomly generated options
-Reserved 0 50% of the time and random 50% of the time
-Window random
-Checksum correct 90% of the time, random 10%
-Urgent pointer not there 90% of the time, random 10% of the time
+   50% chance of random dest port, 50% chance of common (22, 80, etc.)
+   seq and ack numbers random
+   Flags random but biased towards usually only 1 or 2 bits set
+   with 10% chance add randomly generated options
+   Reserved 0 50% of the time and random 50% of the time
+   Window random
+   Checksum correct 90% of the time, random 10%
+   Urgent pointer not there 90% of the time, random 10% of the time
+
 
 
 Then we just send out this kind of traffic at 1 Gbps or so and take a
-pcap of all outgoing and incoming packets for that source IP, and store
-that on the NFS mount for later analysis
+pcap of all outgoing and incoming packets for that source IP, and 
+store that on the NFS mount for later analysis
 */
 
 
 static void send_scan_packet(unsigned char *packet_buffer, 
 			     int sockfd, struct sockaddr *dest_addr)
 {
-  ipheader_t *iphdr = &packet_buffer;
-  int len = iphdr->iph_len;
+  iphdr *ipheader = (iphdr *)&packet_buffer;
+  int len = ipheader->tot_len;
   for (int i = START_TTL; i < END_TTL; i++) {
-    iphdr->iphdr_ttl = i;
+    ipheader->ttl = i;
     for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
       sendto(sockfd, packet_buffer, len, MSG_DONTWAIT | MSG_NOSIGNAL,
 	     dest_addr, sizeof(struct sockaddr));
@@ -85,12 +86,11 @@ static void *worker_routine(void* vself)
   scanner_worker_t *self = vself;
   int scanning = 1;
   unsigned char packet_buffer[PACKET_LEN];
-  int sockfd = self->sscoket->sockfd;
+  int sockfd = self->ssocket->sockfd;
   struct sockaddr_in *dest_addr;
   while ( scanning ) {
-    make_packet(&packet_buffer);
-
-    send_scan_packet(&packet_buffer, sockfd, 
+    make_packet((unsigned char *)&packet_buffer);
+    send_scan_packet((unsigned char *)&packet_buffer, sockfd, 
 		     (struct sockaddr *)dest_addr);
   }
   
@@ -102,9 +102,9 @@ int scanner_main_loop()
   pthread_mutex_lock(scanner->continue_lock);
   
   for (int i = 0; i < MAX_WORKERS; i++) {
-    if (pthread_create(scanner->worker[i].thread, NULL,
+    if (pthread_create(scanner->workers[i].thread, NULL,
 		       worker_routine,
-		       (void *)&scanner->worker[i]) < 0) {
+		       (void *)&scanner->workers[i]) < 0) {
 	exit(-1);
       }
   }

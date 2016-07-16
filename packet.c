@@ -14,27 +14,24 @@ unsigned short csum(unsigned short *buf, int len)
   return (unsigned short)(~sum);
 }
 
-ipheader_t *make_ipheader(char *buffer) {
-  ipheader_t *ip = malloc(sizeof(ipheader_t));
+iphdr *make_ipheader(char *buffer) {
+  iphdr *ip = malloc(sizeof(iphdr));
   
-  ip->iph_chksum = csum((unsigned short *) buffer, 
-			(sizeof(struct ipheader_t) + 
-			 sizeof(struct tcpheader_t))
-			);
+  ip->check = csum((unsigned short *) buffer, (sizeof(struct iphdr) + 
+		    sizeof(struct tcphdr))
+		   );
   return ip;
 }
 
 int make_packet(unsigned char *packet_buffer) {
   memset(packet_buffer, 0, PACKET_LEN);
-  ipheader_t *ip = make_ipheader( buf );
-  
+  iphdr *ip = make_ipheader( packet_buffer );
+  int make_tcp = 0;
   if (make_tcp) {
     
   }
   else { /* Make a UDP */
     
   }
-  return buf;
+  return 0;
 }
-
-
