@@ -8,6 +8,13 @@
 #include "packet.h"
 static scanner_t *scanner = NULL;
 
+
+static inline int new_worker(scanner_worker_t *worker)
+{
+  worker->ssocket = malloc(sizeof(scanner_socket_t));
+  worker->ssocket->sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+}
+
 scanner_t *new_scanner_singleton() 
 {
   if ( scanner ) return scanner;
@@ -16,10 +23,10 @@ scanner_t *new_scanner_singleton()
   scanner->keep_scanning = 1;
   scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
   for (int i = 0 ; i < MAX_WORKERS; i++) {
-    scanner->workers[i].ssocket = malloc(sizeof(scanner_socket_t));
-    scanner->workers[i].ssocket->sockfd = socket(AF_INET, 
-						 SOCK_RAW,
-						 IPPROTO_RAW);
+    if ( new_worker(&scanner->workers[i]) < 0) {
+      exit(-1);
+    }
+
   }
   return scanner;
 }
