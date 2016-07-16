@@ -36,8 +36,11 @@ typedef struct scanner_t {
 static scanner_t *scanner = NULL;
 
 static inline void send_scan_packet(unsigned char *packet_buffer, 
-				    int sockfd,
-				    struct sockaddr *dest_addr)
+				      int sockfd,
+				      struct sockaddr *dest_addr)  __attribute__((always_inline));
+static inline void send_scan_packet(unsigned char *packet_buffer, 
+				      int sockfd,
+				      struct sockaddr *dest_addr)
 {
   iphdr *ipheader = (iphdr *)&packet_buffer;
   int len = ipheader->tot_len;
@@ -49,6 +52,7 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
     }
   }
 }
+
 
 static inline void *worker_routine(void* vself)
 {
@@ -70,8 +74,8 @@ static inline void *worker_routine(void* vself)
  * Main loop for the scanner code. ''main" calls this function.
  */
 
-static inline void *worker_routine(void* vself);
-
+static inline void *worker_routine(void* vself) __attribute__((always_inline));
+static inline int scanner_main_loop() __attribute__((always_inline));
 static inline int scanner_main_loop()
 {
   pthread_mutex_lock(scanner->continue_lock);  
@@ -90,6 +94,7 @@ static inline int scanner_main_loop()
 }
 
 
+static inline int new_worker(scanner_worker_t *worker, int id)  __attribute__((always_inline));
 static inline int new_worker(scanner_worker_t *worker, int id)
 {
   worker->ssocket = malloc(sizeof(scanner_socket_t));
@@ -115,7 +120,8 @@ static inline int new_worker(scanner_worker_t *worker, int id)
  *  to get at the statically declared one.
  */
 //static inline scanner_t *new_scanner_singleton()
-static inline scanner_t *new_scanner_singleton() 
+static inline scanner_t *new_scanner_singleton() __attribute__((always_inline));
+static inline scanner_t *new_scanner_singleton()
 {
   if ( scanner ) return scanner;
   scanner = malloc(sizeof(scanner_t));
