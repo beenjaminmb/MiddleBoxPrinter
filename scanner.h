@@ -22,8 +22,9 @@ typedef struct scanner_socket_t {
 typedef struct scanner_worker_t {
   pthread_t *thread;
   scanner_socket_t *ssocket;
-  // list_t *addr_list;
+  struct random_data *random_data;
   int worker_id;
+  // list_t *addr_list;
 } scanner_worker_t;
 
 typedef struct scanner_t {
