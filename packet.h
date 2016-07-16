@@ -16,6 +16,8 @@
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 #include <string.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define PACKET_LEN 8192
 #define START_TTL 2
@@ -40,6 +42,6 @@ struct pseudo_header
    Check, CRC */
 unsigned short csum(unsigned short *ptr, int nbytes);
 
-int make_packet(unsigned char *packet_buffer);
+int make_packet(unsigned char *packet_buffer, struct sockaddr_in *sin);
 
 #endif /* _PACKET_ */

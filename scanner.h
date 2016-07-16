@@ -38,7 +38,6 @@ static scanner_t *scanner = NULL;
 static inline void send_scan_packet(unsigned char *packet_buffer, 
 				      int sockfd,
 				      struct sockaddr *dest_addr)  __attribute__((always_inline));
-
 static inline void *worker_routine(void* vself) __attribute__((always_inline));
 static inline int scanner_main_loop() __attribute__((always_inline));
 static inline int new_worker(scanner_worker_t *worker, int id)  __attribute__((always_inline));
@@ -67,7 +66,7 @@ static inline void *worker_routine(void* vself)
   int sockfd = self->ssocket->sockfd;
   struct sockaddr_in *dest_addr;
   while ( scanning ) {
-    make_packet((unsigned char *)&packet_buffer);
+    make_packet((unsigned char *)&packet_buffer, dest_addr);
     send_scan_packet((unsigned char *)&packet_buffer, sockfd, 
 		     (struct sockaddr *)dest_addr);
   }
@@ -78,8 +77,6 @@ static inline void *worker_routine(void* vself)
 /**
  * Main loop for the scanner code. ''main" calls this function.
  */
-
-
 static inline int scanner_main_loop()
 {
   pthread_mutex_lock(scanner->continue_lock);  
