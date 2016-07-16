@@ -14,19 +14,6 @@
 #define MAX_WORKERS 10
 #define PACKETS_PER_SECOND 100
 
-/* typedef struct scanner_socket_t { */
-/*   int sockfd; */
-/* } scanner_socket_t; */
-
-/* typedef struct scanner_worker_t { */
-/*   pthread_t *thread; */
-/*   scanner_socket_t *ssocket; */
-/*   struct random_data *random_data; */
-/*   struct sockaddr_in *sin; */
-/*   int worker_id; */
-/*   // list_t *addr_list; */
-/* } scanner_worker_t; */
-
 typedef struct scanner_t {
   scanner_worker_t *workers;  
   pthread_mutex_t *continue_lock;
