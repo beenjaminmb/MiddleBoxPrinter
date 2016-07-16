@@ -9,25 +9,45 @@
 static scanner_t *scanner = NULL;
 
 
-static inline int new_worker(scanner_worker_t *worker)
+static inline int new_worker(scanner_worker_t *worker, int id)
 {
   worker->ssocket = malloc(sizeof(scanner_socket_t));
-  worker->ssocket->sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+  if ((long)worker->ssocket == -1) return -1;
+
+  worker->ssocket->sockfd = socket(AF_INET, SOCK_RAW, 
+				   IPPROTO_RAW);  
+  if (worker->ssocket->sockfd < 0) return -1;
+
+  worker->thread = malloc(sizeof(pthread_t));
+  if ((long)worker->thread == -1) return -1;
+  
+  worker->random_data = malloc(sizeof(struct random_data));
+  if ((long)worker->random_data == -1) return -1;
+  
+  worker->worker_id = id;
+  return id;
 }
 
 scanner_t *new_scanner_singleton() 
 {
   if ( scanner ) return scanner;
-  
   scanner = malloc(sizeof(scanner_t));
   scanner->keep_scanning = 1;
   scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
   for (int i = 0 ; i < MAX_WORKERS; i++) {
-    if ( new_worker(&scanner->workers[i]) < 0) {
+    if ( new_worker(&scanner->workers[i], i) != i) {
       exit(-1);
     }
-
   }
+  scanner->continue_lock = malloc(sizeof(pthread_mutex_t));
+  if ((long)scanner->continue_lock == -1) return NULL;
+  pthread_mutex_init(scanner->continue_lock, NULL);
+
+  scanner->continue_cond = malloc(sizeof(pthread_cond_t));
+  if ((long)scanner->continue_cond == -1) return NULL;
+  pthread_cond_init(scanner->continue_cond, NULL);
+
+
   return scanner;
 }
 
@@ -73,8 +93,9 @@ store that on the NFS mount for later analysis
 */
 
 
-static void send_scan_packet(unsigned char *packet_buffer, 
-			     int sockfd, struct sockaddr *dest_addr)
+static inline void send_scan_packet(unsigned char *packet_buffer, 
+				    int sockfd,
+				    struct sockaddr *dest_addr)
 {
   iphdr *ipheader = (iphdr *)&packet_buffer;
   int len = ipheader->tot_len;
@@ -104,7 +125,7 @@ static void *worker_routine(void* vself)
   return NULL;
 }
 
-int scanner_main_loop()
+inline int scanner_main_loop()
 {
   pthread_mutex_lock(scanner->continue_lock);
   

@@ -34,8 +34,6 @@ typedef struct scanner_t {
   int keep_scanning;
 } scanner_t;
 
-typedef struct scanner_packet_t {} scanner_packet_t;
-
 /**
  * Main loop for the scanner code. ''main" calls this function.
  */
