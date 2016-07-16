@@ -17,6 +17,7 @@
 #include <string.h>
 
 #define PACKET_LEN 8192
+#define MAX_TTL 255
  
 typedef struct ipheader_t {
   unsigned char      iph_ihl:5, iph_ver:4;
@@ -68,5 +69,6 @@ typedef struct udpheader_t {
 unsigned short csum(unsigned short *buf, int len);
 
 
-unsigned char *make_packet();
+int make_packet(unsigned char *packet_buffer);
+
 #endif /* _PACKET_ */

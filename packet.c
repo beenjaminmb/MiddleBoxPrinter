@@ -24,10 +24,8 @@ ipheader_t *make_ipheader(char *buffer) {
   return ip;
 }
 
-unsigned char *make_packet(int make_tcp) {
-
-  unsigned char *buf = malloc(PACKET_LEN);
-  memset(buf, 0, PACKET_LEN);
+int make_packet(unsigned char *packet_buffer) {
+  memset(packet_buffer, 0, PACKET_LEN);
   ipheader_t *ip = make_ipheader( buf );
   
   if (make_tcp) {
