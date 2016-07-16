@@ -22,6 +22,7 @@ typedef struct scanner_worker_t {
   pthread_t *thread;
   scanner_socket_t *ssocket;
   struct random_data *random_data;
+  struct sockaddr_in *sin;
   int worker_id;
   // list_t *addr_list;
 } scanner_worker_t;
@@ -109,8 +110,12 @@ static inline int new_worker(scanner_worker_t *worker, int id)
   
   worker->random_data = malloc(sizeof(struct random_data));
   if ((long)worker->random_data == -1) return -1;
-  
+
+  worker->sin = malloc(sizeof(struct sockaddr_in));
+  if ((long)worker->sin == -1) return -1;
+
   worker->worker_id = id;
+
   return id;
 }
 

@@ -20,11 +20,9 @@ unsigned short csum(unsigned short *ptr, int nbytes)
     *((u_char*)&oddbyte)=*(u_char*)ptr;
     sum+=oddbyte;
   }
- 
   sum = (sum>>16)+(sum & 0xffff);
   sum = sum + (sum>>16);
   answer=(short)~sum;
-     
   return(answer);
 }
 
@@ -33,7 +31,6 @@ pseudo_header *make_pseudo_header(char *source_ip,
 				  int total_length) 
 {
   pseudo_header *psh = malloc(sizeof(pseudo_header));
-  //Now the UDP checksum using the pseudo header
   psh->source_address = inet_addr( source_ip );
   psh->dest_address = sin->sin_addr.s_addr;
   psh->placeholder = 0;
@@ -86,19 +83,56 @@ iphdr *make_ipheader(char *buffer, struct sockaddr_in *sin,
   iph->tos = 0;
   iph->tot_len = sizeof(iphdr) + sizeof(tcphdr) + datalen;
   
-  iph->id = htonl(1); //Id of this packet
+  iph->id = htonl(1);
   iph->frag_off = 0;
   iph->ttl = START_TTL;
   iph->protocol = IPPROTO_TCP;
-  iph->check = 0;      //Set to 0 before calculating checksum
-  iph->saddr = inet_addr( source_ip ); //Spoof the source ip address
+  iph->check = 0;
+  iph->saddr = inet_addr( source_ip );
   iph->daddr = sin->sin_addr.s_addr;
-     
-  //Ip checksum
   iph->check = csum ((unsigned short *) buffer, iph->tot_len);
   return iph;
 }
 
+/*
+
+While (1)
+    Create a random IPv4 packet
+    For length, checksum, etc. make it correct 90% of the time,
+    incorrect in a random way 10%
+
+
+    For protocol, TCP 50% of the time, UDP 25%, random 25%
+    Dest address random, source address our own (not bound to an
+    interface)
+
+    10% of the time have a randomly generated options field
+    
+    if (TCP) fill in TCP header as below
+    
+    if (UDP or other) fill in rest of IP packet with random junk
+       Send it in a TTL-limited fashion
+
+    for TCP packets:
+    50% chance of random dest port, 50% chance of common (22, 80, 
+    etc.)
+  
+    seq and ack numbers random
+    Flags random but biased towards usually only 1 or 2 bits set
+    with 10% chance add randomly generated options
+    Reserved 0 50% of the time and random 50% of the time
+    Window random
+    Checksum correct 90% of the time, random 10%
+    Urgent pointer not there 90% of the time, random 10% of the time
+
+
+
+Then we just send out this kind of traffic at 1 Gbps or so and take a
+pcap of all outgoing and incoming packets for that source IP, and 
+store that on the NFS mount for later analysis
+
+
+*/
 int make_packet(unsigned char *packet_buffer, struct sockaddr_in *sin)
 {
   memset(packet_buffer, 0, PACKET_LEN);
