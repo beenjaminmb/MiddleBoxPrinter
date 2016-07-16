@@ -28,9 +28,38 @@ unsigned short csum(unsigned short *ptr, int nbytes)
   return(answer);
 }
 
+pseudo_header *make_pseudo_header(char *source_ip,
+				  struct sockaddr_in *sin,
+				  int total_length) 
+{
+  pseudo_header *psh = malloc(sizeof(pseudo_header));
+  //Now the UDP checksum using the pseudo header
+  psh->source_address = inet_addr( source_ip );
+  psh->dest_address = sin->sin_addr.s_addr;
+  psh->placeholder = 0;
+  psh->protocol = IPPROTO_UDP;
+  /*
+    UDP: total_length = htons(sizeof(udphdr) + datalen )
+    TCP: total_length = htons(sizeof(tcphdr) + datalen )
+   */
+  psh->total_length = total_length;
+  return psh;
+}
+
+udphdr *make_udpheader(unsigned char *buffer, int datalen)
+{
+  udphdr *udph = (udphdr *)buffer;
+  //UDP header
+  udph->source = htons (6666);
+  udph->dest = htons (8622);
+  udph->len = htons(8 + datalen); //tcp header size
+  udph->check = 0; //leave checksum 0 now, filled later by pseudo header
+  return udph;
+}
+
 tcphdr *make_tcpheader(unsigned char *buffer)
 {
-  struct tcphdr *tcph = (struct tcphdr *)(buffer + sizeof (struct ip));
+  struct tcphdr *tcph = (tcphdr *)(buffer + sizeof (struct ip));
   //TCP Header
   tcph->source = htons (1234);
   tcph->dest = htons (80);
@@ -44,7 +73,7 @@ tcphdr *make_tcpheader(unsigned char *buffer)
   tcph->ack=0;
   tcph->urg=0;
   tcph->window = htons (5840); /* maximum allowed window size */
-  tcph->check = 0; //leave checksum 0 now, filled later by pseudo header
+  tcph->check = 0;//leave checksum 0 now, filled later by pseudo header
   tcph->urg_ptr = 0;
 }
 
@@ -56,8 +85,7 @@ iphdr *make_ipheader(char *buffer, struct sockaddr_in *sin,
   iph->ihl = 5;
   iph->version = 4;
   iph->tos = 0;
-  iph->tot_len = sizeof (struct iphdr) + 
-    sizeof (struct tcphdr) + datalen;
+  iph->tot_len = sizeof(iphdr) + sizeof(tcphdr) + datalen;
   
   iph->id = htonl(1); //Id of this packet
   iph->frag_off = 0;

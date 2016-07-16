@@ -28,14 +28,14 @@ typedef struct udphdr udphdr;
 typedef struct tcphdr tcphdr;
 
 
-struct pseudo_header
+typedef struct pseudo_header
 {
   u_int32_t source_address;
   u_int32_t dest_address;
   u_int8_t placeholder;
   u_int8_t protocol;
-  u_int16_t tcp_length;
-};
+  u_int16_t total_length;
+} pseudo_header;
 
 
 /* Simple checksum function, may use others such as Cyclic Redundancy 
