@@ -50,7 +50,7 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
   }
 }
 
-static void *worker_routine(void* vself)
+static inline void *worker_routine(void* vself)
 {
   scanner_worker_t *self = vself;
   int scanning = 1;
@@ -70,7 +70,7 @@ static void *worker_routine(void* vself)
  * Main loop for the scanner code. ''main" calls this function.
  */
 
-void *worker_routine(void* vself);
+static inline void *worker_routine(void* vself);
 
 static inline int scanner_main_loop()
 {
