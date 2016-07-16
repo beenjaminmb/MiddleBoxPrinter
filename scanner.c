@@ -19,7 +19,7 @@ scanner_t *new_scanner_singleton()
     scanner->workers[i].ssocket = malloc(sizeof(scanner_socket_t));
     scanner->workers[i].ssocket->sockfd = socket(AF_INET, 
 						 SOCK_RAW,
-						 0);
+						 IPPROTO_RAW);
   }
   return scanner;
 }

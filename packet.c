@@ -3,19 +3,36 @@
   @email: bmixonb1@cs.unm.edu
  */
 #include "packet.h"
-
-unsigned short csum(unsigned short *buf, int len)
+#include "util.h"
+unsigned short csum(unsigned short *ptr, int nbytes)
 {
-  unsigned long sum;
-  for(sum=0; len>0; len--)
-    sum += *buf++;
-  sum = (sum >> 16) + (sum &0xffff);
-  sum += (sum >> 16);
-  return (unsigned short)(~sum);
+  register long sum;
+  unsigned short oddbyte;
+  register short answer;
+ 
+  sum=0;
+  while(nbytes>1) {
+    sum+=*ptr++;
+    nbytes-=2;
+  }
+  if(nbytes==1) {
+    oddbyte=0;
+    *((u_char*)&oddbyte)=*(u_char*)ptr;
+    sum+=oddbyte;
+  }
+ 
+  sum = (sum>>16)+(sum & 0xffff);
+  sum = sum + (sum>>16);
+  answer=(short)~sum;
+     
+  return(answer);
 }
+
 
 iphdr *make_ipheader(char *buffer) {
   iphdr *ip = malloc(sizeof(iphdr));
+  
+  
   
   ip->check = csum((unsigned short *) buffer, (sizeof(struct iphdr) + 
 		    sizeof(struct tcphdr))

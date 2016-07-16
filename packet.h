@@ -25,10 +25,20 @@ typedef struct iphdr iphdr;
 typedef struct udphdr udphdr;
 typedef struct tcphdr tcphdr;
 
+
+struct pseudo_header
+{
+  u_int32_t source_address;
+  u_int32_t dest_address;
+  u_int8_t placeholder;
+  u_int8_t protocol;
+  u_int16_t tcp_length;
+};
+
+
 /* Simple checksum function, may use others such as Cyclic Redundancy 
    Check, CRC */
-unsigned short csum(unsigned short *buf, int len);
-
+unsigned short csum(unsigned short *ptr, int nbytes);
 
 int make_packet(unsigned char *packet_buffer);
 

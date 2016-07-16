@@ -14,96 +14,111 @@
 #include <unistd.h>
 #include "util.h"
 
-int ringbuffer_full(ringbuffer_t *rb)
-{
-
-  ringbuffer_cell_t *next = rb->tail + 1;// because of how I call it.
-
-  if (next >= rb->end)
-    next = rb->buf;
-
-  return next == rb->head; // full buffer
-}
-
-int ringbuffer_empty(ringbuffer_t *rb)
-{
-  return (rb->head == rb->tail);
-}
-
-int ringbuffer_append_single(ringbuffer_t *rb, void *item)
-{
-  pthread_mutex_lock(rb->rb_lock);
-  while (next == rb->head) { // full buffer
-    pthread_cond_wait(rb->rb_full, rb->rb_lock);
+long range_random(long max) {
+  unsigned long
+    num_bins = (unsigned long) max + 1,
+    num_rand = (unsigned long) RAND_MAX + 1,
+    bin_size = num_rand / num_bins,
+    defect   = num_rand % num_bins;
+  long x;
+  do {
+    x = random();
   }
+  while (num_rand - defect <= (unsigned long)x);
+  return x/bin_size;
+}
 
-  ringbuffer_cell_t *next = rb->tail + 1;
+
+/* int ringbuffer_full(ringbuffer_t *rb) */
+/* { */
+
+/*   ringbuffer_cell_t *next = rb->tail + 1;// because of how I call it. */
+
+/*   if (next >= rb->end) */
+/*     next = rb->buf; */
+
+/*   return next == rb->head; // full buffer */
+/* } */
+
+/* int ringbuffer_empty(ringbuffer_t *rb) */
+/* { */
+/*   return (rb->head == rb->tail); */
+/* } */
+
+/* int ringbuffer_append_single(ringbuffer_t *rb, void *item) */
+/* { */
+/*   pthread_mutex_lock(rb->rb_lock); */
+/*   while (next == rb->head) { // full buffer */
+/*     pthread_cond_wait(rb->rb_full, rb->rb_lock); */
+/*   } */
+
+/*   ringbuffer_cell_t *next = rb->tail + 1; */
    
-  if (next >= rb->end)
-    next = rb->buf;
+/*   if (next >= rb->end) */
+/*     next = rb->buf; */
 
-  rb->tail->value = item;
+/*   rb->tail->value = item; */
 
   
-  rb->tail = next;
+/*   rb->tail = next; */
   
-  pthread_cond_signal(rb->rb_empty);
-  pthread_mutex_unlock(rb->rb_lock);
-  return 0;
-}
+/*   pthread_cond_signal(rb->rb_empty); */
+/*   pthread_mutex_unlock(rb->rb_lock); */
+/*   return 0; */
+/* } */
 
-int ringbuffer_remove_single(ringbuffer_t *rb, void **item)
-{
+/* int ringbuffer_remove_single(ringbuffer_t *rb, void **item) */
+/* { */
 
-  pthread_mutex_lock(rb->rb_lock);
+/*   pthread_mutex_lock(rb->rb_lock); */
   
-  /* Check that the ring's not empty */
-  while (rb->head == rb->tail){ // empty buffer
-    pthread_cond_wait(rb->rb_empty, rb->rb_lock);
-  }
-  ringbuffer_cell_t *curr;
-  /* get the item we want and advance the per-thread head. Beause
-   * this is all per-thread, there are no atomicity problems
-   * here. */
-  *item = rb->head->value;
-  curr = rb->head + 1;
-  if (curr >= rb->end)
-    rb->head = rb->buf;
-  else
-    rb->head = curr;
+/*   /\* Check that the ring's not empty *\/ */
+/*   while (rb->head == rb->tail){ // empty buffer */
+/*     pthread_cond_wait(rb->rb_empty, rb->rb_lock); */
+/*   } */
+/*   ringbuffer_cell_t *curr; */
+/*   /\* get the item we want and advance the per-thread head. Beause */
+/*    * this is all per-thread, there are no atomicity problems */
+/*    * here. *\/ */
+/*   *item = rb->head->value; */
+/*   curr = rb->head + 1; */
+/*   if (curr >= rb->end) */
+/*     rb->head = rb->buf; */
+/*   else */
+/*     rb->head = curr; */
   
-  pthread_cond_signal(rb->rb_full);
-  pthread_mutex_unlock(rb->rb_lock);
+/*   pthread_cond_signal(rb->rb_full); */
+/*   pthread_mutex_unlock(rb->rb_lock); */
 
-  return 0;
-}
+/*   return 0; */
+/* } */
 
-int ringbuffer_destroy(ringbuffer_t *rb)
-{  
-  if (rb->buf) {
-    free(rb->rb_lock);
-    free(rb->rb_empty);
-    free(rb->rb_full);
-    free(rb->buf);
-  }
-  return 0;
-}
+/* int ringbuffer_destroy(ringbuffer_t *rb) */
+/* {   */
+/*   if (rb->buf) { */
+/*     free(rb->rb_lock); */
+/*     free(rb->rb_empty); */
+/*     free(rb->rb_full); */
+/*     free(rb->buf); */
+/*   } */
+/*   return 0; */
+/* } */
 
-/* Initialize a ringbuffer, giving the length in entries */
-int ringbuffer_init(ringbuffer_t *rb, int len)
-{
-  rb->head = rb->tail = rb->buf 
-    = malloc(len * sizeof(ringbuffer_cell_t));
-  rb->end = rb->buf+len;
+/* /\* Initialize a ringbuffer, giving the length in entries *\/ */
+/* int ringbuffer_init(ringbuffer_t *rb, int len) */
+/* { */
+/*   rb->head = rb->tail = rb->buf  */
+/*     = malloc(len * sizeof(ringbuffer_cell_t)); */
+/*   rb->end = rb->buf+len; */
   
-  rb->rb_lock = malloc(sizeof(pthread_mutex_t));
-  pthread_mutex_init(rb->rb_lock, NULL);
+/*   rb->rb_lock = malloc(sizeof(pthread_mutex_t)); */
+/*   pthread_mutex_init(rb->rb_lock, NULL); */
 
-  rb->rb_empty = malloc(sizeof(pthread_cond_t));
-  pthread_mutex_init(rb->rb_empty, NULL);
+/*   rb->rb_empty = malloc(sizeof(pthread_cond_t)); */
+/*   pthread_mutex_init(rb->rb_empty, NULL); */
 
-  rb->rb_full = malloc(sizeof(pthread_cond_t));
-  pthread_mutex_init(rb->rb_full, NULL);
+/*   rb->rb_full = malloc(sizeof(pthread_cond_t)); */
+/*   pthread_mutex_init(rb->rb_full, NULL); */
 
-  return 0;
-}
+/*   return 0; */
+/* } */
