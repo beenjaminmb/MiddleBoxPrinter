@@ -49,32 +49,31 @@ pseudo_header *make_pseudo_header(char *source_ip,
 udphdr *make_udpheader(unsigned char *buffer, int datalen)
 {
   udphdr *udph = (udphdr *)buffer;
-  //UDP header
   udph->source = htons (6666);
   udph->dest = htons (8622);
-  udph->len = htons(8 + datalen); //tcp header size
-  udph->check = 0; //leave checksum 0 now, filled later by pseudo header
+  udph->len = htons(8 + datalen);
+  udph->check = 0;
   return udph;
 }
 
 tcphdr *make_tcpheader(unsigned char *buffer)
 {
   struct tcphdr *tcph = (tcphdr *)(buffer + sizeof (struct ip));
-  //TCP Header
   tcph->source = htons (1234);
   tcph->dest = htons (80);
   tcph->seq = 0;
   tcph->ack_seq = 0;
-  tcph->doff = 5;  //tcp header size
+  tcph->doff = 5;
   tcph->fin=0;
   tcph->syn=1;
   tcph->rst=0;
   tcph->psh=0;
   tcph->ack=0;
   tcph->urg=0;
-  tcph->window = htons (5840); /* maximum allowed window size */
-  tcph->check = 0;//leave checksum 0 now, filled later by pseudo header
+  tcph->window = htons (5840);
+  tcph->check = 0;
   tcph->urg_ptr = 0;
+  return tcph;
 }
 
 iphdr *make_ipheader(char *buffer, struct sockaddr_in *sin, 
