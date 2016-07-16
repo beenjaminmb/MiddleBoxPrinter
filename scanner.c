@@ -64,16 +64,34 @@ pcap of all outgoing and incoming packets for that source IP, and store
 that on the NFS mount for later analysis
 */
 
+
+static void send_scan_packet(unsigned char *packet_buffer, 
+			     int sockfd, struct sockaddr *dest_addr)
+{
+  ipheader_t *iphdr = &packet_buffer;
+  int len = iphdr->iph_len;
+  for (int i = START_TTL; i < END_TTL; i++) {
+    iphdr->iphdr_ttl = i;
+    for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
+      sendto(sockfd, packet_buffer, len, MSG_DONTWAIT | MSG_NOSIGNAL,
+	     dest_addr, sizeof(struct sockaddr));
+    }
+  }
+}
+
+
 static void *worker_routine(void* vself)
 {
   scanner_worker_t *self = vself;
   int scanning = 1;
   unsigned char packet_buffer[PACKET_LEN];
+  int sockfd = self->sscoket->sockfd;
+  struct sockaddr_in *dest_addr;
   while ( scanning ) {
-    make_packet(&buffer_buffer);
-    
-    
-    
+    make_packet(&packet_buffer);
+
+    send_scan_packet(&packet_buffer, sockfd, 
+		     (struct sockaddr *)dest_addr);
   }
   
   return NULL;

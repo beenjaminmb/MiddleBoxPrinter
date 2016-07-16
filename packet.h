@@ -17,8 +17,9 @@
 #include <string.h>
 
 #define PACKET_LEN 8192
-#define MAX_TTL 255
- 
+#define START_TTL 2
+#define END_TTL 255
+#define TTL_MODULATION_COUNT 3
 typedef struct ipheader_t {
   unsigned char      iph_ihl:5, iph_ver:4;
   unsigned char      iph_tos;
