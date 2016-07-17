@@ -201,7 +201,8 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 
 /** 
  * Either build a scanner singleton or create a completely new one
- *  if we have already built on in the past. This is simply an interfac
+ *  if we have already built on in the past. This is simply an 
+ *  interface
  *  to get at the statically declared one.
  */
 //static inline scanner_t *new_scanner_singleton()

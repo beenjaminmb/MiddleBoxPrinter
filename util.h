@@ -3,8 +3,9 @@
 
 #include <pthread.h>
 /*https://stackoverflow.com/questions/2509679/how-to-generate-a-random-number-from-within-a-range */
-#define DO_TCP(x) x <= 74
-#define DO_UDP(x) (x > 74 & x <= 100)
+#define DO_TCP(x) x < 50
+#define DO_UDP(x) (x >= 50 & x < 75)
+#define DO_ICMP(x) (x > 74 & x <= 100)
 
 long range_random(long, struct random_data *, int *);
 
