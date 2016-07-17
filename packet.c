@@ -26,31 +26,11 @@ unsigned short csum(unsigned short *ptr, int nbytes)
   return(answer);
 }
 
-
 static inline void generate_random_destination_ip(char *dst_ip)
 {
   strcpy(dst_ip, TEST_IP);
   return ;
 }
-
-pseudo_header *make_pseudo_header(char *source_ip,
-				  struct sockaddr_in *sin,
-				  int total_length,
-				  int proto) 
-{
-  pseudo_header *psh = malloc(sizeof(pseudo_header));
-  psh->source_address = inet_addr( source_ip );
-  psh->dest_address = sin->sin_addr.s_addr;
-  psh->placeholder = 0;
-  psh->protocol = proto;
-  /*
-    UDP: total_length = htons(sizeof(udphdr) + datalen )
-    TCP: total_length = htons(sizeof(tcphdr) + datalen )
-   */
-  psh->total_length = total_length;
-  return psh;
-}
-
 
 icmphdr *make_icmpheader(char *buffer, scanner_worker_t *worker, 
 			 int datalen)
@@ -182,31 +162,22 @@ int make_packet(unsigned char *packet_buffer,
   long prand = range_random(100, worker->random_data, &result);
   pseudo_header *psh = malloc(sizeof(pseudo_header));
   char *pseudogram, source_ip[32], dst_ip[32];
-
   generate_random_destination_ip((char*)dst_ip);
-
   strcpy(source_ip, src_ip); // This can be optimized at some point.
   memset(packet_buffer, 0, PACKET_LEN);
   worker->sin->sin_addr.s_addr = inet_addr(dst_ip);
   worker->sin->sin_family = AF_INET;
-  
-  iphdr *ip = make_ipheader(packet_buffer,
-			    worker->sin,
-			    datalen);
-  
+  iphdr *ip = make_ipheader(packet_buffer, worker->sin, datalen);
   psh->source_address = inet_addr(source_ip);
   psh->dest_address = worker->sin->sin_addr.s_addr;
   psh->placeholder = 0;
-  
   if ( DO_TCP(prand) ) { /* Make a TCP packet */
     ip->tot_len = sizeof(iphdr) + sizeof(tcphdr) + datalen;
     ip->protocol = IPPROTO_TCP;
-
     tcphdr *tcph = make_tcpheader(packet_buffer, worker);
     psh->protocol = IPPROTO_TCP;
     psh->total_length = htons(sizeof(tcphdr) + datalen);
-    int psize = sizeof(pseudo_header) +
-      sizeof(tcphdr) + datalen;
+    int psize = sizeof(pseudo_header) + sizeof(tcphdr) + datalen;
     pseudogram = malloc(psize);
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), tcph,
@@ -218,20 +189,17 @@ int make_packet(unsigned char *packet_buffer,
     ip->tot_len = sizeof(iphdr) + sizeof(udphdr) + datalen;
     udphdr *udph = make_udpheader(packet_buffer, 0);
     ip->protocol = IPPROTO_UDP;
-
     psh->protocol = IPPROTO_UDP;
     psh->total_length = htons(sizeof(udphdr) + datalen);
-    int psize = sizeof(pseudo_header) +
-      sizeof(udphdr) + datalen;
-
+    int psize = sizeof(pseudo_header) + sizeof(udphdr) + datalen;
     pseudogram = malloc(psize);
-    memcpy(pseudogram, (char*) psh, sizeof(pseudo_header));
+    memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), udph,
 	   sizeof(udphdr) + datalen);
     udph->check = csum((unsigned short*) pseudogram, psize);
     goto DONE;
   }
-  else if ( DO_ICMP(prand) ) {
+  else if ( DO_ICMP(prand) ) { /* Make ICMP packet */
     ip->tot_len = sizeof(iphdr) + sizeof(icmphdr) + datalen;
     icmphdr *icmph = make_icmpheader(packet_buffer, worker, 0);
     ip->protocol = IPPROTO_ICMP;
