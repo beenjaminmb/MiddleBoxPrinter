@@ -100,12 +100,12 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 {
   worker->ssocket = malloc(sizeof(scanner_socket_t));
   if ((long)worker->ssocket == -1) return -1;
-
+  
   worker->ssocket->sockfd = socket(AF_INET, SOCK_RAW, 
 				   IPPROTO_RAW);  
-
+  
   if (worker->ssocket->sockfd < 0) return -1;
-
+  
   worker->thread = malloc(sizeof(pthread_t));
   if ((long)worker->thread == -1) return -1;
   
@@ -115,8 +115,26 @@ static inline int new_worker(scanner_worker_t *worker, int id)
   worker->state_size = STATE_SIZE;
   worker->random_state = malloc(STATE_SIZE);
   
+  worker->cap_errbuf = malloc(PCAP_ERRBUF_SIZE);
+  if (worker->cap_errbuf == NULL) {
+    printf("Couldn't allocate %d bytes for cap error buffer for worker[%d]'s\n",
+	   PCAP_ERRBUF_SIZE, id);
+    return -1;
+  }
+  worker->cap_handle = pcap_create(CAPTURE_IFACE, worker->cap_errbuf);
+  if(worker->cap_handle == NULL) {
+    printf("Couldn't create a capture handle for worker[%d]'s.\n", id);
+    return -1;
+  }
+
+  if ( pcap_set_promisc(worker->cap_handle, 1) ) {
+    printf("Error opening interface in promiscuous mode for worker[%d]'s\n", id);
+    return -1;
+  }
+
   if (initstate_r(TEST_SEED, worker->random_state, STATE_SIZE,
 		  worker->random_data) < 0) {
+    printf("Couldn't initialize worker[%d]'s random state.", id);
     return -1;
   }
 
@@ -142,18 +160,18 @@ static inline scanner_t *new_scanner_singleton()
   scanner->keep_scanning = 1;
   scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
   for (int i = 0 ; i < MAX_WORKERS; i++) {
-    if ( new_worker(&scanner->workers[i], i) != i) {
+    if (new_worker(&scanner->workers[i], i) != i) {
       exit(-1);
     }
   }
   scanner->continue_lock = malloc(sizeof(pthread_mutex_t));
   if ((long)scanner->continue_lock == -1) return NULL;
   pthread_mutex_init(scanner->continue_lock, NULL);
-
+  
   scanner->continue_cond = malloc(sizeof(pthread_cond_t));
   if ((long)scanner->continue_cond == -1) return NULL;
   pthread_cond_init(scanner->continue_cond, NULL);
-
+  
   return scanner;
 }
 

@@ -2,7 +2,7 @@ RM=rm
 CC=gcc
 CFLAGS=-O0 -g  -std=gnu99
 
-LDLIBS=-pthread
+LDLIBS=-pthread -lpcap
 
 targets = main.c scanner.c packet.c util.c
 
