@@ -40,7 +40,6 @@ typedef struct pseudo_header
   u_int16_t total_length;
 } pseudo_header;
 
-
 /* Simple checksum function, may use others such as Cyclic Redundancy 
    Check, CRC */
 unsigned short csum(unsigned short *ptr, int nbytes);

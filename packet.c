@@ -26,15 +26,23 @@ unsigned short csum(unsigned short *ptr, int nbytes)
   return(answer);
 }
 
+
+static inline void generate_random_destination_ip(char *dst_ip)
+{
+  
+  return ;
+}
+
 pseudo_header *make_pseudo_header(char *source_ip,
 				  struct sockaddr_in *sin,
-				  int total_length) 
+				  int total_length,
+				  int proto) 
 {
   pseudo_header *psh = malloc(sizeof(pseudo_header));
   psh->source_address = inet_addr( source_ip );
   psh->dest_address = sin->sin_addr.s_addr;
   psh->placeholder = 0;
-  psh->protocol = IPPROTO_UDP;
+  psh->protocol = proto;
   /*
     UDP: total_length = htons(sizeof(udphdr) + datalen )
     TCP: total_length = htons(sizeof(tcphdr) + datalen )
@@ -45,7 +53,7 @@ pseudo_header *make_pseudo_header(char *source_ip,
 
 udphdr *make_udpheader(unsigned char *buffer, int datalen)
 {
-  udphdr *udph = (udphdr *)buffer;
+  udphdr *udph = (udphdr *)(buffer + sizeof(struct ip));
   udph->source = htons (6666);
   udph->dest = htons (8622);
   udph->len = htons(8 + datalen);
@@ -56,27 +64,52 @@ udphdr *make_udpheader(unsigned char *buffer, int datalen)
 tcphdr *make_tcpheader(unsigned char *buffer, 
 		       scanner_worker_t *worker)
 {
+  int result;
   struct tcphdr *tcph = (tcphdr *)(buffer + sizeof(struct ip));
   tcph->source = htons(1234);
+
   tcph->dest = htons(80);
-  worker->sin->sin_port = htons(80); 
-  tcph->seq = 0;
-  tcph->ack_seq = 0;
+  worker->sin->sin_port = htons(80);
+
+  tcph->seq = range_random(RAND_MAX, worker->random_data, &result);
+  tcph->ack_seq = range_random(RAND_MAX, worker->random_data,
+			       &result);
   tcph->doff = 5;
+  /*
+     93# define TH_FIN 0x01
+     94# define TH_SYN 0x02
+ 95# define TH_RST 0x04
+ 96# define TH_PUSH        0x08
+ 97# define TH_ACK 0x10
+ 98# define TH_URG 0x20
+   */
   tcph->fin=0;
   tcph->syn=1;
   tcph->rst=0;
   tcph->psh=0;
   tcph->ack=0;
-  tcph->urg=0;
+
   tcph->window = htons(5840);
-  tcph->check = 0;
   tcph->urg_ptr = 0;
+  tcph->urg=0;
+  tcph->check = 0;
+  tcph->res1 = 0;
+  tcph->res2 = 0;
+
+  if (range_random(100, worker->random_data, &result) < 10) {
+    tcph->urg=1;
+    tcph->urg_ptr = range_random(65535, worker->random_data,
+				 &result);
+  }
+  if (range_random(100, worker->random_data, &result) < 50) {
+    tcph->res1 = range_random(16, worker->random_data, &result);
+    tcph->res2 = range_random(16, worker->random_data, &result);
+  }
   return tcph;
 }
 
 iphdr *make_ipheader(char *buffer, struct sockaddr_in *sin, 
-		     char *source_ip, int datalen) 
+		     int datalen) 
 {
   iphdr *iph = (iphdr *)buffer;
   iph->ihl = 5;
@@ -88,7 +121,7 @@ iphdr *make_ipheader(char *buffer, struct sockaddr_in *sin,
   iph->ttl = START_TTL;
   iph->protocol = IPPROTO_TCP; // fix this later
   iph->check = 0;
-  iph->saddr = inet_addr( source_ip );
+  iph->saddr = inet_addr( SRC_IP );
   iph->daddr = sin->sin_addr.s_addr;
   iph->check = csum((unsigned short *)buffer, iph->tot_len);
   return iph;
@@ -133,45 +166,61 @@ int make_packet(unsigned char *packet_buffer,
 
   int datalen = TEST_DATA_LEN;
   char *src_ip = SRC_IP;
-  char *dst_ip = TEST_IP;
-
+  char *dst_ip;
   int result = 0;
   long prand = range_random(100, worker->random_data, &result);
   pseudo_header *psh = malloc(sizeof(pseudo_header));
   char *pseudogram, source_ip[32];
-  
-  strcpy(source_ip , src_ip);
-  
+
+  generate_random_destination_ip(dst_ip);
+
+  strcpy(source_ip, src_ip); // This can be optimized at some point.
+  memset(packet_buffer, 0, PACKET_LEN);
   worker->sin->sin_addr.s_addr = inet_addr(dst_ip);
   worker->sin->sin_family = AF_INET;
   
-  memset(packet_buffer, 0, PACKET_LEN);
   iphdr *ip = make_ipheader(packet_buffer,
 			    worker->sin,
-			    source_ip,
 			    datalen);
 
   if ( DO_TCP(prand) ) { /* Make a TCP packet */
     make_tcpheader(packet_buffer, worker);
     tcphdr *tcph = (tcphdr *)(packet_buffer + sizeof(struct ip));
-    psh->source_address = inet_addr( source_ip );
+    psh->source_address = inet_addr(source_ip);
     psh->dest_address = worker->sin->sin_addr.s_addr;
     psh->placeholder = 0;
     psh->protocol = IPPROTO_TCP;
     psh->total_length = htons(sizeof(tcphdr) + datalen);
-    
-    int psize = sizeof( pseudo_header) + 
+
+    int psize = sizeof(pseudo_header) +
       sizeof(tcphdr) + datalen;
 
     pseudogram = malloc(psize);
-    memcpy(pseudogram , (char*) psh , sizeof(pseudo_header));
-    memcpy(pseudogram + sizeof(pseudo_header) , tcph,
+    memcpy(pseudogram , (char*) psh, sizeof(pseudo_header));
+    memcpy(pseudogram + sizeof(pseudo_header), tcph,
 	   sizeof(tcphdr) + datalen);
-    tcph->check = csum( (unsigned short*) pseudogram ,psize);
+    tcph->check = csum((unsigned short*)pseudogram, psize);
     return 0;
   }
   else { /* Make a UDP */
-    
+    make_udpheader(packet_buffer, 0);
+    ip->protocol = IPPROTO_UDP;
+    udphdr *udph = (udphdr *)(packet_buffer + sizeof(struct ip));
+    psh->source_address = inet_addr(source_ip);
+    psh->dest_address = worker->sin->sin_addr.s_addr;
+    psh->placeholder = 0;
+    psh->protocol = IPPROTO_UDP;
+    psh->total_length = htons(sizeof(udphdr) + datalen);
+
+    int psize = sizeof(pseudo_header) +
+      sizeof(udphdr) + datalen;
+
+    pseudogram = malloc(psize);
+    memcpy(pseudogram, (char*) psh, sizeof(pseudo_header));
+    memcpy(pseudogram + sizeof(pseudo_header), udph,
+	   sizeof(udphdr) + datalen);
+    udph->check = csum((unsigned short*) pseudogram, psize);
+    return 0;    
   }
   return 0;
 }
