@@ -92,7 +92,8 @@ static inline void *worker_routine(void* vself)
 {
   scanner_worker_t *self = vself;
   int scanning = 1;
-  unsigned char packet_buffer[PACKET_LEN];// Probably change this so we can make a list of ipaddresses.
+  // Probably change this so we can make a list of ipaddresses.
+  unsigned char packet_buffer[PACKET_LEN];
   int sockfd = self->ssocket->sockfd;
   while ( scanning ) {
     make_packet((unsigned char *)&packet_buffer, self);
@@ -192,9 +193,31 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     pcap_perror(worker->cap_handle, NULL);
     printf("Error activating capture interface for worker[%d].\n",
 	   worker->worker_id);
-    exit(-1);
+    return -1;
   }
-
+  worker->sniffer_lock = malloc(sizeof(pthread_mutex_t));
+  if (worker->sniffer_lock == NULL) {
+    printf("Cannot allocate sniffer lock worker[%d]\n", id);
+  }
+  if (pthread_mutex_init(worker->sniffer_lock, NULL) != 0) {
+    printf("Cannot initialize sniffer lock worker[%d]\n", id);
+    return -1;
+  }
+  worker->sniffer_cond = malloc(sizeof(pthread_cond_t));
+  if (worker->sniffer_cond == NULL) {
+    printf("Cannot allocate sniffer cond worker[%d]\n", id);
+  }
+  
+  if (pthread_cond_init(worker->sniffer_cond, NULL) != 0) {
+    printf("Cannot initialize sniffer cond worker[%d]\n", id);
+    return -1;
+  }
+  worker->sniffer_thread = malloc(sizeof(pthread_t));
+  if (worker->sniffer_thread == NULL) {
+    printf("Cannot allocate space for sniffer thread for worker[%d]",
+	   id);
+    return -1;
+  }
   worker->worker_id = id;
   return id;
 }

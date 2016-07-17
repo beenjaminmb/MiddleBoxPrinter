@@ -13,12 +13,16 @@ typedef struct scanner_socket_t {
 
 typedef struct scanner_worker_t {
   pthread_t *thread;
+  pthread_t *sniffer_thread;
+
   scanner_socket_t *ssocket;
   struct sockaddr_in *sin;
   struct random_data *random_data;
   char *random_state;
   pcap_t *cap_handle;
   char *cap_errbuf;
+  pthread_mutex_t *sniffer_lock;
+  pthread_cond_t *sniffer_cond;
   //pthread_mutex_t *cap_lock;
   //pthread_cond_t *cap_cond;
   int state_size;
