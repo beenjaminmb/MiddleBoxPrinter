@@ -123,7 +123,6 @@ iphdr *make_ipheader(char *buffer, struct sockaddr_in *sin,
   iph->check = 0;
   iph->saddr = inet_addr( SRC_IP );
   iph->daddr = sin->sin_addr.s_addr;
-  iph->check = csum((unsigned short *)buffer, iph->tot_len);
   return iph;
 }
 
@@ -195,10 +194,12 @@ int make_packet(unsigned char *packet_buffer,
       sizeof(tcphdr) + datalen;
 
     pseudogram = malloc(psize);
-    memcpy(pseudogram , (char*) psh, sizeof(pseudo_header));
+    memcpy(pseudogram ,(char*) psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), tcph,
 	   sizeof(tcphdr) + datalen);
     tcph->check = csum((unsigned short*)pseudogram, psize);
+    free(psh);
+    free(pseudogram);
     return 0;
   }
   else { /* Make a UDP */
@@ -219,6 +220,8 @@ int make_packet(unsigned char *packet_buffer,
     memcpy(pseudogram + sizeof(pseudo_header), udph,
 	   sizeof(udphdr) + datalen);
     udph->check = csum((unsigned short*) pseudogram, psize);
+    free(psh);
+    free(pseudogram);
     return 0;    
   }
   return 0;

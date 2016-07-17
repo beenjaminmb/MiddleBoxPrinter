@@ -19,6 +19,8 @@ typedef struct scanner_worker_t {
   char *random_state;
   pcap_t *cap_handle;
   char *cap_errbuf;
+  //pthread_mutex_t *cap_lock;
+  //pthread_cond_t *cap_cond;
   int state_size;
   int worker_id;
   // list_t *addr_list;

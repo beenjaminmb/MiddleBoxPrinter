@@ -11,8 +11,9 @@
 #include <sys/types.h>
 #include "packet.h"
 #include "worker.h"
-
-#define MAX_WORKERS 4
+#include "util.h"
+#define DEBUG 0
+#define MAX_WORKERS 1
 #define PACKETS_PER_SECOND 100
 #define TEST_SEED 0
 #define STATE_SIZE 8
@@ -49,11 +50,24 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
 
 {
   struct sockaddr *dest_addr = (struct sockaddr *)worker->sin;
-  iphdr *ipheader = (iphdr *)packet_buffer;
-  int len = ipheader->tot_len;
+  iphdr *iph = (iphdr *)packet_buffer;
+  int len = iph->tot_len;
+  int result;
   for (int i = START_TTL; i < END_TTL; i++) {
-    ipheader->ttl = i;
+    iph->ttl = i;
+      if (DEBUG && MAX_WORKERS == 1)
+	printf("ttl = %d\n", i);
+      
     for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
+      
+      if (range_random(100, worker->random_data, &result) < 90) {
+	iph->check = csum((unsigned short *)packet_buffer, 
+			  iph->tot_len);
+      }
+      else {
+	iph->check = range_random(65536, worker->random_data, 
+				  &result);
+      }// this might be slow.
       sendto(sockfd, packet_buffer, len, 0,
 	     dest_addr, sizeof(struct sockaddr));
     }

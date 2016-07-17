@@ -22,11 +22,12 @@
 
 #define PACKET_LEN 4096
 #define START_TTL 2
-#define END_TTL 255
+#define END_TTL 128
 #define TTL_MODULATION_COUNT 3
 #define TEST_IP "192.168.0.1"
 #define SRC_IP "192.168.0.3"
 #define TEST_DATA_LEN 0
+
 typedef struct iphdr iphdr;
 typedef struct udphdr udphdr;
 typedef struct tcphdr tcphdr;
