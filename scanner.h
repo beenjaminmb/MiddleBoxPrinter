@@ -12,11 +12,13 @@
 #include "packet.h"
 #include "worker.h"
 #include "util.h"
+#include <pcap/pcap.h>
 #define DEBUG 0
 #define MAX_WORKERS 1
 #define PACKETS_PER_SECOND 100
 #define TEST_SEED 0
 #define STATE_SIZE 8
+#define MAX_FILTER_SIZE sizeof("host 255.255.255.255") + 1
 typedef struct scanner_t {
   scanner_worker_t *workers;  
   pthread_mutex_t *continue_lock;
@@ -52,7 +54,19 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
   struct sockaddr *dest_addr = (struct sockaddr *)worker->sin;
   iphdr *iph = (iphdr *)packet_buffer;
   int len = iph->tot_len;
+  char filter_str[MAX_FILTER_SIZE];
+  
   int result;
+  char *addr = inet_ntoa(worker->sin->sin_addr);
+  sprintf(filter_str, "host %s", addr);
+  struct bpf_program bpf_prog;
+
+  if (pcap_compile(worker->cap_handle, &bpf_prog, filter_str, 1,
+		   PCAP_NETMASK_UNKNOWN) ==  -1){
+    pcap_perror(worker->cap_handle, NULL);
+    printf("Couldn't compile pcap filter for worker[%d]",
+	   worker->worker_id);
+  }
   for (int i = START_TTL; i < END_TTL; i++) {
     iph->ttl = i;
       if (DEBUG && MAX_WORKERS == 1)
@@ -172,6 +186,13 @@ static inline int new_worker(scanner_worker_t *worker, int id)
   if ((long)worker->sin == -1) {
     printf("Couldn't allocate sockaddr_in for worker[%d].\n", id);
     return -1;
+  }
+
+  if (pcap_activate(worker->cap_handle) != 0) {
+    pcap_perror(worker->cap_handle, NULL);
+    printf("Error activating capture interface for worker[%d].\n",
+	   worker->worker_id);
+    exit(-1);
   }
 
   worker->worker_id = id;
