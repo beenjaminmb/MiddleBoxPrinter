@@ -11,11 +11,12 @@ typedef struct scanner_socket_t {
   int sockfd;
 } scanner_socket_t;
 
+
 typedef struct sniffer_t {
   pthread_t *sniffer_thread;
   pthread_mutex_t *sniffer_lock;
   pthread_cond_t *sniffer_cond;
-
+  int keep_sniffing;
 } sniffer_t;
 
 typedef struct scanner_worker_t {

@@ -29,6 +29,20 @@
 #define SRC_IP "192.168.0.3"
 #define TEST_DATA_LEN 0
 
+
+static const char *test_ips[] =
+  { "192.168.0.1",
+      "192.168.0.2",
+      "192.168.0.4",
+      "192.168.0.5",
+      "192.168.0.6",
+      "192.168.0.7",
+      "192.168.0.8",
+      "192.168.0.9",
+      "192.168.0.10",
+      "192.168.0.11"};
+
+
 typedef struct iphdr iphdr;
 typedef struct udphdr udphdr;
 typedef struct tcphdr tcphdr;

@@ -4,6 +4,7 @@
  */
 #include "packet.h"
 #include "util.h"
+
 unsigned short csum(unsigned short *ptr, int nbytes)
 {
   register long sum;
@@ -26,9 +27,10 @@ unsigned short csum(unsigned short *ptr, int nbytes)
   return(answer);
 }
 
-static inline void generate_random_destination_ip(char *dst_ip)
+static inline void 
+generate_random_destination_ip(char *dst_ip, scanner_worker_t *worker)
 {
-  strcpy(dst_ip, TEST_IP);
+  strcpy(dst_ip, test_ips[worker->worker_id]);
   return ;
 }
 
@@ -162,7 +164,7 @@ int make_packet(unsigned char *packet_buffer,
   long prand = range_random(100, worker->random_data, &result);
   pseudo_header *psh = malloc(sizeof(pseudo_header));
   char *pseudogram, source_ip[32], dst_ip[32];
-  generate_random_destination_ip((char*)dst_ip);
+  generate_random_destination_ip((char*)dst_ip, worker);
   strcpy(source_ip, src_ip); // This can be optimized at some point.
   memset(packet_buffer, 0, PACKET_LEN);
   worker->sin->sin_addr.s_addr = inet_addr(dst_ip);

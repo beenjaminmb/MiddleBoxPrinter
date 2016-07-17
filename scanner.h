@@ -46,11 +46,22 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 static inline scanner_t *new_scanner_singleton() 
   __attribute__((always_inline));
 
+void got_packet(u_char *args, const struct pcap_pkthdr *header,
+		const u_char *packet);
+
+
 
 static inline void *sniffer_routine(void *argv)
 {
-
+  sniffer_t *sniffer = argv;
+  pthread_mutex_lock(sniffer->sniffer_lock);
+  while(sniffer->keep_sniffing == 0) {
+    pthread_cond_wait(sniffer->sniffer_cond, sniffer->sniffer_lock);
+  }
+  while(sniffer->keep_sniffing) {
   
+  }
+  pthread_mutex_unlock(sniffer->sniffer_lock);
   return NULL;
 }
 
@@ -77,9 +88,9 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
   }
   for (int i = START_TTL; i < END_TTL; i++) {
     iph->ttl = i;
-      if (DEBUG && MAX_WORKERS == 1)
-	printf("ttl = %d\n", i);
-      
+    if (DEBUG && MAX_WORKERS == 1)
+      printf("ttl = %d\n", i);
+    
     for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
       
       if (range_random(100, worker->random_data, &result) < 90) {
@@ -94,6 +105,7 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
 	     dest_addr, sizeof(struct sockaddr));
     }
   }
+
 }
 
 static inline void *worker_routine(void* vself)
@@ -233,6 +245,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     return -1;
   }
   worker->worker_id = id;
+  worker->sniffer->keep_sniffing = 0;
   return id;
 }
 
