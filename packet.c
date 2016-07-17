@@ -56,8 +56,8 @@ udphdr *make_udpheader(unsigned char *buffer, int datalen)
 tcphdr *make_tcpheader(unsigned char *buffer)
 {
   struct tcphdr *tcph = (tcphdr *)(buffer + sizeof(struct ip));
-  tcph->source = htons (1234);
-  tcph->dest = htons (80);
+  tcph->source = htons(1234);
+  tcph->dest = htons(80);
   tcph->seq = 0;
   tcph->ack_seq = 0;
   tcph->doff = 5;
@@ -77,7 +77,6 @@ iphdr *make_ipheader(char *buffer, struct sockaddr_in *sin,
 		     char *source_ip, int datalen) 
 {
   iphdr *iph = (iphdr *)buffer;
-  
   iph->ihl = 5;
   iph->version = 4;
   iph->tos = 0;
@@ -89,7 +88,7 @@ iphdr *make_ipheader(char *buffer, struct sockaddr_in *sin,
   iph->check = 0;
   iph->saddr = inet_addr( source_ip );
   iph->daddr = sin->sin_addr.s_addr;
-  iph->check = csum ((unsigned short *) buffer, iph->tot_len);
+  iph->check = csum((unsigned short *)buffer, iph->tot_len);
   return iph;
 }
 
