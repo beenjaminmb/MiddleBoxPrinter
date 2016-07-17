@@ -99,28 +99,44 @@ static inline int scanner_main_loop()
 static inline int new_worker(scanner_worker_t *worker, int id)
 {
   worker->ssocket = malloc(sizeof(scanner_socket_t));
-  if ((long)worker->ssocket == -1) return -1;
-  
-  worker->ssocket->sockfd = socket(AF_INET, SOCK_RAW, 
-				   IPPROTO_RAW);  
-  
-  if (worker->ssocket->sockfd < 0) return -1;
-  
+  if ((long)worker->ssocket == -1) {
+    printf("Couldn't allocate scanner_socket_t for worker[%d]\n", id);
+    return -1;
+  }
+
+  worker->ssocket->sockfd = socket(AF_INET, SOCK_RAW,
+				   IPPROTO_RAW);
+  if (worker->ssocket->sockfd < 0) {
+    printf("Couldn't open socket fd for worker[%d]\n", id);
+    return -1;
+  };
+
   worker->thread = malloc(sizeof(pthread_t));
-  if ((long)worker->thread == -1) return -1;
-  
+  if ((long)worker->thread == -1) {
+    printf("Couldn't allocate thread for worker[%d]\n", id);
+    return -1;
+  }
+
   worker->random_data = malloc(sizeof(struct random_data));
-  if ((long)worker->random_data == -1) return -1;
-  
+  if ((long)worker->random_data == -1) {
+    printf("Couldn't allocate random_data storage for worker[%d]\n", id);
+    return -1;
+  }
+
   worker->state_size = STATE_SIZE;
   worker->random_state = malloc(STATE_SIZE);
-  
+  if ((long)worker->random_state == -1) {
+    printf("Couldn't allocate random_state storage for worker[%d]\n", id);
+    return -1;
+  }
+
   worker->cap_errbuf = malloc(PCAP_ERRBUF_SIZE);
   if (worker->cap_errbuf == NULL) {
     printf("Couldn't allocate %d bytes for cap error buffer for worker[%d]'s\n",
 	   PCAP_ERRBUF_SIZE, id);
     return -1;
   }
+
   worker->cap_handle = pcap_create(CAPTURE_IFACE, worker->cap_errbuf);
   if(worker->cap_handle == NULL) {
     printf("Couldn't create a capture handle for worker[%d]'s.\n", id);
@@ -134,15 +150,17 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 
   if (initstate_r(TEST_SEED, worker->random_state, STATE_SIZE,
 		  worker->random_data) < 0) {
-    printf("Couldn't initialize worker[%d]'s random state.", id);
+    printf("Couldn't initialize random_state for worker[%d]'s.\n", id);
     return -1;
   }
 
   worker->sin = malloc(sizeof(struct sockaddr_in));
-  if ((long)worker->sin == -1) return -1;
+  if ((long)worker->sin == -1) {
+    printf("Couldn't allocate sockaddr_in for worker[%d].\n", id);
+    return -1;
+  }
 
   worker->worker_id = id;
-
   return id;
 }
 
