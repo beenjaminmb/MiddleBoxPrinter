@@ -46,6 +46,14 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 static inline scanner_t *new_scanner_singleton() 
   __attribute__((always_inline));
 
+
+static inline void *sniffer_routine(void *argv)
+{
+
+  
+  return NULL;
+}
+
 static inline void send_scan_packet(unsigned char *packet_buffer, 
 				    int sockfd,
 				    scanner_worker_t *worker)
@@ -195,25 +203,31 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 	   worker->worker_id);
     return -1;
   }
-  worker->sniffer_lock = malloc(sizeof(pthread_mutex_t));
-  if (worker->sniffer_lock == NULL) {
+  worker->sniffer = malloc(sizeof(sniffer_t));
+  
+  if (worker->sniffer == NULL) {
+    printf("Cannot allocate sniffer for worker[%d]\n", id);
+  }
+  
+  worker->sniffer->sniffer_lock = malloc(sizeof(pthread_mutex_t));
+  if (worker->sniffer->sniffer_lock == NULL) {
     printf("Cannot allocate sniffer lock worker[%d]\n", id);
   }
-  if (pthread_mutex_init(worker->sniffer_lock, NULL) != 0) {
+  if (pthread_mutex_init(worker->sniffer->sniffer_lock, NULL) != 0) {
     printf("Cannot initialize sniffer lock worker[%d]\n", id);
     return -1;
   }
-  worker->sniffer_cond = malloc(sizeof(pthread_cond_t));
-  if (worker->sniffer_cond == NULL) {
+  worker->sniffer->sniffer_cond = malloc(sizeof(pthread_cond_t));
+  if (worker->sniffer->sniffer_cond == NULL) {
     printf("Cannot allocate sniffer cond worker[%d]\n", id);
   }
   
-  if (pthread_cond_init(worker->sniffer_cond, NULL) != 0) {
+  if (pthread_cond_init(worker->sniffer->sniffer_cond, NULL) != 0) {
     printf("Cannot initialize sniffer cond worker[%d]\n", id);
     return -1;
   }
-  worker->sniffer_thread = malloc(sizeof(pthread_t));
-  if (worker->sniffer_thread == NULL) {
+  worker->sniffer->sniffer_thread = malloc(sizeof(pthread_t));
+  if (worker->sniffer->sniffer_thread == NULL) {
     printf("Cannot allocate space for sniffer thread for worker[%d]",
 	   id);
     return -1;

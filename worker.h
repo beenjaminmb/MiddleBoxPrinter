@@ -11,24 +11,25 @@ typedef struct scanner_socket_t {
   int sockfd;
 } scanner_socket_t;
 
+typedef struct sniffer_t {
+  pthread_t *sniffer_thread;
+  pthread_mutex_t *sniffer_lock;
+  pthread_cond_t *sniffer_cond;
+
+} sniffer_t;
+
 typedef struct scanner_worker_t {
   pthread_t *thread;
-  pthread_t *sniffer_thread;
-
+  sniffer_t *sniffer;
   scanner_socket_t *ssocket;
   struct sockaddr_in *sin;
   struct random_data *random_data;
   char *random_state;
   pcap_t *cap_handle;
   char *cap_errbuf;
-  pthread_mutex_t *sniffer_lock;
-  pthread_cond_t *sniffer_cond;
-  //pthread_mutex_t *cap_lock;
-  //pthread_cond_t *cap_cond;
   int state_size;
   int worker_id;
   // list_t *addr_list;
 } scanner_worker_t;
-
 
 #endif
