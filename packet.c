@@ -8,7 +8,7 @@ unsigned short csum(unsigned short *ptr, int nbytes)
 {
   register long sum;
   unsigned short oddbyte;
-  register short answer;
+  register short answer = 0;
  
   sum=0;
   while(nbytes>1) {
@@ -243,7 +243,7 @@ int make_packet(unsigned char *packet_buffer,
     memcpy(pseudogram, (char*) psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), icmph,
 	   sizeof(icmphdr) + datalen);
-    icmph->checksum = csum((unsigned short*) pseudogram, psize);
+    icmph->checksum = csum((unsigned short*) icmph, sizeof(icmphdr));
     goto DONE;
   }
   else {/* random junk */
