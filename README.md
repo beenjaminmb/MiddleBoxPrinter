@@ -30,10 +30,16 @@ $ make
 
 This will generate the program, ''scanner".
 
-Then type 
+Then type:
 
-$ sudo ./scanner to run the program in its default configuration. It currently
+$ sudo ./scanner 
+
+to run the program in its default configuration. It currently
 does not support runtime configuration from the command line but that will change.
+
+Note that because this program uses raw sockets and requires that the network interface
+be in promiscuous mode, you must be root. 
+
 ###NOTE
 I might switch the code base to Golang at some point but for now we are
 doing this thing in C FTW.
