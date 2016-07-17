@@ -13,9 +13,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "util.h"
-
-long range_random(long max, struct random_data * buf, 
-		  int32_t *result) {
+#include <errno.h>
+#include <string.h>
+extern int errno;
+long range_random(long max, struct random_data *buf, 
+		  int *result) {
   unsigned long
     num_bins = (unsigned long) max + 1,
     num_rand = (unsigned long) RAND_MAX + 1,
@@ -23,10 +25,12 @@ long range_random(long max, struct random_data * buf,
     defect   = num_rand % num_bins;
   long x;
   do {
-    x = random_r(buf, result);
+    random_r(buf, result);
   }
-  while (num_rand - defect <= (unsigned long)x);
-  return x/bin_size;
+  while (num_rand - defect <= (unsigned long)*result);
+  x = *result/bin_size;
+  *result = x;
+  return x;
 }
 
 

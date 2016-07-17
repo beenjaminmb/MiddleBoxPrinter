@@ -19,14 +19,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "worker.h"
-#define PACKET_LEN 8192
+
+#define PACKET_LEN 4096
 #define START_TTL 2
 #define END_TTL 255
 #define TTL_MODULATION_COUNT 3
+#define TEST_IP "192.168.0.1"
+#define TEST_DATA_LEN 0
 typedef struct iphdr iphdr;
 typedef struct udphdr udphdr;
 typedef struct tcphdr tcphdr;
-
 
 typedef struct pseudo_header
 {
@@ -43,6 +45,7 @@ typedef struct pseudo_header
 unsigned short csum(unsigned short *ptr, int nbytes);
 
 int make_packet(unsigned char *packet_buffer,
-		scanner_worker_t *worker);
+		  scanner_worker_t *worker,
+		  int datalen);
 
 #endif /* _PACKET_ */

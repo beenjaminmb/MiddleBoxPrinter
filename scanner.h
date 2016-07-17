@@ -11,9 +11,10 @@
 #include <sys/types.h>
 #include "packet.h"
 #include "worker.h"
-#define MAX_WORKERS 10
+#define MAX_WORKERS 1
 #define PACKETS_PER_SECOND 100
-
+#define TEST_SEED 0
+#define STATE_SIZE 8
 typedef struct scanner_t {
   scanner_worker_t *workers;  
   pthread_mutex_t *continue_lock;
@@ -21,26 +22,38 @@ typedef struct scanner_t {
   int keep_scanning;
 } scanner_t;
 
+
+
 static scanner_t *scanner = NULL;
 
 static inline void send_scan_packet(unsigned char *packet_buffer, 
-				      int sockfd,
-				      struct sockaddr *dest_addr)  __attribute__((always_inline));
-static inline void *worker_routine(void* vself) __attribute__((always_inline));
+				    int sockfd, 
+				    scanner_worker_t *worker)  
+  __attribute__((always_inline));
+
+static inline void *worker_routine(void* vself) 
+  __attribute__((always_inline));
+
 static inline int scanner_main_loop() __attribute__((always_inline));
-static inline int new_worker(scanner_worker_t *worker, int id)  __attribute__((always_inline));
-static inline scanner_t *new_scanner_singleton() __attribute__((always_inline));
+
+static inline int new_worker(scanner_worker_t *worker, int id)  
+  __attribute__((always_inline));
+
+static inline scanner_t *new_scanner_singleton() 
+  __attribute__((always_inline));
 
 static inline void send_scan_packet(unsigned char *packet_buffer, 
-				      int sockfd,
-				      struct sockaddr *dest_addr)
+				    int sockfd,
+				    scanner_worker_t *worker)
+
 {
-  iphdr *ipheader = (iphdr *)&packet_buffer;
+  struct sockaddr *dest_addr = (struct sockaddr *)worker->sin;
+  iphdr *ipheader = (iphdr *)packet_buffer;
   int len = ipheader->tot_len;
   for (int i = START_TTL; i < END_TTL; i++) {
     ipheader->ttl = i;
     for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
-      sendto(sockfd, packet_buffer, len, MSG_DONTWAIT | MSG_NOSIGNAL,
+      sendto(sockfd, packet_buffer, len, 0,
 	     dest_addr, sizeof(struct sockaddr));
     }
   }
@@ -53,9 +66,8 @@ static inline void *worker_routine(void* vself)
   unsigned char packet_buffer[PACKET_LEN];
   int sockfd = self->ssocket->sockfd;
   while ( scanning ) {
-    make_packet((unsigned char *)&packet_buffer, self);
-    send_scan_packet((unsigned char *)&packet_buffer, sockfd, 
-		     (struct sockaddr *)self->sin);
+    make_packet((unsigned char *)&packet_buffer, self, TEST_DATA_LEN);
+    send_scan_packet((unsigned char *)&packet_buffer, sockfd, self);
   }
   
   return NULL;
@@ -66,6 +78,7 @@ static inline void *worker_routine(void* vself)
  */
 static inline int scanner_main_loop()
 {
+  new_scanner_singleton();
   pthread_mutex_lock(scanner->continue_lock);  
   for (int i = 0; i < MAX_WORKERS; i++) {
     if (pthread_create(scanner->workers[i].thread, NULL,
@@ -89,6 +102,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 
   worker->ssocket->sockfd = socket(AF_INET, SOCK_RAW, 
 				   IPPROTO_RAW);  
+
   if (worker->ssocket->sockfd < 0) return -1;
 
   worker->thread = malloc(sizeof(pthread_t));
@@ -96,6 +110,14 @@ static inline int new_worker(scanner_worker_t *worker, int id)
   
   worker->random_data = malloc(sizeof(struct random_data));
   if ((long)worker->random_data == -1) return -1;
+  
+  worker->state_size = STATE_SIZE;
+  worker->random_state = malloc(STATE_SIZE);
+  
+  if (initstate_r(TEST_SEED, worker->random_state, STATE_SIZE,
+		  worker->random_data) < 0) {
+    return -1;
+  }
 
   worker->sin = malloc(sizeof(struct sockaddr_in));
   if ((long)worker->sin == -1) return -1;
