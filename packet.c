@@ -29,7 +29,7 @@ unsigned short csum(unsigned short *ptr, int nbytes)
 
 static inline void generate_random_destination_ip(char *dst_ip)
 {
-  
+  strcpy(dst_ip, TEST_IP);
   return ;
 }
 
@@ -166,13 +166,12 @@ int make_packet(unsigned char *packet_buffer,
 
   int datalen = TEST_DATA_LEN;
   char *src_ip = SRC_IP;
-  char *dst_ip;
   int result = 0;
   long prand = range_random(100, worker->random_data, &result);
   pseudo_header *psh = malloc(sizeof(pseudo_header));
-  char *pseudogram, source_ip[32];
+  char *pseudogram, source_ip[32], dst_ip[32];
 
-  generate_random_destination_ip(dst_ip);
+  generate_random_destination_ip((char*)dst_ip);
 
   strcpy(source_ip, src_ip); // This can be optimized at some point.
   memset(packet_buffer, 0, PACKET_LEN);
