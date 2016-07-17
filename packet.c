@@ -235,22 +235,15 @@ int make_packet(unsigned char *packet_buffer,
     ip->tot_len = sizeof(iphdr) + sizeof(icmphdr) + datalen;
     icmphdr *icmph = make_icmpheader(packet_buffer, worker, 0);
     ip->protocol = IPPROTO_ICMP;
-    psh->protocol = IPPROTO_ICMP;
-    psh->total_length = htons(sizeof(icmphdr) + datalen);
-    int psize = sizeof(pseudo_header) +
-      sizeof(icmphdr) + datalen;
-    pseudogram = malloc(psize);
-    memcpy(pseudogram, (char*) psh, sizeof(pseudo_header));
-    memcpy(pseudogram + sizeof(pseudo_header), icmph,
-	   sizeof(icmphdr) + datalen);
     icmph->checksum = csum((unsigned short*) icmph, sizeof(icmphdr));
-    goto DONE;
+    goto RETURN;
   }
   else {/* random junk */
   
   }
  DONE:
-  free(psh);
   free(pseudogram);
+ RETURN:
+  free(psh);
   return 0;
 }
