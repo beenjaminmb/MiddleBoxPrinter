@@ -92,7 +92,7 @@ static inline void *worker_routine(void* vself)
 {
   scanner_worker_t *self = vself;
   int scanning = 1;
-  unsigned char packet_buffer[PACKET_LEN];
+  unsigned char packet_buffer[PACKET_LEN];// Probably change this so we can make a list of ipaddresses.
   int sockfd = self->ssocket->sockfd;
   while ( scanning ) {
     make_packet((unsigned char *)&packet_buffer, self);
