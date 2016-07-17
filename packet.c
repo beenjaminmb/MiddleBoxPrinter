@@ -53,11 +53,13 @@ udphdr *make_udpheader(unsigned char *buffer, int datalen)
   return udph;
 }
 
-tcphdr *make_tcpheader(unsigned char *buffer)
+tcphdr *make_tcpheader(unsigned char *buffer, 
+		       scanner_worker_t *worker)
 {
   struct tcphdr *tcph = (tcphdr *)(buffer + sizeof(struct ip));
   tcph->source = htons(1234);
   tcph->dest = htons(80);
+  worker->sin->sin_port = htons(80); 
   tcph->seq = 0;
   tcph->ack_seq = 0;
   tcph->doff = 5;
@@ -67,7 +69,7 @@ tcphdr *make_tcpheader(unsigned char *buffer)
   tcph->psh=0;
   tcph->ack=0;
   tcph->urg=0;
-  tcph->window = htons (5840);
+  tcph->window = htons(5840);
   tcph->check = 0;
   tcph->urg_ptr = 0;
   return tcph;
@@ -126,24 +128,31 @@ pcap of all outgoing and incoming packets for that source IP, and
 store that on the NFS mount for later analysis
 */
 int make_packet(unsigned char *packet_buffer, 
-		scanner_worker_t *worker,
-		int datalen)
+		scanner_worker_t *worker)
 {
-  int make_tcp = 0;
+
+  int datalen = TEST_DATA_LEN;
+  char *src_ip = SRC_IP;
+  char *dst_ip = TEST_IP;
+
   int result = 0;
   long prand = range_random(100, worker->random_data, &result);
   pseudo_header *psh = malloc(sizeof(pseudo_header));
   char *pseudogram, source_ip[32];
-  strcpy(source_ip , TEST_IP);
-
+  
+  strcpy(source_ip , src_ip);
+  
+  worker->sin->sin_addr.s_addr = inet_addr(dst_ip);
+  worker->sin->sin_family = AF_INET;
+  
   memset(packet_buffer, 0, PACKET_LEN);
   iphdr *ip = make_ipheader(packet_buffer,
 			    worker->sin,
-			    TEST_IP,
+			    source_ip,
 			    datalen);
 
-  if ( DO_TCP(prand) ) { /*Make a TCP packet*/
-    make_tcpheader(packet_buffer);
+  if ( DO_TCP(prand) ) { /* Make a TCP packet */
+    make_tcpheader(packet_buffer, worker);
     tcphdr *tcph = (tcphdr *)(packet_buffer + sizeof(struct ip));
     psh->source_address = inet_addr( source_ip );
     psh->dest_address = worker->sin->sin_addr.s_addr;
@@ -156,7 +165,7 @@ int make_packet(unsigned char *packet_buffer,
 
     pseudogram = malloc(psize);
     memcpy(pseudogram , (char*) psh , sizeof(pseudo_header));
-    memcpy(pseudogram + sizeof(pseudo_header) , tcph, 
+    memcpy(pseudogram + sizeof(pseudo_header) , tcph,
 	   sizeof(tcphdr) + datalen);
     tcph->check = csum( (unsigned short*) pseudogram ,psize);
     return 0;

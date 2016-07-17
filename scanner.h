@@ -11,7 +11,8 @@
 #include <sys/types.h>
 #include "packet.h"
 #include "worker.h"
-#define MAX_WORKERS 1
+
+#define MAX_WORKERS 4
 #define PACKETS_PER_SECOND 100
 #define TEST_SEED 0
 #define STATE_SIZE 8
@@ -66,7 +67,7 @@ static inline void *worker_routine(void* vself)
   unsigned char packet_buffer[PACKET_LEN];
   int sockfd = self->ssocket->sockfd;
   while ( scanning ) {
-    make_packet((unsigned char *)&packet_buffer, self, TEST_DATA_LEN);
+    make_packet((unsigned char *)&packet_buffer, self);
     send_scan_packet((unsigned char *)&packet_buffer, sockfd, self);
   }
   

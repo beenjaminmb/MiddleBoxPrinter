@@ -25,6 +25,7 @@
 #define END_TTL 255
 #define TTL_MODULATION_COUNT 3
 #define TEST_IP "192.168.0.1"
+#define SRC_IP "192.168.0.3"
 #define TEST_DATA_LEN 0
 typedef struct iphdr iphdr;
 typedef struct udphdr udphdr;
@@ -45,7 +46,6 @@ typedef struct pseudo_header
 unsigned short csum(unsigned short *ptr, int nbytes);
 
 int make_packet(unsigned char *packet_buffer,
-		  scanner_worker_t *worker,
-		  int datalen);
+		  scanner_worker_t *worker);
 
 #endif /* _PACKET_ */
