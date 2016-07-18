@@ -21,7 +21,7 @@
 #include <arpa/inet.h>
 #include "worker.h"
 
-#define PACKET_LEN 4096
+#define PACKET_LEN 2048
 #define START_TTL 2
 #define END_TTL 128
 #define TTL_MODULATION_COUNT 3
@@ -56,6 +56,12 @@ typedef struct pseudo_header
   u_int8_t protocol;
   u_int16_t total_length;
 } pseudo_header;
+
+
+typedef struct frame_t 
+{
+  unsigned char packet_buffer[PACKET_LEN];
+}frame_t;
 
 /* Simple checksum function, may use others such as Cyclic Redundancy 
    Check, CRC */

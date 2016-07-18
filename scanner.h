@@ -59,7 +59,8 @@ static inline void *sniffer_routine(void *argv)
     pthread_cond_wait(sniffer->sniffer_cond, sniffer->sniffer_lock);
   }
   while(sniffer->keep_sniffing) {
-  
+    
+    
   }
   pthread_mutex_unlock(sniffer->sniffer_lock);
   return NULL;
@@ -80,8 +81,12 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
   sprintf(filter_str, "host %s", addr);
   struct bpf_program bpf_prog;
 
-  if (pcap_compile(worker->cap_handle, &bpf_prog, filter_str, 1,
-		   PCAP_NETMASK_UNKNOWN) ==  -1){
+  /*Below is *not* thread safe! Must add a global lock for this.*/
+
+
+  if (pcap_compile(worker->sniffer->cap_handle, &bpf_prog, 
+		   filter_str, 1, PCAP_NETMASK_UNKNOWN) == -1){
+
     pcap_perror(worker->cap_handle, NULL);
     printf("Couldn't compile pcap filter for worker[%d]",
 	   worker->worker_id);
