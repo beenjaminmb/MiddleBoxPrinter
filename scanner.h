@@ -87,7 +87,7 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
   if (pcap_compile(worker->sniffer->cap_handle, &bpf_prog, 
 		   filter_str, 1, PCAP_NETMASK_UNKNOWN) == -1){
 
-    pcap_perror(worker->cap_handle, NULL);
+    pcap_perror(worker->sniffer->cap_handle, NULL);
     printf("Couldn't compile pcap filter for worker[%d]",
 	   worker->worker_id);
   }
@@ -184,27 +184,31 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     return -1;
   }
 
-  worker->cap_errbuf = malloc(PCAP_ERRBUF_SIZE);
-  if (worker->cap_errbuf == NULL) {
-    printf("Couldn't allocate %d bytes for cap error buffer for worker[%d]'s\n",
-	   PCAP_ERRBUF_SIZE, id);
+  worker->sniffer->cap_errbuf = malloc(PCAP_ERRBUF_SIZE);
+  if (worker->sniffer->cap_errbuf == NULL) {
+    printf("Couldn't allocate %d bytes for cap error"
+	   " buffer for worker[%d]'s\n", PCAP_ERRBUF_SIZE, id);
     return -1;
   }
 
-  worker->cap_handle = pcap_create(CAPTURE_IFACE, worker->cap_errbuf);
-  if(worker->cap_handle == NULL) {
-    printf("Couldn't create a capture handle for worker[%d]'s.\n", id);
+  worker->sniffer->cap_handle = 
+    pcap_create(CAPTURE_IFACE, worker->sniffer->cap_errbuf);
+  if(worker->sniffer->cap_handle == NULL) {
+    printf("Couldn't create a capture handle for worker[%d]'s.\n",
+	   id);
     return -1;
   }
 
-  if ( pcap_set_promisc(worker->cap_handle, 1) ) {
-    printf("Error opening interface in promiscuous mode for worker[%d]'s\n", id);
+  if ( pcap_set_promisc(worker->sniffer->cap_handle, 1) ) {
+    printf("Error opening interface in promiscuous "
+	   "mode for worker[%d]'s\n", id);
     return -1;
   }
 
   if (initstate_r(TEST_SEED, worker->random_state, STATE_SIZE,
 		  worker->random_data) < 0) {
-    printf("Couldn't initialize random_state for worker[%d]'s.\n", id);
+    printf("Couldn't initialize random_state for worker[%d]'s.\n",
+	   id);
     return -1;
   }
 
@@ -214,8 +218,8 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     return -1;
   }
 
-  if (pcap_activate(worker->cap_handle) != 0) {
-    pcap_perror(worker->cap_handle, NULL);
+  if (pcap_activate(worker->sniffer->cap_handle) != 0) {
+    pcap_perror(worker->sniffer->cap_handle, NULL);
     printf("Error activating capture interface for worker[%d].\n",
 	   worker->worker_id);
     return -1;
