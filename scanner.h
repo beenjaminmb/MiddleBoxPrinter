@@ -13,9 +13,8 @@
 #include "worker.h"
 #include "util.h"
 #include <pcap/pcap.h>
+
 #define DEBUG 0
-#define MAX_WORKERS 1
-#define PACKETS_PER_SECOND 100
 #define TEST_SEED 0
 #define STATE_SIZE 8
 #define MAX_FILTER_SIZE sizeof("host 255.255.255.255") + 1
@@ -49,8 +48,6 @@ static inline scanner_t *new_scanner_singleton()
 void got_packet(u_char *args, const struct pcap_pkthdr *header,
 		const u_char *packet);
 
-
-
 static inline void *sniffer_routine(void *argv)
 {
   sniffer_t *sniffer = argv;
@@ -69,21 +66,16 @@ static inline void *sniffer_routine(void *argv)
 static inline void send_scan_packet(unsigned char *packet_buffer, 
 				    int sockfd,
 				    scanner_worker_t *worker)
-
 {
   struct sockaddr *dest_addr = (struct sockaddr *)worker->sin;
   iphdr *iph = (iphdr *)packet_buffer;
   int len = iph->tot_len;
   char filter_str[MAX_FILTER_SIZE];
-  
   int result;
   char *addr = inet_ntoa(worker->sin->sin_addr);
   sprintf(filter_str, "host %s", addr);
   struct bpf_program bpf_prog;
-
   /*Below is *not* thread safe! Must add a global lock for this.*/
-
-
   if (pcap_compile(worker->sniffer->cap_handle, &bpf_prog, 
 		   filter_str, 1, PCAP_NETMASK_UNKNOWN) == -1){
 
@@ -97,7 +89,6 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
       printf("ttl = %d\n", i);
     
     for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
-      
       if (range_random(100, worker->random_data, &result) < 90) {
 	iph->check = csum((unsigned short *)packet_buffer, 
 			  iph->tot_len);
@@ -110,15 +101,25 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
 	     dest_addr, sizeof(struct sockaddr));
     }
   }
-
 }
 
-static inline void *worker_routine(void* vself)
+/**
+ * This is the worker routine that generates packets with varying 
+ * fields. Spins up a sniffer thread with with appropriate 
+ * pcap filter and sends the pcap off with modulated TTL.
+ * 
+ * @param: vself. A void pointer to the worker that is actually
+ * sending of packets.
+ *
+ * @return: Allows returns NULL.
+ */
+static inline void *worker_routine(void *vself)
 {
   scanner_worker_t *self = vself;
   int scanning = 1;
   // Probably change this so we can make a list of ipaddresses.
-  unsigned char packet_buffer[PACKET_LEN];
+  // unsigned char packet_buffer[PACKET_LEN];
+  frame_t *packet_buffer = malloc(sizeof(frame_t));
   int sockfd = self->ssocket->sockfd;
   while ( scanning ) {
     make_packet((unsigned char *)&packet_buffer, self);
@@ -139,17 +140,23 @@ static inline int scanner_main_loop()
     if (pthread_create(scanner->workers[i].thread, NULL,
 		       worker_routine,
 		       (void *)&scanner->workers[i]) < 0) {
-	exit(-1);
-      }
+      exit(-1);
+    }
   }
   while (scanner->keep_scanning) {
-    pthread_cond_wait(scanner->continue_cond, scanner->continue_lock);
+    
   }
   pthread_mutex_unlock(scanner->continue_lock);
   return 0;
 }
-
-
+/**
+ * Creates a new scanner_worker_t and initializes all of its fields.
+ * @param: worker. Pointer to the scanner_worker_t to be initialized
+ * @param: id. And int that is the worker identifier.
+ * 
+ * @return: 0 on succes. -1 on failure with an error message printed
+ * to the screen..
+ */
 static inline int new_worker(scanner_worker_t *worker, int id)
 {
   worker->ssocket = malloc(sizeof(scanner_socket_t));
@@ -164,7 +171,6 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     printf("Couldn't open socket fd for worker[%d]\n", id);
     return -1;
   };
-
   worker->thread = malloc(sizeof(pthread_t));
   if ((long)worker->thread == -1) {
     printf("Couldn't allocate thread for worker[%d]\n", id);
@@ -173,26 +179,33 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 
   worker->random_data = malloc(sizeof(struct random_data));
   if ((long)worker->random_data == -1) {
-    printf("Couldn't allocate random_data storage for worker[%d]\n", id);
+    printf("Couldn't allocate random_data storage for worker[%d]\n", 
+	   id);
     return -1;
   }
 
   worker->state_size = STATE_SIZE;
   worker->random_state = malloc(STATE_SIZE);
   if ((long)worker->random_state == -1) {
-    printf("Couldn't allocate random_state storage for worker[%d]\n", id);
+    printf("Couldn't allocate random_state storage for worker[%d]\n",
+	   id);
     return -1;
+  }
+  
+  worker->sniffer = malloc(sizeof(sniffer_t));
+  if (worker->sniffer == NULL) {
+    printf("Cannot allocate sniffer for worker[%d]\n", id);
   }
 
   worker->sniffer->cap_errbuf = malloc(PCAP_ERRBUF_SIZE);
   if (worker->sniffer->cap_errbuf == NULL) {
-    printf("Couldn't allocate %d bytes for cap error"
-	   " buffer for worker[%d]'s\n", PCAP_ERRBUF_SIZE, id);
+    printf("Couldn't allocate %d bytes for cap error buffer for worker[%d]'s\n", PCAP_ERRBUF_SIZE, id);
     return -1;
   }
 
-  worker->sniffer->cap_handle = 
+  worker->sniffer->cap_handle =
     pcap_create(CAPTURE_IFACE, worker->sniffer->cap_errbuf);
+
   if(worker->sniffer->cap_handle == NULL) {
     printf("Couldn't create a capture handle for worker[%d]'s.\n",
 	   id);
@@ -224,11 +237,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 	   worker->worker_id);
     return -1;
   }
-  worker->sniffer = malloc(sizeof(sniffer_t));
-  
-  if (worker->sniffer == NULL) {
-    printf("Cannot allocate sniffer for worker[%d]\n", id);
-  }
+
   
   worker->sniffer->sniffer_lock = malloc(sizeof(pthread_mutex_t));
   if (worker->sniffer->sniffer_lock == NULL) {
@@ -249,10 +258,26 @@ static inline int new_worker(scanner_worker_t *worker, int id)
   }
   worker->sniffer->sniffer_thread = malloc(sizeof(pthread_t));
   if (worker->sniffer->sniffer_thread == NULL) {
-    printf("Cannot allocate space for sniffer thread for worker[%d]",
-	   id);
+    printf("Cannot allocate space for "
+	   "sniffer thread for worker[%d]\n", id);
     return -1;
   }
+  
+  worker->addresses = malloc(sizeof(addr_list_t));
+  if (worker->addresses == NULL) {
+    printf("Couldn't allocate space for "
+	   "address list for worker[%d]\n", id);
+    return -1;
+  }
+  
+  worker->addresses->address = malloc(sizeof(addr_buff_t) * 
+				      ADDRS_PER_WORKER);
+  if ( worker->addresses->address == NULL) {
+    printf("Couldn't allocate space for address "
+	   "list for worker[%d]\n", id);
+    return -1;
+  }
+
   worker->worker_id = id;
   worker->sniffer->keep_sniffing = 0;
   return id;
