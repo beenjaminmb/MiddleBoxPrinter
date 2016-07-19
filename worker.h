@@ -14,7 +14,7 @@
 #define RATE 1000000.0 /* 1 Gb/sec */
 #define PERIOD 60.0 /* Period in seconds == 1 minute */
 #define AVG_PACKET_SIZE 6000.0 /* 750 Bytes == 6000bits */
-#define ADDRS_PER_WORKER RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
+#define ADDRS_PER_WORKER 5//RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
 
 typedef struct scanner_socket_t {
   int sockfd;

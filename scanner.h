@@ -32,7 +32,7 @@ static scanner_t *scanner = NULL;
 static inline void send_scan_packet(unsigned char *packet_buffer, 
 				    int sockfd, 
 				    scanner_worker_t *worker,
-				    int probe_idx)  
+				    int probe_idx, int ttl)
   __attribute__((always_inline));
 
 static inline void *worker_routine(void* vself) 
@@ -67,7 +67,8 @@ static inline void *sniffer_routine(void *argv)
 static inline void send_scan_packet(unsigned char *packet_buffer, 
 				    int sockfd,
 				    scanner_worker_t *worker,
-				    int probe_idx)
+				    int probe_idx,
+				    int ttl)
 {
   struct sockaddr *dest_addr = 
     (struct sockaddr *)worker->probe_list[probe_idx].sin;
@@ -88,20 +89,22 @@ static inline void send_scan_packet(unsigned char *packet_buffer,
   /* } */
   /* if (DEBUG && MAX_WORKERS == 1) */
   /*   printf("ttl = %d\n", i); */
-    
+  iph->ttl = ttl;
+  int ret = 0;
   for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
-    /* if (range_random(100, worker->random_data, &result) < 90) { */
-    /*   iph->check = csum((unsigned short *)packet_buffer,  */
-    /* 			iph->tot_len); */
-    /* } */
-    /* else { */
+    if (range_random(100, worker->random_data, &result) < 90) {
+      iph->check = csum((unsigned short *)packet_buffer,
+    			iph->tot_len);
+    }
+    else {
       iph->check = range_random(65536, worker->random_data, 
 				&result);
-      /* }// this might be slow. */
-    sendto(sockfd, packet_buffer, len, 0,
-	   dest_addr, sizeof(struct sockaddr));
+    }// this might be slow.
+    ret = sendto(sockfd, packet_buffer, len, 0,
+		 dest_addr, sizeof(struct sockaddr));
   }
-
+  printf("%d %s: ret =%d\n", __LINE__, __func__, ret);
+  return ;
 }
 
 /**
@@ -125,21 +128,28 @@ static inline void *worker_routine(void *vself)
       make_packet((unsigned char *)&self->probe_list[i].probe_buff, 
 		  self, i);
     }
-    for (int i = 0; i < ADDRS_PER_WORKER; i++) {
-      printf("addr: %s\n", 
-	     inet_ntoa(self->probe_list[i].sin->sin_addr));
-    }
-    printf("%d %s EXIT\n", __LINE__, __func__);
-    exit(-1);
+    /* for (int i = 0; i < ADDRS_PER_WORKER; i++) { */
+    /*   printf("addr: %s\n",  */
+    /* 	     inet_ntoa(self->probe_list[i].sin->sin_addr)); */
+    /* } */
+    /* printf("%d %s EXIT\n", __LINE__, __func__); */
+    /* exit(-1); */
+    int ttl = self->current_ttl;
     while ( self->current_ttl < END_TTL ) {
       int probe_idx = self->probe_idx;
+
       if (probe_idx == ADDRS_PER_WORKER) {
-	  self->current_ttl = self->current_ttl + 1;
+	ttl += 1;
+	self->current_ttl = ttl;
+	probe_idx = 0;
       }
-      send_scan_packet((unsigned char *)&self->probe_list[probe_idx]
-		       , sockfd, self, probe_idx);
+      send_scan_packet((unsigned char *)
+		       &self->probe_list[probe_idx].probe_buff,
+		       sockfd, self, probe_idx, ttl);
       self->probe_idx = probe_idx + 1;
     }
+    printf("%d %s: EXITING\n", __LINE__, __func__);
+    exit(1); /*Just for testing*/
   }
   
   return NULL;
