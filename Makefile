@@ -4,7 +4,7 @@ CFLAGS=-O3 -Wall -g  -std=gnu99
 
 LDLIBS=-pthread -lpcap
 
-targets = main.c scanner.c packet.c util.c
+targets = main.c scanner.c packet.c
 
 default : $(targets)
 	$(CC) $(CFLAGS) -o scanner $(targets) $(LDLIBS)
