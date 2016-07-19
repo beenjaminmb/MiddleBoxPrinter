@@ -5,5 +5,3 @@
 
 #include <stdlib.h>
 #include "scanner.h"
-
-
