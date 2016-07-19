@@ -137,7 +137,6 @@ static inline void *worker_routine(void *vself)
     int ttl = self->current_ttl;
     while ( self->current_ttl < END_TTL ) {
       int probe_idx = self->probe_idx;
-
       if (probe_idx == ADDRS_PER_WORKER) {
 	ttl += 1;
 	self->current_ttl = ttl;

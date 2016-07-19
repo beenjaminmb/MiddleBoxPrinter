@@ -32,10 +32,10 @@ generate_random_destination_ip(char *dst_ip, scanner_worker_t *worker)
 {
   int r1, r2, r3, r4;
   sprintf(dst_ip, "%d.%d.%d.%d", 
-	  range_random(255, worker->random_data, &r1), 
-	  range_random(255, worker->random_data, &r2), 
-	  range_random(255, worker->random_data, &r3),
-	  range_random(255, worker->random_data, &r4));
+	  (unsigned int)range_random(255, worker->random_data, &r1), 
+	  (unsigned int)range_random(255, worker->random_data, &r2), 
+	  (unsigned int)range_random(255, worker->random_data, &r3),
+	  (unsigned int)range_random(255, worker->random_data, &r4));
   return ;
 }
 
