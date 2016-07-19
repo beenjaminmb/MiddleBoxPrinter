@@ -29,9 +29,9 @@ typedef struct scanner_t {
 
 static scanner_t *scanner = NULL;
 
-static inline void send_scan_packet(unsigned char *packet_buffer, 
+static inline void send_scan_packet(unsigned char *restrict packet_buffer, 
 				    int sockfd, 
-				    scanner_worker_t *worker,
+				    scanner_worker_t *restrict worker,
 				    int probe_idx, int ttl)
   __attribute__((always_inline));
 
@@ -46,8 +46,8 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 static inline scanner_t *new_scanner_singleton() 
   __attribute__((always_inline));
 
-void got_packet(u_char *args, const struct pcap_pkthdr *header,
-		const u_char *packet);
+void got_packet(u_char * restrict args, const struct pcap_pkthdr * restrict header,
+		const u_char *restrict packet);
 
 static inline void *sniffer_routine(void *argv)
 {
@@ -64,9 +64,9 @@ static inline void *sniffer_routine(void *argv)
   return NULL;
 }
 
-static inline void send_scan_packet(unsigned char *packet_buffer, 
+static inline void send_scan_packet(unsigned char *restrict packet_buffer, 
 				    int sockfd,
-				    scanner_worker_t *worker,
+				    scanner_worker_t *restrict worker,
 				    int probe_idx,
 				    int ttl)
 {
