@@ -30,6 +30,7 @@
 #define TEST_DATA_LEN 0
 
 
+#ifdef DEBUG
 static const char *test_ips[] =
   { "192.168.0.1",
       "192.168.0.2",
@@ -41,7 +42,7 @@ static const char *test_ips[] =
       "192.168.0.9",
       "192.168.0.10",
       "192.168.0.11"};
-
+#endif 
 
 typedef struct iphdr iphdr;
 typedef struct udphdr udphdr;
@@ -61,8 +62,8 @@ typedef struct pseudo_header
    Check, CRC */
 unsigned short csum(unsigned short *ptr, int nbytes);
 
-int make_packet(unsigned char *packet_buffer,
-		scanner_worker_t *worker,
+int make_packet(unsigned char *restrict packet_buffer,
+		scanner_worker_t *restrict worker,
 		int packet_idx);
 
 #endif /* _PACKET_ */

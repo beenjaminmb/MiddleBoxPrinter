@@ -8,31 +8,6 @@
  * - tail + 1 == head means that the FIFO is full (yes, we waste one entry)
  */
 
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include "util.h"
-#include <errno.h>
-#include <string.h>
-extern int errno;
-long range_random(long max, struct random_data *buf, 
-		  int *result) {
-  unsigned long
-    num_bins = (unsigned long) max + 1,
-    num_rand = (unsigned long) RAND_MAX + 1,
-    bin_size = num_rand / num_bins,
-    defect   = num_rand % num_bins;
-  long x;
-  do {
-    random_r(buf, result);
-  }
-  while (num_rand - defect <= (unsigned long)*result);
-  x = *result/bin_size;
-  *result = x;
-  return x;
-}
-
 
 /* int ringbuffer_full(ringbuffer_t *rb) */
 /* { */

@@ -5,6 +5,35 @@
 #include "packet.h"
 #include "util.h"
 
+static inline tcphdr *make_tcpheader(unsigned char *restrict buffer, 
+				     scanner_worker_t *restrict worker,
+				     int probe_idx) 
+  __attribute__((always_inline));
+
+static inline void 
+generate_random_destination_ip(char *restrict dst_ip, 
+			       scanner_worker_t *restrict worker)
+  __attribute__((always_inline));
+
+
+static inline icmphdr *make_icmpheader(unsigned char *restrict buffer, 
+				       scanner_worker_t 
+				       *restrict worker, 
+				       int datalen)
+  __attribute__((always_inline));
+
+
+static inline udphdr *make_udpheader(unsigned char *buffer, 
+				     int datalen)
+  __attribute__((always_inline));
+
+
+static inline iphdr *make_ipheader(unsigned char *restrict buffer, 
+				   struct sockaddr_in *restrict sin, 
+				   int datalen)
+  __attribute__((always_inline));
+
+
 unsigned short csum(unsigned short *ptr, int nbytes)
 {
   register long sum = 0;
@@ -38,7 +67,8 @@ unsigned short csum(unsigned short *ptr, int nbytes)
  *
  */
 static inline void 
-generate_random_destination_ip(char *dst_ip, scanner_worker_t *worker)
+generate_random_destination_ip(char *restrict dst_ip, 
+			       scanner_worker_t *restrict worker)
 {
   int r1, r2, r3, r4;
   sprintf(dst_ip, "%d.%d.%d.%d", 
@@ -49,8 +79,10 @@ generate_random_destination_ip(char *dst_ip, scanner_worker_t *worker)
   return ;
 }
 
-icmphdr *make_icmpheader(char *buffer, scanner_worker_t *worker, 
-			 int datalen)
+static inline icmphdr *make_icmpheader(unsigned char *restrict buffer, 
+				       scanner_worker_t 
+				       *restrict worker, 
+				       int datalen)
 {
   icmphdr *icmph = (icmphdr *)(buffer + + sizeof(struct ip));
   icmph->type = ICMP_ECHOREPLY; // make random later.
@@ -61,7 +93,8 @@ icmphdr *make_icmpheader(char *buffer, scanner_worker_t *worker,
   return icmph;
 }
 
-udphdr *make_udpheader(unsigned char *buffer, int datalen)
+static inline udphdr *make_udpheader(unsigned char *buffer, 
+				     int datalen)
 {
   udphdr *udph = (udphdr *)(buffer + sizeof(struct ip));
   udph->source = htons (6666);
@@ -71,8 +104,9 @@ udphdr *make_udpheader(unsigned char *buffer, int datalen)
   return udph;
 }
 
-tcphdr *make_tcpheader(unsigned char *buffer, 
-		       scanner_worker_t *worker, int probe_idx)
+static inline tcphdr *make_tcpheader(unsigned char *restrict buffer, 
+				     scanner_worker_t *restrict worker,
+				     int probe_idx)
 {
   int result;
   struct tcphdr *tcph = (tcphdr *)(buffer + sizeof(struct ip));
@@ -120,8 +154,9 @@ tcphdr *make_tcpheader(unsigned char *buffer,
   return tcph;
 }
 
-iphdr *make_ipheader(char *buffer, struct sockaddr_in *sin, 
-		     int datalen) 
+static inline iphdr *make_ipheader(unsigned char *restrict buffer, 
+				   struct sockaddr_in *restrict sin, 
+				   int datalen)
 {
   iphdr *iph = (iphdr *)buffer;
   iph->ihl = 5;
@@ -169,8 +204,8 @@ Then we just send out this kind of traffic at 1 Gbps or so and take a
 pcap of all outgoing and incoming packets for that source IP, and 
 store that on the NFS mount for later analysis
 */
-int make_packet(unsigned char *packet_buffer, 
-		scanner_worker_t *worker,
+int make_packet(unsigned char *restrict packet_buffer, 
+		scanner_worker_t *restrict worker,
 		int packet_idx)
 {
   int datalen = 0;
@@ -178,7 +213,7 @@ int make_packet(unsigned char *packet_buffer,
   int result = 0;
   long prand = range_random(100, worker->random_data, &result);
   pseudo_header *psh = malloc(sizeof(pseudo_header));
-  char *pseudogram, source_ip[32], dst_ip[32];
+  char *pseudogram = NULL, source_ip[32], dst_ip[32];
   generate_random_destination_ip((char*)dst_ip, worker);
   strcpy(source_ip, src_ip); // This can be optimized at some point.
   memset(packet_buffer, 0, MTU);
@@ -233,7 +268,9 @@ int make_packet(unsigned char *packet_buffer,
   }
  DONE:
   free(pseudogram);
+  pseudogram = NULL;
  RETURN:
   free(psh);
+  psh = NULL;
   return 0;
 }
