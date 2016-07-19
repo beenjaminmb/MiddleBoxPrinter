@@ -7,11 +7,9 @@
 
 unsigned short csum(unsigned short *ptr, int nbytes)
 {
-  register long sum;
+  register long sum = 0;
   unsigned short oddbyte;
-  register short answer = 0;
- 
-  sum=0;
+  register short answer = 0; 
   while(nbytes>1) {
     sum+=*ptr++;
     nbytes-=2;
@@ -33,16 +31,11 @@ static inline void
 generate_random_destination_ip(char *dst_ip, scanner_worker_t *worker)
 {
   int r1, r2, r3, r4;
-  for (int i = 0; i < ADDRS_PER_WORKER; i++ )
-    sprintf(worker->addresses->address[i], "%d.%d.%d.%d", 
-	    range_random(255, worker->random_data, &r1), 
-	    range_random(255, worker->random_data, &r2), 
-	    range_random(255, worker->random_data, &r3),
-	    range_random(255, worker->random_data, &r4));
-  
-  for (int i = 0; i < ADDRS_PER_WORKER; i++ ) {
-    printf("%s\n", worker->addresses->address[i]);
-  }
+  sprintf(dst_ip, "%d.%d.%d.%d", 
+	  range_random(255, worker->random_data, &r1), 
+	  range_random(255, worker->random_data, &r2), 
+	  range_random(255, worker->random_data, &r3),
+	  range_random(255, worker->random_data, &r4));
   return ;
 }
 
@@ -69,14 +62,14 @@ udphdr *make_udpheader(unsigned char *buffer, int datalen)
 }
 
 tcphdr *make_tcpheader(unsigned char *buffer, 
-		       scanner_worker_t *worker)
+		       scanner_worker_t *worker, int probe_idx)
 {
   int result;
   struct tcphdr *tcph = (tcphdr *)(buffer + sizeof(struct ip));
   tcph->source = htons(1234);
 
   tcph->dest = htons(80);
-  worker->sin->sin_port = htons(80);
+  worker->probe_list[probe_idx].sin->sin_port = htons(80);
 
   tcph->seq = range_random(RAND_MAX, worker->random_data, &result);
   tcph->ack_seq = range_random(RAND_MAX, worker->random_data,
@@ -167,10 +160,10 @@ pcap of all outgoing and incoming packets for that source IP, and
 store that on the NFS mount for later analysis
 */
 int make_packet(unsigned char *packet_buffer, 
-		scanner_worker_t *worker)
+		scanner_worker_t *worker,
+		int packet_idx)
 {
-
-  int datalen = TEST_DATA_LEN;
+  int datalen = 0;
   char *src_ip = SRC_IP;
   int result = 0;
   long prand = range_random(100, worker->random_data, &result);
@@ -178,17 +171,21 @@ int make_packet(unsigned char *packet_buffer,
   char *pseudogram, source_ip[32], dst_ip[32];
   generate_random_destination_ip((char*)dst_ip, worker);
   strcpy(source_ip, src_ip); // This can be optimized at some point.
-  memset(packet_buffer, 0, PACKET_LEN);
-  worker->sin->sin_addr.s_addr = inet_addr(dst_ip);
-  worker->sin->sin_family = AF_INET;
-  iphdr *ip = make_ipheader(packet_buffer, worker->sin, datalen);
+  memset(packet_buffer, 0, MTU);
+  worker->probe_list[packet_idx].sin->sin_addr.s_addr = 
+    inet_addr(dst_ip);
+  worker->probe_list[packet_idx].sin->sin_family = AF_INET;
+  iphdr *ip = make_ipheader(packet_buffer, 
+			    worker->probe_list[packet_idx].sin, 
+			    datalen);
   psh->source_address = inet_addr(source_ip);
-  psh->dest_address = worker->sin->sin_addr.s_addr;
+  psh->dest_address = 
+    worker->probe_list[packet_idx].sin->sin_addr.s_addr;
   psh->placeholder = 0;
   if ( DO_TCP(prand) ) { /* Make a TCP packet */
     ip->tot_len = sizeof(iphdr) + sizeof(tcphdr) + datalen;
     ip->protocol = IPPROTO_TCP;
-    tcphdr *tcph = make_tcpheader(packet_buffer, worker);
+    tcphdr *tcph = make_tcpheader(packet_buffer, worker, packet_idx);
     psh->protocol = IPPROTO_TCP;
     psh->total_length = htons(sizeof(tcphdr) + datalen);
     int psize = sizeof(pseudo_header) + sizeof(tcphdr) + datalen;

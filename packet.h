@@ -62,6 +62,7 @@ typedef struct pseudo_header
 unsigned short csum(unsigned short *ptr, int nbytes);
 
 int make_packet(unsigned char *packet_buffer,
-		  scanner_worker_t *worker);
+		scanner_worker_t *worker,
+		int packet_idx);
 
 #endif /* _PACKET_ */

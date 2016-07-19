@@ -31,7 +31,8 @@ static scanner_t *scanner = NULL;
 
 static inline void send_scan_packet(unsigned char *packet_buffer, 
 				    int sockfd, 
-				    scanner_worker_t *worker)  
+				    scanner_worker_t *worker,
+				    int probe_idx)  
   __attribute__((always_inline));
 
 static inline void *worker_routine(void* vself) 
@@ -65,42 +66,42 @@ static inline void *sniffer_routine(void *argv)
 
 static inline void send_scan_packet(unsigned char *packet_buffer, 
 				    int sockfd,
-				    scanner_worker_t *worker)
+				    scanner_worker_t *worker,
+				    int probe_idx)
 {
-  struct sockaddr *dest_addr = (struct sockaddr *)worker->sin;
+  struct sockaddr *dest_addr = 
+    (struct sockaddr *)worker->probe_list[probe_idx].sin;
   iphdr *iph = (iphdr *)packet_buffer;
   int len = iph->tot_len;
-  char filter_str[MAX_FILTER_SIZE];
+  // char filter_str[MAX_FILTER_SIZE];
   int result;
-  char *addr = inet_ntoa(worker->sin->sin_addr);
-  sprintf(filter_str, "host %s", addr);
-  struct bpf_program bpf_prog;
+  /* char *addr = inet_ntoa(worker->probe_list[packet_idx */
+  /* 					    ].sin->sin_addr); */
+  //sprintf(filter_str, "host %s", addr);
+  /* struct bpf_program bpf_prog; */
   /*Below is *not* thread safe! Must add a global lock for this.*/
-  if (pcap_compile(worker->sniffer->cap_handle, &bpf_prog, 
-		   filter_str, 1, PCAP_NETMASK_UNKNOWN) == -1){
-
-    pcap_perror(worker->sniffer->cap_handle, NULL);
-    printf("Couldn't compile pcap filter for worker[%d]",
-	   worker->worker_id);
-  }
-  for (int i = START_TTL; i < END_TTL; i++) {
-    iph->ttl = i;
-    if (DEBUG && MAX_WORKERS == 1)
-      printf("ttl = %d\n", i);
+  /* if (pcap_compile(worker->sniffer->cap_handle, &bpf_prog,  */
+  /* 		   filter_str, 1, PCAP_NETMASK_UNKNOWN) == -1){ */
+  /*   pcap_perror(worker->sniffer->cap_handle, NULL); */
+  /*   printf("Couldn't compile pcap filter for worker[%d]", */
+  /* 	   worker->worker_id); */
+  /* } */
+  /* if (DEBUG && MAX_WORKERS == 1) */
+  /*   printf("ttl = %d\n", i); */
     
-    for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
-      if (range_random(100, worker->random_data, &result) < 90) {
-	iph->check = csum((unsigned short *)packet_buffer, 
-			  iph->tot_len);
-      }
-      else {
-	iph->check = range_random(65536, worker->random_data, 
-				  &result);
-      }// this might be slow.
-      sendto(sockfd, packet_buffer, len, 0,
-	     dest_addr, sizeof(struct sockaddr));
-    }
+  for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
+    /* if (range_random(100, worker->random_data, &result) < 90) { */
+    /*   iph->check = csum((unsigned short *)packet_buffer,  */
+    /* 			iph->tot_len); */
+    /* } */
+    /* else { */
+      iph->check = range_random(65536, worker->random_data, 
+				&result);
+      /* }// this might be slow. */
+    sendto(sockfd, packet_buffer, len, 0,
+	   dest_addr, sizeof(struct sockaddr));
   }
+
 }
 
 /**
@@ -118,15 +119,25 @@ static inline void *worker_routine(void *vself)
   scanner_worker_t *self = vself;
   int scanning = 1;
   // Probably change this so we can make a list of ipaddresses.
-  // unsigned char packet_buffer[PACKET_LEN];
-
   int sockfd = self->ssocket->sockfd;
   while ( scanning ) {
     for (int i = 0; i < ADDRS_PER_WORKER; i++) {
-      make_packet((unsigned char *)worker->probe_list[i], self);
+      make_packet((unsigned char *)&self->probe_list[i], self, i);
     }
-    while ( worker->current_ttl < END_TTL ) {
-      send_scan_packet((unsigned char *)&packet_buffer, sockfd, self);
+    for (int i = 0; i < ADDRS_PER_WORKER; i++) {
+      printf("addr: %s\n", 
+	     inet_ntoa(self->probe_list[i].sin->sin_addr));
+    }
+    printf("%d %s EXIT\n", __LINE__, __func__);
+    exit(-1);
+    while ( self->current_ttl < END_TTL ) {
+      int probe_idx = self->probe_idx;
+      if (probe_idx == ADDRS_PER_WORKER) {
+	  self->current_ttl = self->current_ttl + 1;
+      }
+      send_scan_packet((unsigned char *)&self->probe_list[probe_idx]
+		       , sockfd, self, probe_idx);
+      self->probe_idx = probe_idx + 1;
     }
   }
   
@@ -230,14 +241,12 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     return -1;
   }
 
-
   if (pcap_activate(worker->sniffer->cap_handle) != 0) {
     pcap_perror(worker->sniffer->cap_handle, NULL);
     printf("Error activating capture interface for worker[%d].\n",
 	   worker->worker_id);
     return -1;
   }
-
   
   worker->sniffer->sniffer_lock = malloc(sizeof(pthread_mutex_t));
   if (worker->sniffer->sniffer_lock == NULL) {
@@ -247,6 +256,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     printf("Cannot initialize sniffer lock worker[%d]\n", id);
     return -1;
   }
+
   worker->sniffer->sniffer_cond = malloc(sizeof(pthread_cond_t));
   if (worker->sniffer->sniffer_cond == NULL) {
     printf("Cannot allocate sniffer cond worker[%d]\n", id);
@@ -256,6 +266,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     printf("Cannot initialize sniffer cond worker[%d]\n", id);
     return -1;
   }
+
   worker->sniffer->sniffer_thread = malloc(sizeof(pthread_t));
   if (worker->sniffer->sniffer_thread == NULL) {
     printf("Cannot allocate space for "
@@ -281,6 +292,8 @@ static inline int new_worker(scanner_worker_t *worker, int id)
   
   worker->worker_id = id;
   worker->sniffer->keep_sniffing = 0;
+  worker->probe_idx = 0;
+  worker->current_ttl = START_TTL;
   return id;
 }
 
