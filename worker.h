@@ -32,21 +32,27 @@ typedef char addr_buff_t[MAX_ADDR_SIZE];
 
 typedef struct addr_list_t {
   addr_buff_t *address;
-  long addr_idx;
+
 } addr_list_t;
 
-typedef char probe_buff_t[MTU];
+typedef struct probe_t {
+  struct sockaddr_in *sin;
+  unsigned char probe_buff_t[MTU];
+}
 
-typedef struct probe_list_t {}
+typedef struct probe_list_t {
+  probe_list_t *probes;
+
+}
 
 typedef struct scanner_worker_t {
   pthread_t *thread;
   sniffer_t *sniffer;
   scanner_socket_t *ssocket;
-  struct sockaddr_in *sin;
   struct random_data *random_data;
-  addr_list_t *addresses;
   char *random_state;
+  probe_t *probe_list;
+  long probe_idx;
   int state_size;
   int worker_id;
   // list_t *addr_list;

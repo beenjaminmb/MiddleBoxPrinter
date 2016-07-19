@@ -199,7 +199,8 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 
   worker->sniffer->cap_errbuf = malloc(PCAP_ERRBUF_SIZE);
   if (worker->sniffer->cap_errbuf == NULL) {
-    printf("Couldn't allocate %d bytes for cap error buffer for worker[%d]'s\n", PCAP_ERRBUF_SIZE, id);
+    printf("Couldn't allocate %d bytes for cap error buffer "
+	   "for worker[%d]'s\n", PCAP_ERRBUF_SIZE, id);
     return -1;
   }
 
@@ -225,11 +226,6 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     return -1;
   }
 
-  worker->sin = malloc(sizeof(struct sockaddr_in));
-  if ((long)worker->sin == -1) {
-    printf("Couldn't allocate sockaddr_in for worker[%d].\n", id);
-    return -1;
-  }
 
   if (pcap_activate(worker->sniffer->cap_handle) != 0) {
     pcap_perror(worker->sniffer->cap_handle, NULL);
@@ -263,19 +259,20 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     return -1;
   }
   
-  worker->addresses = malloc(sizeof(addr_list_t));
-  if (worker->addresses == NULL) {
+  worker->probe_list = malloc(sizeof(probe_t) * ADDRS_PER_WORKER);
+  if (worker->probe_list == NULL) {
     printf("Couldn't allocate space for "
 	   "address list for worker[%d]\n", id);
     return -1;
   }
-  
-  worker->addresses->address = malloc(sizeof(addr_buff_t) * 
-				      ADDRS_PER_WORKER);
-  if ( worker->addresses->address == NULL) {
-    printf("Couldn't allocate space for address "
-	   "list for worker[%d]\n", id);
-    return -1;
+
+  for (int i = 0; i < ADDRS_PER_WORKER; i++) {
+    worker->probe_list[i].sin = malloc(sizeof(struct sockaddr_in));
+    if (worker->probe_list[i].sin == NULL) {
+      printf("Cannot allocate space for probe sockaddr_in for "
+	     "worker[%d]\n", id);
+      return -1;
+    }
   }
 
   worker->worker_id = id;
