@@ -9,6 +9,8 @@
 #define MAX_WORKERS 10
 #define CAPTURE_IFACE "wlan0"
 #define MAX_ADDR_SIZE sizeof("255.255.255.255\0")
+#define MTU 1500 /* Make size for a probe including payload*/
+#define NORMAL_MTU 576
 #define RATE 1000000000.0 /* 1 Gb/sec */
 #define PERIOD 60.0 /* Period in seconds == 1 minute */
 #define AVG_PACKET_SIZE 6000.0 /* 750 Bytes == 6000bits */
@@ -16,7 +18,6 @@
 typedef struct scanner_socket_t {
   int sockfd;
 } scanner_socket_t;
-
 
 typedef struct sniffer_t {
   pcap_t *cap_handle;
@@ -33,6 +34,10 @@ typedef struct addr_list_t {
   addr_buff_t *address;
   long addr_idx;
 } addr_list_t;
+
+typedef char probe_buff_t[MTU];
+
+typedef struct probe_list_t {}
 
 typedef struct scanner_worker_t {
   pthread_t *thread;

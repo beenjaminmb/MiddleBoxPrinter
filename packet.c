@@ -27,10 +27,22 @@ unsigned short csum(unsigned short *ptr, int nbytes)
   return(answer);
 }
 
+
+
 static inline void 
 generate_random_destination_ip(char *dst_ip, scanner_worker_t *worker)
 {
-  strcpy(dst_ip, test_ips[worker->worker_id]);
+  int r1, r2, r3, r4;
+  for (int i = 0; i < ADDRS_PER_WORKER; i++ )
+    sprintf(worker->addresses->address[i], "%d.%d.%d.%d", 
+	    range_random(255, worker->random_data, &r1), 
+	    range_random(255, worker->random_data, &r2), 
+	    range_random(255, worker->random_data, &r3),
+	    range_random(255, worker->random_data, &r4));
+  
+  for (int i = 0; i < ADDRS_PER_WORKER; i++ ) {
+    printf("%s\n", worker->addresses->address[i]);
+  }
   return ;
 }
 
