@@ -25,8 +25,18 @@ unsigned short csum(unsigned short *ptr, int nbytes)
   return(answer);
 }
 
-
-
+/**
+ * Generates a random IP address. This will be changed later so that
+ * Workers only generate IP's in some given range,e.g. 2^32/MAX_WORKERS
+ *
+ * Worker 1           = [0, 2^32/MAX_WORKERS]
+ * Worker 2           = [2^32/MAX_WORKERS, ]
+ *    .
+ *    .
+ *    .
+ * Worker MAX_WORKERS = [2^32/MAX_WORKERS, ]
+ *
+ */
 static inline void 
 generate_random_destination_ip(char *dst_ip, scanner_worker_t *worker)
 {
