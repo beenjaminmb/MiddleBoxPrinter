@@ -64,17 +64,15 @@ static inline void *sniffer_routine(void *argv)
   return NULL;
 }
 
-static inline void send_scan_packet(unsigned char *restrict packet_buffer, 
-				    int sockfd,
-				    scanner_worker_t *restrict worker,
-				    int probe_idx,
-				    int ttl)
+static inline void 
+send_scan_packet(unsigned char *restrict packet_buffer, int sockfd, 
+		 scanner_worker_t *restrict worker, int probe_idx,
+		 int ttl)
 {
   struct sockaddr *dest_addr = 
     (struct sockaddr *)worker->probe_list[probe_idx].sin;
   iphdr *iph = (iphdr *)packet_buffer;
   int len = iph->tot_len;
-  // char filter_str[MAX_FILTER_SIZE];
   int result;
   /* char *addr = inet_ntoa(worker->probe_list[packet_idx */
   /* 					    ].sin->sin_addr); */
@@ -123,6 +121,7 @@ static inline void *worker_routine(void *vself)
   int scanning = 1;
   // Probably change this so we can make a list of ipaddresses.
   int sockfd = self->ssocket->sockfd;
+
   while ( scanning ) {
     for (int i = 0; i < ADDRS_PER_WORKER; i++) {
       make_packet((unsigned char *)&self->probe_list[i].probe_buff, 
@@ -135,10 +134,13 @@ static inline void *worker_routine(void *vself)
     /* printf("%d %s EXIT\n", __LINE__, __func__); */
     /* exit(-1); */
     int ttl = self->current_ttl;
+#if PERFORMANCE_DEBUG == 1
+    double start = wall_time();
+#endif
     while ( self->current_ttl < END_TTL ) {
       int probe_idx = self->probe_idx;
       if (probe_idx == ADDRS_PER_WORKER) {
-	ttl += 1;
+	ttl++;
 	self->current_ttl = ttl;
 	probe_idx = 0;
       }
@@ -147,10 +149,16 @@ static inline void *worker_routine(void *vself)
 		       sockfd, self, probe_idx, ttl);
       self->probe_idx = probe_idx + 1;
     }
+
+#if PERFORMANCE_DEBUG == 1 
+    double end = wall_time();
+    printf("%d %s: time %f EXITING\n", __LINE__, __func__, 
+      (end - start));
+#else
     printf("%d %s: EXITING\n", __LINE__, __func__);
+#endif
     exit(1); /*Just for testing*/
-  }
-  
+  }  
   return NULL;
 }
 

@@ -8,12 +8,16 @@
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/time.h>
 /*https://stackoverflow.com/questions/2509679/how-to-generate-a-random-number-from-within-a-range */
+
 #define DO_TCP(x) (x < 50)
 #define DO_UDP(x) ((x >= 50) & (x < 75))
 #define DO_ICMP(x) ((x > 74) & (x <= 100))
 
 extern int errno;
+
+static inline double wall_time() __attribute__((always_inline));
 
 static inline long range_random(long, struct random_data *restrict, 
 				int *restrict )
@@ -35,6 +39,13 @@ static inline long range_random(long max,
   x = *result/bin_size;
   *result = x;
   return x;
+}
+
+static inline double wall_time()
+{
+  struct timeval t;
+  gettimeofday(&t, NULL);
+  return 1. * t.tv_sec + 1.e-6 * t.tv_usec;
 }
 
 /* #define _RINGBUFFER 0 */

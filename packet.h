@@ -22,9 +22,17 @@
 #include "worker.h"
 #include "util.h"
 
+
+#define PERFORMANCE_DEBUG 1
+
+
 #define PACKET_LEN 2048
 #define START_TTL 2
-#define END_TTL 128
+#if PERFORMANCE_DEBUG == 1
+  #define END_TTL 3
+#else
+  #define END_TTL 128
+#endif
 #define TTL_MODULATION_COUNT 3
 #define TEST_IP "192.168.0.1"
 #define SRC_IP "192.168.0.3"
