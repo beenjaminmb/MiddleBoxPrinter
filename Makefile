@@ -1,6 +1,8 @@
 RM=rm
 CC=gcc
-CFLAGS=-O3 -Wall -g  -std=gnu99
+CFLAGS=-O0 -Wall -g -std=gnu99
+#CFLAGS=-O3 -Wall -std=gnu99 -fomit-frame-pointer
+#CFLAGS=-O3 -Wall -std=gnu99 -fomit-frame-pointer -mtune=core2
 
 LDLIBS=-pthread -lpcap
 
