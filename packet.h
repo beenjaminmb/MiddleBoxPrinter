@@ -30,7 +30,6 @@
 #define SRC_IP "192.168.0.3"
 #define TEST_DATA_LEN 0
 
-
 #ifdef DEBUG
 static const char *test_ips[] =
   { "192.168.0.1",
@@ -98,7 +97,7 @@ static inline iphdr *make_ipheader(unsigned char *restrict buffer,
   __attribute__((always_inline));
 
 
-unsigned short csum(unsigned short *ptr, int nbytes)
+static inline unsigned short csum(unsigned short *ptr, int nbytes)
 {
   register long sum = 0;
   unsigned short oddbyte;
@@ -268,9 +267,9 @@ Then we just send out this kind of traffic at 1 Gbps or so and take a
 pcap of all outgoing and incoming packets for that source IP, and 
 store that on the NFS mount for later analysis
 */
-int make_packet(unsigned char *restrict packet_buffer, 
-		scanner_worker_t *restrict worker,
-		int packet_idx)
+static inline int make_packet(unsigned char *restrict packet_buffer, 
+			      scanner_worker_t *restrict worker,
+			      int packet_idx)
 {
   int datalen = 0;
   char *src_ip = SRC_IP;
