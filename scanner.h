@@ -122,7 +122,8 @@ static inline void *worker_routine(void *vself)
   int sockfd = self->ssocket->sockfd;
   while ( scanning ) {
     for (int i = 0; i < ADDRS_PER_WORKER; i++) {
-      make_packet((unsigned char *)&self->probe_list[i], self, i);
+      make_packet((unsigned char *)&self->probe_list[i].probe_buff, 
+		  self, i);
     }
     for (int i = 0; i < ADDRS_PER_WORKER; i++) {
       printf("addr: %s\n", 
@@ -155,6 +156,7 @@ static inline int scanner_main_loop()
     if (pthread_create(scanner->workers[i].thread, NULL,
 		       worker_routine,
 		       (void *)&scanner->workers[i]) < 0) {
+      printf("Couldn't initialize thread for worker[%d]\n", i);
       exit(-1);
     }
   }

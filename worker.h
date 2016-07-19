@@ -31,7 +31,7 @@ typedef struct sniffer_t {
 
 typedef struct probe_t {
   struct sockaddr_in *sin;
-  unsigned char probe_buff_t[MTU];
+  unsigned char probe_buff[MTU];
 } probe_t;
 
 typedef struct scanner_worker_t {

@@ -178,6 +178,7 @@ int make_packet(unsigned char *packet_buffer,
   iphdr *ip = make_ipheader(packet_buffer, 
 			    worker->probe_list[packet_idx].sin, 
 			    datalen);
+
   psh->source_address = inet_addr(source_ip);
   psh->dest_address = 
     worker->probe_list[packet_idx].sin->sin_addr.s_addr;
