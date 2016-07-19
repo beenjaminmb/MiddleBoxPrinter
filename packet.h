@@ -57,12 +57,6 @@ typedef struct pseudo_header
   u_int16_t total_length;
 } pseudo_header;
 
-
-typedef struct frame_t 
-{
-  unsigned char packet_buffer[PACKET_LEN];
-}frame_t;
-
 /* Simple checksum function, may use others such as Cyclic Redundancy 
    Check, CRC */
 unsigned short csum(unsigned short *ptr, int nbytes);

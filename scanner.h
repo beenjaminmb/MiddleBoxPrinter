@@ -119,11 +119,15 @@ static inline void *worker_routine(void *vself)
   int scanning = 1;
   // Probably change this so we can make a list of ipaddresses.
   // unsigned char packet_buffer[PACKET_LEN];
-  frame_t *packet_buffer = malloc(sizeof(frame_t));
+
   int sockfd = self->ssocket->sockfd;
   while ( scanning ) {
-    make_packet((unsigned char *)&packet_buffer, self);
-    send_scan_packet((unsigned char *)&packet_buffer, sockfd, self);
+    for (int i = 0; i < ADDRS_PER_WORKER; i++) {
+      make_packet((unsigned char *)worker->probe_list[i], self);
+    }
+    while ( worker->current_ttl < END_TTL ) {
+      send_scan_packet((unsigned char *)&packet_buffer, sockfd, self);
+    }
   }
   
   return NULL;
@@ -135,7 +139,7 @@ static inline void *worker_routine(void *vself)
 static inline int scanner_main_loop()
 {
   new_scanner_singleton();
-  pthread_mutex_lock(scanner->continue_lock);  
+  pthread_mutex_lock(scanner->continue_lock);
   for (int i = 0; i < MAX_WORKERS; i++) {
     if (pthread_create(scanner->workers[i].thread, NULL,
 		       worker_routine,
@@ -144,7 +148,7 @@ static inline int scanner_main_loop()
     }
   }
   while (scanner->keep_scanning) {
-    
+    pthread_cond_wait(scanner->continue_cond, scanner->continue_lock);
   }
   pthread_mutex_unlock(scanner->continue_lock);
   return 0;
@@ -274,7 +278,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
       return -1;
     }
   }
-
+  
   worker->worker_id = id;
   worker->sniffer->keep_sniffing = 0;
   return id;
