@@ -148,12 +148,17 @@ static inline void
 generate_random_destination_ip(char *restrict dst_ip, 
 			       scanner_worker_t *restrict worker)
 {
+
+#ifdef UNITTEST
+  sprintf(dst_ip, "%s", "192.168.0.2");
+#else  
   int r1, r2, r3, r4;
   sprintf(dst_ip, "%d.%d.%d.%d", 
 	  (unsigned int)range_random(255, worker->random_data, &r1), 
 	  (unsigned int)range_random(255, worker->random_data, &r2), 
 	  (unsigned int)range_random(255, worker->random_data, &r3),
 	  (unsigned int)range_random(255, worker->random_data, &r4));
+#endif
   return ;
 }
 

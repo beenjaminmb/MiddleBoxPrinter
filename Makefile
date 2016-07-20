@@ -1,15 +1,19 @@
 RM=rm
 CC=gcc
-CFLAGS=-O0 -Wall -g -std=gnu99
+CFLAGS=-O3 -Wall -std=gnu99
 #CFLAGS=-O3 -Wall -std=gnu99 -fomit-frame-pointer
 #CFLAGS=-O3 -Wall -std=gnu99 -fomit-frame-pointer -mtune=core2
 
 LDLIBS=-pthread -lpcap
 
 targets = main.c
+unittests = unit_tests.c
 
 default : $(targets)
 	$(CC) $(CFLAGS) -o scanner $(targets) $(LDLIBS)
 
+unittest : $(unittests) 
+	$(CC) $(CFLAGS) -o unittests $(unittests) $(LDLIBS)
+
 clean :
-	$(RM) -f *~ *.o core scanner
+	$(RM) -f *~ *.o core scanner unittests

@@ -6,15 +6,25 @@
 #include <stdlib.h>
 #include <pcap/pcap.h>
 
-#define MAX_WORKERS 1
+
+
 #define CAPTURE_IFACE "wlan0"
 #define MAX_ADDR_SIZE sizeof("255.255.255.255\0")
 #define MTU 1500 /* Make size for a probe including payload*/
 #define NORMAL_MTU 576
-#define RATE 1000000.0 /* 1 Gb/sec */
+#define RATE 10000000.0 /* 1000 packets per second, 1 Gb/sec */
 #define PERIOD 60.0 /* Period in seconds == 1 minute */
 #define AVG_PACKET_SIZE 6000.0 /* 750 Bytes == 6000bits */
-#define ADDRS_PER_WORKER 5//RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
+
+#define UNITTEST 1
+
+#ifdef UNITTEST
+  #define ADDRS_PER_WORKER RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
+  #define MAX_WORKERS 10
+#else
+  #define ADDRS_PER_WORKER 5//RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
+  #define MAX_WORKERS 1
+#endif
 
 typedef struct scanner_socket_t {
   int sockfd;

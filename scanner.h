@@ -45,8 +45,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 static inline scanner_t *new_scanner_singleton() 
   __attribute__((always_inline));
 
-void got_packet(u_char * restrict args, const struct pcap_pkthdr * restrict header,
-		const u_char *restrict packet);
+void got_packet(u_char * restrict args, const struct pcap_pkthdr * restrict header, const u_char *restrict packet);
 
 static inline void *sniffer_routine(void *argv)
 {
@@ -87,7 +86,7 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
   /* if (DEBUG && MAX_WORKERS == 1) */
   /*   printf("ttl = %d\n", i); */
   iph->ttl = ttl;
-  int ret = 0;
+  //int ret = 0;
   for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
     if (range_random(100, worker->random_data, &result) < 90) {
       iph->check = csum((unsigned short *)packet_buffer,
@@ -97,10 +96,12 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
       iph->check = range_random(65536, worker->random_data, 
 				&result);
     }// this might be slow.
-    ret = sendto(sockfd, packet_buffer, len, 0,
-		 dest_addr, sizeof(struct sockaddr));
+    /* ret = sendto(sockfd, packet_buffer, len, 0, */
+    /* 		 dest_addr, sizeof(struct sockaddr)); */
+    sendto(sockfd, packet_buffer, len, 0, dest_addr, 
+	   sizeof(struct sockaddr));
   }
-  printf("%d %s: ret = %d\n", __LINE__, __func__, ret);
+  //printf("%d %s: ret = %d\n", __LINE__, __func__, ret);
   return ;
 }
 
@@ -126,12 +127,12 @@ static inline void *worker_routine(void *vself)
       make_packet((unsigned char *)&self->probe_list[i].probe_buff, 
 		  self, i);
     }
-    /* for (int i = 0; i < ADDRS_PER_WORKER; i++) { */
-    /*   printf("addr: %s\n",  */
-    /* 	     inet_ntoa(self->probe_list[i].sin->sin_addr)); */
-    /* } */
-    /* printf("%d %s EXIT\n", __LINE__, __func__); */
-    /* exit(-1); */
+    for (int i = 0; i < ADDRS_PER_WORKER; i++) {
+      printf("addr: %s\n",
+    	     inet_ntoa(self->probe_list[i].sin->sin_addr));
+    }
+    printf("%d %s EXIT\n", __LINE__, __func__);
+    exit(-1);
     int ttl = self->current_ttl;
     double seconds;
     START_TIMER(seconds);
@@ -187,6 +188,7 @@ static inline int scanner_main_loop()
  */
 static inline int new_worker(scanner_worker_t *worker, int id)
 {
+  printf("%d %s \n", __LINE__, __func__);
   worker->ssocket = malloc(sizeof(scanner_socket_t));
   if ((long)worker->ssocket == -1) {
     printf("Couldn't allocate scanner_socket_t for worker[%d]\n", id);
@@ -302,7 +304,10 @@ static inline int new_worker(scanner_worker_t *worker, int id)
       return -1;
     }
   }
-  
+  printf("%d %s \n", __LINE__, __func__);
+  double time = wall_time();
+  srandom_r((long)time, worker->random_data);
+  printf("%d %s \n", __LINE__, __func__);
   worker->worker_id = id;
   worker->sniffer->keep_sniffing = 0;
   worker->probe_idx = 0;
