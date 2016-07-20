@@ -18,14 +18,13 @@
 #define TEST_SEED 0
 #define STATE_SIZE 8
 #define MAX_FILTER_SIZE sizeof("host 255.255.255.255") + 1
+
 typedef struct scanner_t {
   scanner_worker_t *workers;  
   pthread_mutex_t *continue_lock;
   pthread_cond_t *continue_cond;
   int keep_scanning;
 } scanner_t;
-
-
 
 static scanner_t *scanner = NULL;
 
@@ -101,7 +100,7 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
     ret = sendto(sockfd, packet_buffer, len, 0,
 		 dest_addr, sizeof(struct sockaddr));
   }
-  printf("%d %s: ret =%d\n", __LINE__, __func__, ret);
+  printf("%d %s: ret = %d\n", __LINE__, __func__, ret);
   return ;
 }
 
@@ -134,30 +133,25 @@ static inline void *worker_routine(void *vself)
     /* printf("%d %s EXIT\n", __LINE__, __func__); */
     /* exit(-1); */
     int ttl = self->current_ttl;
-#if PERFORMANCE_DEBUG == 1
-    double start = wall_time();
-#endif
+    double seconds;
+    START_TIMER(seconds);
+
     while ( self->current_ttl < END_TTL ) {
       int probe_idx = self->probe_idx;
       if (probe_idx == ADDRS_PER_WORKER) {
 	ttl++;
 	self->current_ttl = ttl;
-	probe_idx = 0;
+	probe_idx = 0;	
+	STOP_TIMER(seconds);
+	printf("%d %s: time %f EXITING\n", __LINE__, __func__, 
+	       (seconds));
+	exit(1); /*Just for testing*/
       }
       send_scan_packet((unsigned char *)
 		       &self->probe_list[probe_idx].probe_buff,
 		       sockfd, self, probe_idx, ttl);
       self->probe_idx = probe_idx + 1;
     }
-
-#if PERFORMANCE_DEBUG == 1 
-    double end = wall_time();
-    printf("%d %s: time %f EXITING\n", __LINE__, __func__, 
-      (end - start));
-#else
-    printf("%d %s: EXITING\n", __LINE__, __func__);
-#endif
-    exit(1); /*Just for testing*/
   }  
   return NULL;
 }

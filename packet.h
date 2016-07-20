@@ -25,20 +25,27 @@
 
 #define PERFORMANCE_DEBUG 1
 
-
 #define PACKET_LEN 2048
 #define START_TTL 2
 #if PERFORMANCE_DEBUG == 1
   #define END_TTL 3
+  #define START_TIMER(seconds) (seconds = -wall_time())
+  #define STOP_TIMER(seconds) (seconds += wall_time())
 #else
   #define END_TTL 128
+  #define START_TIMER(seconds) (seconds = -1)
+  #define STOP_TIMER(seconds) (seconds = -1)
 #endif
 #define TTL_MODULATION_COUNT 3
 #define TEST_IP "192.168.0.1"
-#define SRC_IP "192.168.0.3"
+#define SRC_IP "192.168.0.4"
 #define TEST_DATA_LEN 0
 
+
+
+
 #ifdef DEBUG
+
 static const char *test_ips[] =
   { "192.168.0.1",
       "192.168.0.2",
