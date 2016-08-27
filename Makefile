@@ -9,8 +9,10 @@ LDLIBS=-pthread -lpcap
 targets = main.c
 unittests = unit_tests.c
 
-default : $(targets)
-	$(CC) $(CFLAGS) -o scanner $(targets) $(LDLIBS)
+default : 
+	cd ./src
+	$(MAKE)
+
 
 unittest : $(unittests) 
 	$(CC) $(CFLAGS) -o unittests $(unittests) $(LDLIBS)
