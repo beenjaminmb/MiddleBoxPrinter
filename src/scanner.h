@@ -87,17 +87,15 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
   /*   printf("ttl = %d\n", i); */
   iph->ttl = ttl;
   //int ret = 0;
+  if (range_random(100, worker->random_data, &result) < 90) {
+    iph->check = csum((unsigned short *)packet_buffer,
+		      iph->tot_len);
+  }
+  else {
+    iph->check = range_random(65536, worker->random_data, 
+			      &result);
+  }
   for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
-    if (range_random(100, worker->random_data, &result) < 90) {
-      iph->check = csum((unsigned short *)packet_buffer,
-    			iph->tot_len);
-    }
-    else {
-      iph->check = range_random(65536, worker->random_data, 
-				&result);
-    }// this might be slow.
-    /* ret = sendto(sockfd, packet_buffer, len, 0, */
-    /* 		 dest_addr, sizeof(struct sockaddr)); */
     sendto(sockfd, packet_buffer, len, 0, dest_addr, 
 	   sizeof(struct sockaddr));
   }
