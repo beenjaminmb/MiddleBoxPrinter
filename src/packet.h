@@ -23,7 +23,7 @@
 #include "util.h"
 
 
-#define PERFORMANCE_DEBUG 1
+//#define PERFORMANCE_DEBUG 1
 
 #define PACKET_LEN 2048
 #define START_TTL 2
@@ -37,12 +37,12 @@
   #define STOP_TIMER(seconds) (seconds = -1)
 #endif
 #define TTL_MODULATION_COUNT 3
-#define TEST_IP "192.168.0.1"
-#define SRC_IP "192.168.0.4"
+//#define TEST_IP "192.168.0.1"
+//#define SRC_IP "192.168.0.4"
+#define TEST_IP "192.168.56.220" // vboxmanage startvm "linux server"
+#define SRC_IP "192.168.56.1" // vboxnet0 interface
+
 #define TEST_DATA_LEN 0
-
-
-
 
 #ifdef DEBUG
 
@@ -89,7 +89,7 @@ static inline tcphdr *make_tcpheader(unsigned char *restrict buffer,
   __attribute__((always_inline));
 
 static inline void 
-generate_random_destination_ip(char *restrict dst_ip, 
+generate_destination_ip(char *restrict dst_ip, 
 			       scanner_worker_t *restrict worker)
   __attribute__((always_inline));
 
@@ -134,7 +134,8 @@ static inline unsigned short csum(unsigned short *ptr, int nbytes)
 
 /**
  * Generates a random IP address. This will be changed later so that
- * Workers only generate IP's in some given range,e.g. 2^32/MAX_WORKERS
+ * Workers only generate IP's in some given range,e.g. 
+ * 2^32/MAX_WORKERS
  *
  * Worker 1           = [0, 2^32/MAX_WORKERS]
  * Worker 2           = [2^32/MAX_WORKERS, ]
@@ -142,27 +143,32 @@ static inline unsigned short csum(unsigned short *ptr, int nbytes)
  *    .
  *    .
  * Worker MAX_WORKERS = [2^32/MAX_WORKERS, ]
- *
  */
 static inline void 
-generate_random_destination_ip(char *restrict dst_ip, 
-			       scanner_worker_t *restrict worker)
+generate_destination_ip(char *restrict dst_ip, 
+			scanner_worker_t *restrict worker)
 {
 
 #ifdef UNITTEST
-  sprintf(dst_ip, "%s", "192.168.0.2");
-#else  
+  //sprintf(dst_ip, "%s", "192.168.0.2");
+  sprintf(dst_ip, "%s", "192.168.56.220");
+#else
+  #ifdef RANDOM_IP
   int r1, r2, r3, r4;
   sprintf(dst_ip, "%d.%d.%d.%d", 
 	  (unsigned int)range_random(255, worker->random_data, &r1), 
 	  (unsigned int)range_random(255, worker->random_data, &r2), 
 	  (unsigned int)range_random(255, worker->random_data, &r3),
 	  (unsigned int)range_random(255, worker->random_data, &r4));
+  #else
+
+  
+  #endif
 #endif
   return ;
 }
 
-static inline icmphdr *make_icmpheader(unsigned char *restrict buffer, 
+static inline icmphdr *make_icmpheader(unsigned char *restrict buffer,
 				       scanner_worker_t 
 				       *restrict worker, 
 				       int datalen)
@@ -297,7 +303,7 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
   long prand = range_random(100, worker->random_data, &result);
   pseudo_header *psh = malloc(sizeof(pseudo_header));
   char *pseudogram = NULL, source_ip[32], dst_ip[32];
-  generate_random_destination_ip((char*)dst_ip, worker);
+  generate_destination_ip((char*)dst_ip, worker);
   strcpy(source_ip, src_ip); // This can be optimized at some point.
   memset(packet_buffer, 0, MTU);
   worker->probe_list[packet_idx].sin->sin_addr.s_addr = 

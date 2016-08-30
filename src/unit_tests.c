@@ -17,7 +17,6 @@ void print_iphdr(iphdr *iph)
   printf("iph->protocol: %x\n", iph->protocol);
   printf("iph->saddr: %x\n", iph->saddr);
   printf("iph->daddr: %x\n", iph->daddr);
-
 }
 
 void print_probe(iphdr *iph)
@@ -45,8 +44,6 @@ int test_worker_generate(scanner_worker_t *worker)
 int test_send_rate(scanner_worker_t *worker)
 {
   double seconds = -wall_time();
-
-
   double other_time = -wall_time();
   int ttl = 2;
   printf("current ttl %d, end ttl %d\n", ttl, END_TTL);
@@ -72,6 +69,7 @@ int test_send_rate(scanner_worker_t *worker)
 	 __LINE__, __func__, seconds);
   return 1;
 }
+
 int run_tests() {
   scanner_worker_t worker;
   int points = 0;

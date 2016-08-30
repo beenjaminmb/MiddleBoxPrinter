@@ -20,7 +20,7 @@
 #define MAX_FILTER_SIZE sizeof("host 255.255.255.255") + 1
 
 typedef struct scanner_t {
-  scanner_worker_t *workers;  
+  scanner_worker_t *workers;
   pthread_mutex_t *continue_lock;
   pthread_cond_t *continue_cond;
   int keep_scanning;
@@ -72,34 +72,26 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
   iphdr *iph = (iphdr *)packet_buffer;
   int len = iph->tot_len;
   int result;
-  /* char *addr = inet_ntoa(worker->probe_list[packet_idx */
-  /* 					    ].sin->sin_addr); */
-  //sprintf(filter_str, "host %s", addr);
-  /* struct bpf_program bpf_prog; */
-  /*Below is *not* thread safe! Must add a global lock for this.*/
-  /* if (pcap_compile(worker->sniffer->cap_handle, &bpf_prog,  */
-  /* 		   filter_str, 1, PCAP_NETMASK_UNKNOWN) == -1){ */
-  /*   pcap_perror(worker->sniffer->cap_handle, NULL); */
-  /*   printf("Couldn't compile pcap filter for worker[%d]", */
-  /* 	   worker->worker_id); */
-  /* } */
-  /* if (DEBUG && MAX_WORKERS == 1) */
-  /*   printf("ttl = %d\n", i); */
+
   iph->ttl = ttl;
   //int ret = 0;
   if (range_random(100, worker->random_data, &result) < 90) {
     iph->check = csum((unsigned short *)packet_buffer,
 		      iph->tot_len);
+    //printf("%d %s: ttl = %d\n", __LINE__, __func__, ttl);
   }
+  
   else {
     iph->check = range_random(65536, worker->random_data, 
 			      &result);
   }
+  //printf("%d %s: ttl = %d\n", __LINE__, __func__, ttl);
   for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
     sendto(sockfd, packet_buffer, len, 0, dest_addr, 
 	   sizeof(struct sockaddr));
+    //printf("%d %s: ttl = %d\n", __LINE__, __func__, ttl);
   }
-  //printf("%d %s: ret = %d\n", __LINE__, __func__, ret);
+  //printf("%d %s: ttl = %d\n", __LINE__, __func__, ttl);
   return ;
 }
 
@@ -115,6 +107,7 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
  */
 static inline void *worker_routine(void *vself)
 {
+  printf("%d %s ",__LINE__, __func__);
   scanner_worker_t *self = vself;
   int scanning = 1;
   // Probably change this so we can make a list of ipaddresses.
@@ -125,6 +118,7 @@ static inline void *worker_routine(void *vself)
       make_packet((unsigned char *)&self->probe_list[i].probe_buff, 
 		  self, i);
     }
+  
     /* for (int i = 0; i < ADDRS_PER_WORKER; i++) { */
     /*   printf("addr: %s\n", */
     /* 	     inet_ntoa(self->probe_list[i].sin->sin_addr)); */
@@ -134,9 +128,8 @@ static inline void *worker_routine(void *vself)
     int ttl = self->current_ttl;
     double seconds;
     /* START_TIMER(seconds); */
-
+    int probe_idx = self->probe_idx;
     while ( self->current_ttl < END_TTL ) {
-      int probe_idx = self->probe_idx;
       if (probe_idx == ADDRS_PER_WORKER) {
 	ttl++;
 	self->current_ttl = ttl;
@@ -145,12 +138,19 @@ static inline void *worker_routine(void *vself)
 	/* printf("%d %s: time %f EXITING\n", __LINE__, __func__,  */
 	/*        (seconds)); */
 	/* exit(1); /\*Just for testing*\/ */
+	//printf("\n%d %s FUCK %d\n", __LINE__, __func__, ADDRS_PER_WORKER);
+
       }
+
       send_scan_packet((unsigned char *)
 		       &self->probe_list[probe_idx].probe_buff,
 		       sockfd, self, probe_idx, ttl);
-      self->probe_idx = probe_idx + 1;
+      probe_idx += 1;
+      //printf("%d %s: ttl = %d", __LINE__, __func__, ttl);
     }
+    //printf("%d %s: ttl = %d", __LINE__, __func__, ttl);
+    self->probe_idx = 0;
+    self->current_ttl = START_TTL;
   }
   return NULL;
 }
@@ -163,6 +163,7 @@ static inline int scanner_main_loop()
   new_scanner_singleton();
   pthread_mutex_lock(scanner->continue_lock);
   for (int i = 0; i < MAX_WORKERS; i++) {
+    //printf("%d %s ",__LINE__, __func__);
     if (pthread_create(scanner->workers[i].thread, NULL,
 		       worker_routine,
 		       (void *)&scanner->workers[i]) < 0) {
@@ -170,6 +171,7 @@ static inline int scanner_main_loop()
       exit(-1);
     }
   }
+  //printf("%d %s ",__LINE__, __func__);
   while (scanner->keep_scanning) {
     pthread_cond_wait(scanner->continue_cond, scanner->continue_lock);
   }
@@ -310,6 +312,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
   worker->sniffer->keep_sniffing = 0;
   worker->probe_idx = 0;
   worker->current_ttl = START_TTL;
+  printf("%d %s FUCK\n", __LINE__, __func__);
   return id;
 }
 
@@ -328,9 +331,12 @@ static inline scanner_t *new_scanner_singleton()
   scanner->keep_scanning = 1;
   scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
   for (int i = 0 ; i < MAX_WORKERS; i++) {
+    //printf("%d %s %d\n", __LINE__, __func__, i);
     if (new_worker(&scanner->workers[i], i) != i) {
+      //printf("%d %s FUCK\n", __LINE__, __func__);
       exit(-1);
     }
+    //printf("%d %s FUCK\n", __LINE__, __func__);
   }
   scanner->continue_lock = malloc(sizeof(pthread_mutex_t));
   if ((long)scanner->continue_lock == -1) return NULL;
@@ -339,7 +345,7 @@ static inline scanner_t *new_scanner_singleton()
   scanner->continue_cond = malloc(sizeof(pthread_cond_t));
   if ((long)scanner->continue_cond == -1) return NULL;
   pthread_cond_init(scanner->continue_cond, NULL);
-  
+  //printf("%d %s FUCK\n", __LINE__, __func__);
   return scanner;
 }
 
