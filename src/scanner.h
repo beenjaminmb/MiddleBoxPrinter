@@ -86,11 +86,9 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
 			      &result);
   }
   //printf("%d %s: ttl = %d\n", __LINE__, __func__, ttl);
-  for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
-    sendto(sockfd, packet_buffer, len, 0, dest_addr, 
-	   sizeof(struct sockaddr));
-    //printf("%d %s: ttl = %d\n", __LINE__, __func__, ttl);
-  }
+  sendto(sockfd, packet_buffer, len, 0, dest_addr, 
+	 sizeof(struct sockaddr));
+  //printf("%d %s: ttl = %d\n", __LINE__, __func__, ttl);
   //printf("%d %s: ttl = %d\n", __LINE__, __func__, ttl);
   return ;
 }
@@ -112,7 +110,7 @@ static inline void *worker_routine(void *vself)
   int scanning = 1;
   // Probably change this so we can make a list of ipaddresses.
   int sockfd = self->ssocket->sockfd;
-
+  
   while ( scanning ) {
     for (int i = 0; i < ADDRS_PER_WORKER; i++) {
       make_packet((unsigned char *)&self->probe_list[i].probe_buff, 
@@ -129,26 +127,27 @@ static inline void *worker_routine(void *vself)
     double seconds;
     /* START_TIMER(seconds); */
     int probe_idx = self->probe_idx;
-    while ( self->current_ttl < END_TTL ) {
-      if (probe_idx == ADDRS_PER_WORKER) {
-	ttl++;
-	self->current_ttl = ttl;
-	probe_idx = 0;
-	/* STOP_TIMER(seconds); */
-	/* printf("%d %s: time %f EXITING\n", __LINE__, __func__,  */
-	/*        (seconds)); */
-	/* exit(1); /\*Just for testing*\/ */
-	//printf("\n%d %s FUCK %d\n", __LINE__, __func__, ADDRS_PER_WORKER);
+    for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
+      int ttl = self->current_ttl;
+      while ( self->current_ttl < END_TTL ) {
+	if (probe_idx == ADDRS_PER_WORKER) {
+	  ttl++;
+	  self->current_ttl = ttl;
+	  probe_idx = 0;
+	  /* STOP_TIMER(seconds); */
+	  /* printf("%d %s: time %f EXITING\n", __LINE__, __func__,  */
+	  /*        (seconds)); */
+	  /* exit(1); /\*Just for testing*\/ */
+	  //printf("\n%d %s FUCK %d\n", __LINE__, __func__, 
+	  // ADDRS_PER_WORKER);
 
+	} 
+	send_scan_packet((unsigned char *)
+			 &self->probe_list[probe_idx].probe_buff,
+			 sockfd, self, probe_idx, ttl);
+	probe_idx += 1;
       }
-
-      send_scan_packet((unsigned char *)
-		       &self->probe_list[probe_idx].probe_buff,
-		       sockfd, self, probe_idx, ttl);
-      probe_idx += 1;
-      //printf("%d %s: ttl = %d", __LINE__, __func__, ttl);
     }
-    //printf("%d %s: ttl = %d", __LINE__, __func__, ttl);
     self->probe_idx = 0;
     self->current_ttl = START_TTL;
   }

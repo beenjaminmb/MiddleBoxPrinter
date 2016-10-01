@@ -40,7 +40,7 @@
 //#define TEST_IP "192.168.0.1"
 //#define SRC_IP "192.168.0.4"
 #define TEST_IP "192.168.56.220" // vboxmanage startvm "linux server"
-#define SRC_IP "192.168.56.1" // vboxnet0 interface
+#define SRC_IP "192.168.56.1" // vboxnet0 interface 64.106.82.5 my machine
 
 #define TEST_DATA_LEN 0
 
@@ -48,15 +48,15 @@
 
 static const char *test_ips[] =
   { "192.168.0.1",
-      "192.168.0.2",
-      "192.168.0.4",
-      "192.168.0.5",
-      "192.168.0.6",
-      "192.168.0.7",
-      "192.168.0.8",
-      "192.168.0.9",
-      "192.168.0.10",
-      "192.168.0.11"};
+    "192.168.0.2",
+    "192.168.0.4",
+    "192.168.0.5",
+    "192.168.0.6",
+    "192.168.0.7",
+    "192.168.0.8",
+    "192.168.0.9",
+    "192.168.0.10",
+    "192.168.0.11"};
 #endif 
 
 typedef struct iphdr iphdr;
