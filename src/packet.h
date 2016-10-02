@@ -421,7 +421,7 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
     goto RETURN;
   }
   else {/* random junk */
-    worker->probe_list[packet_idx].proto = 0xffff;
+    worker->probe_list[packet_idx].proto = 0xff;
     make_junk_header(packet_buffer, worker, data_len);
   } 
  DONE:
