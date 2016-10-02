@@ -32,32 +32,21 @@
   #define START_TIMER(seconds) (seconds = -wall_time())
   #define STOP_TIMER(seconds) (seconds += wall_time())
 #else
-  #define END_TTL 128
+  #define END_TTL 64
   #define START_TIMER(seconds) (seconds = -1)
   #define STOP_TIMER(seconds) (seconds = -1)
 #endif
 #define TTL_MODULATION_COUNT 3
 //#define TEST_IP "192.168.0.1"
-//#define SRC_IP "192.168.0.4"
+//#define SRC_IP "192.168.0.4"//vboxnet0 interface 64.106.82.5 my machine
 #define TEST_IP "192.168.56.220" // vboxmanage startvm "linux server"
-#define SRC_IP "192.168.56.1" // vboxnet0 interface 64.106.82.5 my machine
-
+#define SRC_IP "64.106.82.6" //Spoofed but on same subnet as tonys.
+#define REAL_SRC_IP "64.106.82.5"
 #define TEST_DATA_LEN 0
 
 #ifdef DEBUG
 
-static const char *test_ips[] =
-  { "192.168.0.1",
-    "192.168.0.2",
-    "192.168.0.4",
-    "192.168.0.5",
-    "192.168.0.6",
-    "192.168.0.7",
-    "192.168.0.8",
-    "192.168.0.9",
-    "192.168.0.10",
-    "192.168.0.11"};
-#endif 
+#endif
 
 typedef struct iphdr iphdr;
 typedef struct udphdr udphdr;
@@ -105,6 +94,11 @@ static inline udphdr *make_udpheader(unsigned char *buffer,
 				     int datalen)
   __attribute__((always_inline));
 
+static inline udphdr *make_junk_header(unsigned char *buffer,
+				       scanner_worker_t
+				       *restrict worker,
+				       int datalen)
+  __attribute__((always_inline));
 
 static inline iphdr *make_ipheader(unsigned char *restrict buffer, 
 				   struct sockaddr_in *restrict sin, 
@@ -150,8 +144,7 @@ generate_destination_ip(char *restrict dst_ip,
 {
 
 #ifdef UNITTEST
-  //sprintf(dst_ip, "%s", "192.168.0.2");
-  sprintf(dst_ip, "%s", "192.168.56.220");
+  sprintf(dst_ip, "%s", "64.106.82.5"); // We scan ourselves
 #else
   #ifdef RANDOM_IP
   int r1, r2, r3, r4;
@@ -161,19 +154,31 @@ generate_destination_ip(char *restrict dst_ip,
 	  (unsigned int)range_random(255, worker->random_data, &r3),
 	  (unsigned int)range_random(255, worker->random_data, &r4));
   #else
-
+  
+  // This is where the code for using IP's of vendors should go.
   
   #endif
 #endif
   return ;
 }
 
+static inline unsigned char *make_junk_header(unsigned char *buffer, 
+					      scanner_worker_t
+					      *restrict worker,
+					      int datalen)
+{
+  unsigned char *junk_header = (buffer + sizeof(struct ip));
+  for (int i = 0; i < (datalen - sizeof(struct ip)) /sizeof(long); i++) {
+    junk_header[i] = range_random(RAND_MAX, worker->random_data, &result);
+  }
+  return junk_header;
+}
 static inline icmphdr *make_icmpheader(unsigned char *restrict buffer,
 				       scanner_worker_t 
 				       *restrict worker, 
 				       int datalen)
 {
-  icmphdr *icmph = (icmphdr *)(buffer + + sizeof(struct ip));
+  icmphdr *icmph = (icmphdr *)(buffer + sizeof(struct ip));
   icmph->type = ICMP_ECHOREPLY; // make random later.
   icmph->code = 0;
   icmph->un.echo.id = 0;
@@ -297,7 +302,7 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
 			      scanner_worker_t *restrict worker,
 			      int packet_idx)
 {
-  int datalen = 0;
+  int data_len = range_random(MTU - 256, worker->random_data, &result);
   char *src_ip = SRC_IP;
   int result = 0;
   long prand = range_random(100, worker->random_data, &result);
@@ -311,49 +316,64 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
   worker->probe_list[packet_idx].sin->sin_family = AF_INET;
   iphdr *ip = make_ipheader(packet_buffer, 
 			    worker->probe_list[packet_idx].sin, 
-			    datalen);
-
+			    data_len);
+  
+  if (range_random(100, worker->random_data, &result) < 90) {
+    worker->probe_list[packet_idx].good_csum = TRUE;
+  }
+  else {
+    worker->probe_list[packet_idx].good_csum = FALSE;
+    data_len = (data_len + 
+		range_random(MTU - 256, worker->random_data, &result))
+      % MTU;
+  }
+  worker->prob_list[packet_idx].data_len = data_len;    
   psh->source_address = inet_addr(source_ip);
   psh->dest_address = 
     worker->probe_list[packet_idx].sin->sin_addr.s_addr;
   psh->placeholder = 0;
   if ( DO_TCP(prand) ) { /* Make a TCP packet */
-    ip->tot_len = sizeof(iphdr) + sizeof(tcphdr) + datalen;
+    worker->prob_list[packet_idx] = IPPROTO_TCP; 
+    ip->tot_len = sizeof(iphdr) + sizeof(tcphdr) + data_len;
     ip->protocol = IPPROTO_TCP;
     tcphdr *tcph = make_tcpheader(packet_buffer, worker, packet_idx);
     psh->protocol = IPPROTO_TCP;
-    psh->total_length = htons(sizeof(tcphdr) + datalen);
-    int psize = sizeof(pseudo_header) + sizeof(tcphdr) + datalen;
+    psh->total_length = htons(sizeof(tcphdr) + data_len);
+    int psize = sizeof(pseudo_header) + sizeof(tcphdr) + data_len;
     pseudogram = malloc(psize);
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), tcph,
-	   sizeof(tcphdr) + datalen);
+	   sizeof(tcphdr) + data_len);
     tcph->check = csum((unsigned short*)pseudogram, psize);
     goto DONE;
   }
   else if ( DO_UDP(prand) ) { /* Make a UDP */
-    ip->tot_len = sizeof(iphdr) + sizeof(udphdr) + datalen;
-    udphdr *udph = make_udpheader(packet_buffer, 0);
+    ip->tot_len = sizeof(iphdr) + sizeof(udphdr) + data_len;
     ip->protocol = IPPROTO_UDP;
+    worker->prob_list[packet_idx] = IPPROTO_UDP;
+    udphdr *udph = make_udpheader(packet_buffer, 0);
     psh->protocol = IPPROTO_UDP;
-    psh->total_length = htons(sizeof(udphdr) + datalen);
-    int psize = sizeof(pseudo_header) + sizeof(udphdr) + datalen;
+    psh->total_length = htons(sizeof(udphdr) + data_len);
+    int psize = sizeof(pseudo_header) + sizeof(udphdr) + data_len;
     pseudogram = malloc(psize);
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), udph,
-	   sizeof(udphdr) + datalen);
+	   sizeof(udphdr) + data_len);
     udph->check = csum((unsigned short*) pseudogram, psize);
     goto DONE;
   }
   else if ( DO_ICMP(prand) ) { /* Make ICMP packet */
-    ip->tot_len = sizeof(iphdr) + sizeof(icmphdr) + datalen;
-    icmphdr *icmph = make_icmpheader(packet_buffer, worker, 0);
+    ip->tot_len = sizeof(iphdr) + sizeof(icmphdr) + data_len;
     ip->protocol = IPPROTO_ICMP;
+    worker->prob_list[packet_idx] = IPPROTO_ICMP;
+    icmphdr *icmph = make_icmpheader(packet_buffer, worker, 0);
     icmph->checksum = csum((unsigned short*) icmph, sizeof(icmphdr));
     goto RETURN;
   }
   else {/* random junk */
-  
+    worker->prob_list[packet_idx] = 0xffff;
+    ip->tot_len = sizeof(iphdr) + 
+      range_random(MTU - 256, worker->random_data, &result));
   }
  DONE:
   free(pseudogram);

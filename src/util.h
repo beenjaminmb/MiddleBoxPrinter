@@ -11,6 +11,8 @@
 #include <sys/time.h>
 /*https://stackoverflow.com/questions/2509679/how-to-generate-a-random-number-from-within-a-range */
 
+#define TRUE 1
+#define FALSE !TRUE
 #define DO_TCP(x) (x < 50)
 #define DO_UDP(x) ((x >= 50) & (x < 75))
 #define DO_ICMP(x) ((x > 74) & (x <= 100))
