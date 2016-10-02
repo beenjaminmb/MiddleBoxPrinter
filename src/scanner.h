@@ -171,6 +171,13 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     printf("Couldn't open socket fd for worker[%d]\n", id);
     return -1;
   };
+  
+  if (setsockopt(worker->ssocket->sockfd, SOL_SOCKET, SO_BINDTODEVICE,
+		 CAPTURE_INTERFACE, strlen(CAPTURE_INTERFACE)) ) {
+    printf("getsockopt() for worker[%d]\n", id);
+    return -1;
+  }
+  
   worker->thread = malloc(sizeof(pthread_t));
   if ((long)worker->thread == -1) {
     printf("Couldn't allocate thread for worker[%d]\n", id);

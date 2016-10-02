@@ -8,7 +8,7 @@
 
 
 
-#define CAPTURE_IFACE "vboxnet0"
+#define CAPTURE_INTERFACE "enp0s8"
 //#define CAPTURE_IFACE "wlan0"
 //#define CAPTURE_IFACE "eth0"
 #define MAX_ADDR_SIZE sizeof("255.255.255.255\0")
