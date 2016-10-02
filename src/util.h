@@ -15,7 +15,7 @@
 #define FALSE !TRUE
 #define DO_TCP(x) (x < 50)
 #define DO_UDP(x) ((x >= 50) & (x < 75))
-#define DO_ICMP(x) ((x > 74) & (x <= 85))
+#define DO_ICMP(x) ((x > 74) & (x <= 100))
 
 extern int errno;
 
