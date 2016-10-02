@@ -18,7 +18,7 @@
 #define TEST_SEED 0
 #define STATE_SIZE 8
 #define MAX_FILTER_SIZE sizeof("host 255.255.255.255") + 1
-
+#define SCAN_DURATION 3600.0
 typedef struct scanner_t {
   scanner_worker_t *workers;
   pthread_mutex_t *continue_lock;
@@ -92,19 +92,23 @@ static inline void *worker_routine(void *vself)
   int scanning = 1;
   // Probably change this so we can make a list of ipaddresses.
   int sockfd = self->ssocket->sockfd;
-  
+  double start_time;
+  START_TIMER(start_time);
+  double end_time;
   while ( scanning ) {
+    START_TIMER(end_time);
+    if (end_time - start_time > SCAN_DURATION){
+      break;
+    }
     for (int i = 0; i < ADDRS_PER_WORKER; i++) {
       make_packet((unsigned char *)&self->probe_list[i].probe_buff, 
 		  self, i);
     }
-
-    int ttl = self->current_ttl;
-    double seconds;
-    /* START_TIMER(seconds); */
+    int ttl = START_TTL;
+    self->current_ttl = START_TTL;
     int probe_idx = self->probe_idx;
     for (int j = 0; j < TTL_MODULATION_COUNT; j++) {
-      int ttl = self->current_ttl;
+      ttl = START_TTL;
       while ( self->current_ttl < END_TTL ) {
 	if (probe_idx == ADDRS_PER_WORKER) {
 	  ttl++;
@@ -117,9 +121,9 @@ static inline void *worker_routine(void *vself)
 	probe_idx += 1;
       }
       self->probe_idx = 0;
-      self->current_ttl = START_TTL;
     }
   }
+  printf("Done scanning. Total scan time %f sec\n", (end_time - start_time));
   return NULL;
 }
 
