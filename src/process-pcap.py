@@ -24,6 +24,7 @@ def process_ICMP(**kwargs):
 
     icmp_responses = kwargs["icmp_responses"]
     path_lengths = {}
+    responsder_origin = {}
     for (src, dst) in icmp_responses:
         path_len = len(icmp_responses[(src, dst)])
 
@@ -35,6 +36,19 @@ def process_ICMP(**kwargs):
             icmp = ip.data
             icmpdata = icmp.data
             path_lengths
+            responder = socket.inet_ntoa(ip.src)
+            if responder not in responder_orgin:
+                responder_origin[responder] = [0, {}]
+            responder_origin[responder][0] == 1
+            icmpdata = icmp.data
+            probe = icmpdata.data
+            newdst = socket.inet_ntoa(probe.dst)
+            newsrc = socket.inet_ntoa(probe.src)
+
+            if newdst not in responder_origin[responder][1]:
+                responder_origin[responder][1][newdst] = 0
+            responder_origin[responder][1][newdst] += 1
+
             if isinstance(icmpdata, dpkt.icmp.ICMP.TimeExceed):
                 """ """
                 icmp_stats["TimeExceed"][0] += 1
@@ -69,6 +83,12 @@ def process_ICMP(**kwargs):
     print "ICMP Response message type distribution:"
     for typee in icmp_stats:
         print "\t", typee, icmp_stats[typee]
+
+    print "Response Stats:"
+    for responder in responder_origin:
+        print "\t Responder: ", responderresponder_origin[responder][0],
+        for newdst in responder_origin[responder][1]:
+            print "\t", newdst, len(responder_origin[responder][1][newdst])
 
 
 def process_TCP(**kwargs):
