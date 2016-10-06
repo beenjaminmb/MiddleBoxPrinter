@@ -24,7 +24,7 @@ def process_ICMP(**kwargs):
 
     icmp_responses = kwargs["icmp_responses"]
     path_lengths = {}
-    responsder_origin = {}
+    responder_origin = {}
     for (src, dst) in icmp_responses:
         path_len = len(icmp_responses[(src, dst)])
 
