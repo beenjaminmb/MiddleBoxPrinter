@@ -18,11 +18,42 @@ def process_IP(**kwargs):
 
 def process_ICMP(**kwargs):
     """ Process ICMP header: """
+
+    icmp_stats = {"TimeExceed": 0, "Redirect": 0, "Unreach": 0, "Quench": 0}
     icmp_responses = kwargs["icmp_responses"]
+    path_lengths = {}
     for (src, dst) in icmp_responses:
-        print "ICMP Probe: ", src, dst
-        for (psrc, probe) in icmp_responses[(src, dst)]:
+        path_len = len(icmp_responses[(sec, dst)])
+
+        if path_len not in path_lengths:
+            path_lengths[path_len] = 0
+        path_lengths[path_len] += 1
+
+        for (psrc, ip) in icmp_responses[(src, dst)]:
+            icmp = ip.data
+            icmpdata = icmp.data
+            path_lengths
+            if isinstance(icmpdata, dpkt.icmp.ICMP.TimeExceed):
+                """ """
+                icmp_stats["TimeExceed"] += 1
+            elif isinstance(icmpdata, dpkt.icmp.ICMP.Redirect):
+                """ """
+                icmp_stats["Redirect"] += 1
+            elif isinstance(icmpdata, dpkt.icmp.ICMP.Unreach):
+                """ """
+                icmp_stats["Unreach"] += 1
+            elif isinstance(icmpdata, dpkt.icmp.ICMP.Quench):
+                """ """
+                icmp_stats["Quench"] += 1
             print "\tICMP response: ", psrc, probe.unpack
+            i += 1
+    print "Path Length distribution:"
+    for p in path_lengths:
+        print "\t", p, path_lengths[p]
+
+    print "ICMP Response message type distribution:"
+    for typee in icmp_stats:
+        print "\t", typee, icmp_stats[typee]
 
 
 def process_TCP(**kwargs):
@@ -78,7 +109,7 @@ def process_pcap(**kwargs):
                                 if (newsrc, newdst) not in icmp_responses:
                                     icmp_responses[(newsrc, newdst)] = []
                                 icmp_responses[
-                                    (newsrc, newdst)] += [(src, probe)]
+                                    (newsrc, newdst)] += [(src, ip)]
                             elif isinstance(icmpdata, dpkt.icmp.ICMP.Unreach):
                                 """ """
                                 probe = icmpdata.data
@@ -87,7 +118,7 @@ def process_pcap(**kwargs):
                                 if (newsrc, newdst) not in icmp_responses:
                                     icmp_responses[(newsrc, newdst)] = []
                                 icmp_responses[
-                                    (newsrc, newdst)] += [(src, probe)]
+                                    (newsrc, newdst)] += [(src, ip)]
                             elif isinstance(icmpdata, dpkt.icmp.ICMP.Quench):
                                 """ """
                                 probe = icmpdata.data
@@ -96,7 +127,7 @@ def process_pcap(**kwargs):
                                 if (newsrc, newdst) not in icmp_responses:
                                     icmp_responses[(newsrc, newdst)] = []
                                 icmp_responses[
-                                    (newsrc, newdst)] += [(src, probe)]
+                                    (newsrc, newdst)] += [(src, ip)]
 
                             elif isinstance(icmpdata, dpkt.icmp.ICMP.Redirect):
                                 probe = icmpdata.data
@@ -105,7 +136,7 @@ def process_pcap(**kwargs):
                                 if (newsrc, newdst) not in icmp_responses:
                                     icmp_responses[(newsrc, newdst)] = []
                                 icmp_responses[
-                                    (newsrc, newdst)] += [(src, probe)]
+                                    (newsrc, newdst)] += [(src, ip)]
 
                         elif isinstance(ip.data, dpkt.tcp.TCP):
                             tcp = ip.data
