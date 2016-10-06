@@ -27,7 +27,7 @@ def process_ICMP(**kwargs):
 def process_TCP(**kwargs):
     """ Process ICMP header: """
     tcp_responses = kwargs["tcp_responses"]
-    for (src, dst) in tcp_responseas:
+    for (src, dst) in tcp_responses:
         for (psrc, probe) in tcp_responses[(src, dst)]:
             print "\t", src, dst, probe
 
