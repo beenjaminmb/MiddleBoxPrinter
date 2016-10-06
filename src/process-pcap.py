@@ -22,7 +22,14 @@ def process_ICMP(**kwargs):
     for (src, dst) in icmp_responses:
         (psrc, probe) = icmp_responses[(src, dst)]
         print "\t", src, dst, probe
-    return hdr
+
+
+def process_TCP(**kwargs):
+    """ Process ICMP header: """
+    tcp_responses = kwargs["tcp_responses"]
+    for (src, dst) in tcp_responses:
+        (psrc, probe) = tcp_responses[(src, dst)]
+        print "\t", src, dst, probe
 
 
 def process_pcap(**kwargs):
@@ -129,7 +136,8 @@ def process_pcap(**kwargs):
                 elif isinstance(eth.data, dpkt.llc.LLC):
                     pass
                 else:
-                    print "Other L3", eth.data
+                    pass
+                    # print "Other L3", eth.unpack
             except Exception as ex:
                 template = "An exception of type {0} occured. Arguments:\n{1!r}"
                 message = template.format(type(ex).__name__, ex.args)
@@ -139,8 +147,8 @@ def process_pcap(**kwargs):
     ctime = lambda t: str(datetime.datetime.fromtimestamp(
         int(t)).strftime('%Y-%m-%d %H:%M:%S'))
 
-    process_ICMP(icmp=icmp_responses)
-    process_TCP(tcp=tcp_responses)
+    process_ICMP(icmp_responses=icmp_responses)
+    process_TCP(tcp_responses=tcp_responses)
 
     # for (src, dst) in icmp_responses:
     #     print "ICMP Responses: ", src, dst, len(icmp_responses[(src, dst)])
