@@ -20,16 +20,18 @@ def process_ICMP(**kwargs):
     """ Process ICMP header: """
     icmp_responses = kwargs["icmp_responses"]
     for (src, dst) in icmp_responses:
+        print "ICMP Probe: ", src, dst
         for (psrc, probe) in icmp_responses[(src, dst)]:
-            print "\t", src, dst, probe
+            print "\tICMP response: ", psrc, probe.unpack
 
 
 def process_TCP(**kwargs):
     """ Process ICMP header: """
     tcp_responses = kwargs["tcp_responses"]
     for (src, dst) in tcp_responses:
+        print "TCP Probe:", src, dst
         for (psrc, probe) in tcp_responses[(src, dst)]:
-            print "\t", src, dst, probe
+            print "\tTCP response", psrc, probe.unpack
 
 
 def process_pcap(**kwargs):
