@@ -20,7 +20,7 @@ def process_ICMP(**kwargs):
     """ Process ICMP header: """
     icmp_responses = kwargs["icmp_responses"]
     for (src, dst) in icmp_responses:
-        (psrc, probe) = icmp_responses[(src, dst)]
+        psrc, probe = icmp_responses[(src, dst)]
         print "\t", src, dst, probe
 
 
