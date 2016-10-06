@@ -90,7 +90,6 @@ def process_pcap(**kwargs):
                                     (newsrc, newdst)] += [(src, probe)]
 
                             elif isinstance(icmpdata, dpkt.icmp.ICMP.Redirect):
-                                print "ICMP Redirect"
                                 probe = icmpdata.data
                                 newdst = socket.inet_ntoa(probe.dst)
                                 newsrc = socket.inet_ntoa(probe.src)
