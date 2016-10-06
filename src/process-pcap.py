@@ -86,9 +86,9 @@ def process_ICMP(**kwargs):
 
     print "Response Stats:"
     for responder in responder_origin:
-        print "\t Responder: ", responderresponder_origin[responder][0],
+        print "\t Responder: ", responder_origin[responder][0],
         for newdst in responder_origin[responder][1]:
-            print "\t", newdst, len(responder_origin[responder][1][newdst])
+            print "\t\t", newdst, responder_origin[responder][1][newdst]
 
 
 def process_TCP(**kwargs):
