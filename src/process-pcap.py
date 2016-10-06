@@ -37,7 +37,7 @@ def process_ICMP(**kwargs):
             icmpdata = icmp.data
             path_lengths
             responder = socket.inet_ntoa(ip.src)
-            if responder not in responder_orgin:
+            if responder not in responder_origin:
                 responder_origin[responder] = [0, {}]
             responder_origin[responder][0] == 1
             icmpdata = icmp.data
