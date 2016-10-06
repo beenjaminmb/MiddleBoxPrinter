@@ -18,9 +18,9 @@ def process_IP(**kwargs):
 
 def process_ICMP(**kwargs):
     """ Process ICMP header: """
-    icmp = kwargs["icmp"]
-    for (src, dst) in icmp:
-        psrc, probe = icmp[(src, dst)]
+    icmp_responses = kwargs["icmp_responses"]
+    for (src, dst) in icmp_responses:
+        (psrc, probe) = icmp_responses[(src, dst)]
         print "\t", src, dst, probe
     return hdr
 
@@ -123,23 +123,14 @@ def process_pcap(**kwargs):
                             other_responses[
                                 (src, dst)] += [(src, ip)]
 
-                        if (dst, src) not in data:
-                            data[(dst, src)] = [[], [(ts, ttl)]]
-
-                        elif (dst, src) in data:
-                            data[(dst, src)][1] += [(ts, ttl)]
-
-                        if (dst, src) not in stats:
-                            stats[(dst, src)] = [0, 1]
-                        elif (dst, src) in stats:
-                            stats[(dst, src)][1] += 1
-                            # print stats[(dst, src)]
                 elif isinstance(eth.data, dpkt.arp.ARP):
                     pass
                 elif isinstance(eth.data, dpkt.stp.STP):
                     pass
+                elif isinstance(eth.data, dpkt.llc.LLC):
+                    pass
                 else:
-                    print "Other L3", eth.data.unpack
+                    print "Other L3", eth.data
             except Exception as ex:
                 template = "An exception of type {0} occured. Arguments:\n{1!r}"
                 message = template.format(type(ex).__name__, ex.args)
