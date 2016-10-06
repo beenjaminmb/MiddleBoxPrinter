@@ -19,7 +19,8 @@ def process_IP(**kwargs):
 def process_ICMP(**kwargs):
     """ Process ICMP header: """
 
-    icmp_stats = {"TimeExceed": 0, "Redirect": 0, "Unreach": 0, "Quench": 0}
+    icmp_stats = {"TimeExceed": 0, "Redirect": 0,
+                  "Unreach": 0, "Quench": 0}
     icmp_responses = kwargs["icmp_responses"]
     path_lengths = {}
     for (src, dst) in icmp_responses:
@@ -45,9 +46,6 @@ def process_ICMP(**kwargs):
             elif isinstance(icmpdata, dpkt.icmp.ICMP.Quench):
                 """ """
                 icmp_stats["Quench"] += 1
-
-            i += 1
-
     print "Path Length distribution:"
     for p in path_lengths:
         print "\t", p, path_lengths[p]
