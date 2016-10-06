@@ -45,8 +45,9 @@ def process_ICMP(**kwargs):
             elif isinstance(icmpdata, dpkt.icmp.ICMP.Quench):
                 """ """
                 icmp_stats["Quench"] += 1
-            print "\tICMP response: ", psrc, probe.unpack
+
             i += 1
+
     print "Path Length distribution:"
     for p in path_lengths:
         print "\t", p, path_lengths[p]
