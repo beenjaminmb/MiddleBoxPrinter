@@ -23,7 +23,7 @@ def process_ICMP(**kwargs):
     icmp_responses = kwargs["icmp_responses"]
     path_lengths = {}
     for (src, dst) in icmp_responses:
-        path_len = len(icmp_responses[(sec, dst)])
+        path_len = len(icmp_responses[(src, dst)])
 
         if path_len not in path_lengths:
             path_lengths[path_len] = 0
