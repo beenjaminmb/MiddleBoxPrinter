@@ -40,9 +40,10 @@ def process_IP(**kwargs):
 def process_ICMP(**kwargs):
     """ Process ICMP header: """
 
-    icmp_stats = {"TimeExceed": [0, 0], "Redirect": [0, 0],
-                  "Unreach": [0, 0], "Quench": [0, 0]}
+    icmp_stats = {"TimeExceed": [0, 0, 0], "Redirect": [0, 0, 0],
+                  "Unreach": [0, 0, 0], "Quench": [0, 0, 0]}
 
+    unique_icmp_responses = True
     icmp_responses = kwargs["icmp_responses"]
     num_probe_responses = {}
     responder_origin = {}
@@ -56,6 +57,7 @@ def process_ICMP(**kwargs):
         num_probe_responses[num_probes] += 1
         new_msg = True
         COLLECT_TCP_RESPONSES = True
+        unique_icmp_responses = True
         for (psrc, ip) in icmp_responses[(src, dst)]:  # Source IP and Target IP
             # psrc = Source of the probe response
             icmp = ip.data
@@ -83,12 +85,19 @@ def process_ICMP(**kwargs):
                 if new_msg:
                     new_msg = False
                     icmp_stats["TimeExceed"][1] += 1
+                if unique_icmp_responses:
+                    unique_icmp_responses = False
+                    icmp_stats["TimeExceed"][2] += 1
+
             elif isinstance(icmpdata, dpkt.icmp.ICMP.Redirect):
                 """ """
                 icmp_stats["Redirect"][0] += 1
                 if new_msg:
                     new_msg = False
                     icmp_stats["Redirect"][1] += 1
+                if unique_icmp_responses:
+                    unique_icmp_responses = False
+                    icmp_stats["Redirect"][2] += 1
 
             elif isinstance(icmpdata, dpkt.icmp.ICMP.Unreach):
                 """ """
@@ -96,6 +105,9 @@ def process_ICMP(**kwargs):
                 if new_msg:
                     new_msg = False
                     icmp_stats["Unreach"][1] += 1
+                if unique_icmp_responses:
+                    unique_icmp_responses = False
+                    icmp_stats["Unreach"][2] += 1
 
             elif isinstance(icmpdata, dpkt.icmp.ICMP.Quench):
                 """ """
@@ -103,6 +115,9 @@ def process_ICMP(**kwargs):
                 if new_msg:
                     new_msg = False
                     icmp_stats["Quench"][1] += 1
+                if unique_icmp_responses:
+                    unique_icmp_responses = False
+                    icmp_stats["Quench"][2] += 1
 
     print "Total TCP probes returned: %s" % (total_tcp_responses)
     print "Path Length distribution: "
