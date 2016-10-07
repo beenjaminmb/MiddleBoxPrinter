@@ -132,7 +132,33 @@ def process_TCP(**kwargs):
         print "TCP Probe:", src, dst
         for (psrc, ip) in tcp_responses[(src, dst)]:
             tcp = ip.data
-            print "\tTCP response", psrc, tcp.sport, tcp.seq, tcp.ack, tcp.flags, tcp.win, tcp.sum, tcp.opts
+            if tcp.sport not in tcp_meta_stats["sport"]:
+                tcp_meta_stats["sport"][tcp.sport] = 0
+            if tcp.seq not in tcp_meta_stats["seq"]:
+                tcp_meta_stats["seq"][tcp.seq] = 0
+            if tcp.ack not in tcp_meta_stats["ack"]:
+                tcp_meta_stats["ack"][tcp.ack] = 0
+            if tcp.flags not in tcp_meta_stats["flags"]:
+                tcp_meta_stats["flags"][tcp.flags] = 0
+            if tcp.win not in tcp_meta_stats["win"]:
+                tcp_meta_stats["win"][tcp.win] = 0
+            if tcp.sum not in tcp_meta_stats["sum"]:
+                tcp_meta_stats["sum"][tcp.sum] = 0
+            if tcp.opts not in tcp_meta_stats["opts"]:
+                tcp_meta_stats["opts"][tcp.opts] = 0
+
+            tcp_meta_stats["opts"][tcp.opts] += 1
+            tcp_meta_stats["sum"][tcp.sum] += 1
+            tcp_meta_stats["ack"][tcp.ack] += 1
+            tcp_meta_stats["flags"][tcp.flags] += 1
+            tcp_meta_stats["win"][tcp.win] += 1
+            tcp_meta_stats["sport"][tcp.sport] += 1
+            tcp_meta_stats["seq"][tcp.seq] += 1
+
+    for tcp_field in tcp_meta_stats:
+        print "TCP Field Distributions: %s" % (tcp_field)
+        for fieldval in tcp_meta_stats[tcp_field]:
+            print "\tfield value %s, value count %s" % (fieldval, tcp_meta_stats[tcp_field][fieldval])
 
 
 def process_pcap(**kwargs):
