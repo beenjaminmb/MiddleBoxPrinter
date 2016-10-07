@@ -121,13 +121,13 @@ def process_TCP(**kwargs):
     tcp_flags = {}
     tcp_off = {}
 
-    tcp_meta_stats {"sport": {},
-                    "seq": {},
-                    "ack": {},
-                    "flags": {},
-                    "win": {},
-                    "sum": {},
-                    "opts": {}}
+    tcp_meta_stats = {"sport": {},
+                      "seq": {},
+                      "ack": {},
+                      "flags": {},
+                      "win": {},
+                      "sum": {},
+                      "opts": {}}
 
     for (src, dst) in tcp_responses:
         print "TCP Probe:", src, dst
