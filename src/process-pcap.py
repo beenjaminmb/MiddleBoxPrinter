@@ -130,8 +130,9 @@ def process_TCP(**kwargs):
 
     for (src, dst) in tcp_responses:
         print "TCP Probe:", src, dst
-        for (psrc, probe) in tcp_responses[(src, dst)]:
-            print "\tTCP response", psrc, probe.sport, probe.seq, probe.ack, probe.flags, probe.win, probe.sum, probe.opts
+        for (psrc, ip) in tcp_responses[(src, dst)]:
+            tcp = ip.data
+            print "\tTCP response", psrc, tcp.sport, tcp.seq, tcp.ack, tcp.flags, tcp.win, tcp.sum, tcp.opts
 
 
 def process_pcap(**kwargs):
