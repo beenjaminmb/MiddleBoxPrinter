@@ -126,7 +126,10 @@ def process_TCP(**kwargs):
                       "flags": {},
                       "win": {},
                       "sum": {},
-                      "opts": {}}
+                      "opts": {},
+                      "urp": {},
+                      "off": {},
+                      "off_x2": {}}
 
     for (src, dst) in tcp_responses:
         print "TCP Probe:", src, dst
@@ -146,7 +149,16 @@ def process_TCP(**kwargs):
                 tcp_meta_stats["sum"][tcp.sum] = 0
             if tcp.opts not in tcp_meta_stats["opts"]:
                 tcp_meta_stats["opts"][tcp.opts] = 0
+            if tcp.urp not in tcp_meta_stats["urp"]:
+                tcp_meta_stats["urp"][tcp.urp] = 0
+            if tcp.off not in tcp_meta_stats["off"]:
+                tcp_meta_stats["off"][tcp.off] = 0
+            if tcp.off_x2 not in tcp_meta_stats["off_x2"]:
+                tcp_meta_stats["off_x2"][tcp.off_x2] = 0
 
+            tcp_meta_stats["off_x2"][tcp.off_x2] += 1
+            tcp_meta_stats["off"][tcp.off] += 1
+            tcp_meta_stats["urp"][tcp.urp] += 1
             tcp_meta_stats["opts"][tcp.opts] += 1
             tcp_meta_stats["sum"][tcp.sum] += 1
             tcp_meta_stats["ack"][tcp.ack] += 1
