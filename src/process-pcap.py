@@ -8,10 +8,35 @@ SPOOF_IP = "64.106.82.6"
 
 
 def process_IP(**kwargs):
-    """ 
+    """
     Process IP header:
     """
     ip = kwargs["ip"]
+
+    ip_meta_stats = {"len": {},
+                     "id": {},
+                     "off": {},
+                     "ttl": {},
+                     "p": {},
+                     "sum": {},
+                     "opts": {}}
+    for () in ip:
+
+        # len = 40,
+        # id = 31942,
+        # off = 16384,
+        # ttl = 245,
+        # p = 6,
+        # sum = 20337,
+        # src = '\xb4\xfar-',
+        # dst = '@jR\x06',
+        # opts = ''
+        # ip_opts = {}
+        # ip_seq = {}
+        # ip_len = {}
+        # ip_id = {}
+        # ip_opt = {}
+
     hdr = ()
     return hdr
 
@@ -23,16 +48,18 @@ def process_ICMP(**kwargs):
                   "Unreach": [0, 0], "Quench": [0, 0]}
 
     icmp_responses = kwargs["icmp_responses"]
-    path_lengths = {}
+    num_probes_responses = {}
     responder_origin = {}
     for (src, dst) in icmp_responses:
-        path_len = len(icmp_responses[(src, dst)])
+        # Source IP and Target IP
+        num_probes = len(icmp_responses[(src, dst)])
 
-        if path_len not in path_lengths:
+        if num_probes not in num_probe_responses:
             path_lengths[path_len] = 0
         path_lengths[path_len] += 1
         new_msg = True
-        for (psrc, ip) in icmp_responses[(src, dst)]:
+        for (psrc, ip) in icmp_responses[(src, dst)]:  # Source IP and Target IP
+            # psrc = Source of the probe response
             icmp = ip.data
             icmpdata = icmp.data
             path_lengths
@@ -94,10 +121,22 @@ def process_ICMP(**kwargs):
 def process_TCP(**kwargs):
     """ Process ICMP header: """
     tcp_responses = kwargs["tcp_responses"]
+    icmp_replies = kwargs["icmp_replies"]
+    tcp_flags = {}
+    tcp_off = {}
+
+    tcp_meta_stats {"sport": {},
+                    "seq": {},
+                    "ack": {},
+                    "flags": {},
+                    "win": {},
+                    "sum": {},
+                    "opts": {}}
+
     for (src, dst) in tcp_responses:
         print "TCP Probe:", src, dst
         for (psrc, probe) in tcp_responses[(src, dst)]:
-            print "\tTCP response", psrc, probe.unpack
+            print "\tTCP response", psrc, probe.sport, probe.seq, probe.ack, probe.flags, probe.win, probe.sum, probe.opts
 
 
 def process_pcap(**kwargs):
