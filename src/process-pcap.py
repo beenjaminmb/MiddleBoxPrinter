@@ -116,7 +116,7 @@ def process_ICMP(**kwargs):
 def process_TCP(**kwargs):
     """ Process ICMP header: """
     tcp_responses = kwargs["tcp_responses"]
-    icmp_replies = kwargs["icmp_replies"]
+    # icmp_replies = kwargs["icmp_replies"]
     tcp_flags = {}
     tcp_off = {}
 
