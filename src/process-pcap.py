@@ -20,25 +20,21 @@ def process_IP(**kwargs):
                      "p": {},
                      "sum": {},
                      "opts": {}}
-    for () in ip:
 
-        # len = 40,
-        # id = 31942,
-        # off = 16384,
-        # ttl = 245,
-        # p = 6,
-        # sum = 20337,
-        # src = '\xb4\xfar-',
-        # dst = '@jR\x06',
-        # opts = ''
-        # ip_opts = {}
-        # ip_seq = {}
-        # ip_len = {}
-        # ip_id = {}
-        # ip_opt = {}
-
-    hdr = ()
-    return hdr
+    # len = 40,
+    # id = 31942,
+    # off = 16384,
+    # ttl = 245,
+    # p = 6,
+    # sum = 20337,
+    # src = '\xb4\xfar-',
+    # dst = '@jR\x06',
+    # opts = ''
+    # ip_opts = {}
+    # ip_seq = {}
+    # ip_len = {}
+    # ip_id = {}
+    # ip_opt = {}
 
 
 def process_ICMP(**kwargs):
