@@ -47,6 +47,9 @@ def process_ICMP(**kwargs):
     num_probe_responses = {}
     responder_origin = {}
     total_tcp_responses = 0
+    total_udp_responses = 0
+    total_icmp_responses = 0
+    total_other_responses = 0
     for (src, dst) in icmp_responses:
         # Source IP and Target IP
         num_probes = len(icmp_responses[(src, dst)])
@@ -54,7 +57,10 @@ def process_ICMP(**kwargs):
         if num_probes not in num_probe_responses:
             num_probe_responses[num_probes] = 0
         num_probe_responses[num_probes] += 1
-        new_msg = True
+        collect_tcp = True
+        collect_udp = True
+        collect_icmp = True
+        collect_other = True
         COLLECT_TCP_RESPONSES = True
         for (psrc, ip) in icmp_responses[(src, dst)]:  # Source IP and Target IP
             # psrc = Source of the probe response
@@ -72,40 +78,56 @@ def process_ICMP(**kwargs):
                 if COLLECT_TCP_RESPONSES:
                     COLLECT_TCP_RESPONSES = False
                     total_tcp_responses += 1
-
+            elif isinstance(icmpdata.data.data, dpkt.udp.UDP):
+                if collect_udp:
+                    collect_udp = False
+                    total_udp_response += 1
+            elif isinstance(icmpdata.data.data, dpkt.icmp.ICMP):
+                if collect_icmp:
+                    collect_icmp = False
+                    total_icmp_response += 1
+            else:
+                if collect_other:
+                    collect_other = False
+                    total_other_response += 1
             if newdst not in responder_origin[responder][1]:
                 responder_origin[responder][1][newdst] = 0
             responder_origin[responder][1][newdst] += 1
 
             if isinstance(icmpdata, dpkt.icmp.ICMP.TimeExceed):
-                """ """
+                """         collect_udp = True
+                collect_icmp = True
+                collect_other = True"""
                 icmp_stats["TimeExceed"][0] += 1
-                if new_msg:
-                    new_msg = False
+                if collect_tcp:
+                    collect_tcp = False
                     icmp_stats["TimeExceed"][1] += 1
 
             elif isinstance(icmpdata, dpkt.icmp.ICMP.Redirect):
                 """ """
                 icmp_stats["Redirect"][0] += 1
-                if new_msg:
-                    new_msg = False
+                if collect_tcp:
+                    collect_tcp = False
                     icmp_stats["Redirect"][1] += 1
 
             elif isinstance(icmpdata, dpkt.icmp.ICMP.Unreach):
                 """ """
                 icmp_stats["Unreach"][0] += 1
-                if new_msg:
-                    new_msg = False
+                if collect_tcp:
+                    collect_tcp = False
                     icmp_stats["Unreach"][1] += 1
 
             elif isinstance(icmpdata, dpkt.icmp.ICMP.Quench):
                 """ """
                 icmp_stats["Quench"][0] += 1
-                if new_msg:
-                    new_msg = False
+                if collect_tcp:
+                    collect_tcp = False
                     icmp_stats["Quench"][1] += 1
 
     print "Total TCP probes returned: %s" % (total_tcp_responses)
+    print "Total UDP probes returned: %s" % (total_udp_responses)
+    print "Total ICMP probes returned: %s" % (total_icmp_responses)
+    print "Total Other probes returned: %s" % (total_other_responses)
     print "Path Length distribution: "
     for p in num_probe_responses:
         print "\t", p, num_probe_responses[p]
