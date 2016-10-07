@@ -54,7 +54,10 @@ def process_ICMP(**kwargs):
             num_probe_responses[num_probes] = 0
         num_probe_responses[num_probes] += 1
         new_msg = True
+        total_tcp_responses = 0
+        COLLECT_TCP_RESPONSES = True
         for (psrc, ip) in icmp_responses[(src, dst)]:  # Source IP and Target IP
+
             # psrc = Source of the probe response
             icmp = ip.data
             icmpdata = icmp.data
@@ -66,12 +69,16 @@ def process_ICMP(**kwargs):
             probe = icmpdata.data
             newdst = socket.inet_ntoa(probe.dst)
             newsrc = socket.inet_ntoa(probe.src)
+            COLLECT_TCP_RESPONSES = True
+            if isinstance(icmpdata.data.data, dpkt.tcp.TCP):
+                if COLLECT_TCP_RESPONSES:
+                    COLLECT_TCP_RESPONSES = False
+                    total_tcp_responses += 1
 
             if newdst not in responder_origin[responder][1]:
                 responder_origin[responder][1][newdst] = 0
             responder_origin[responder][1][newdst] += 1
-            if isinstance(icmpdata.data.data, dpkt.tcp.TCP):
-                print "FOO"
+
             if isinstance(icmpdata, dpkt.icmp.ICMP.TimeExceed):
                 """ """
                 icmp_stats["TimeExceed"][0] += 1
@@ -99,7 +106,8 @@ def process_ICMP(**kwargs):
                     new_msg = False
                     icmp_stats["Quench"][1] += 1
 
-    print "Path Length distribution:"
+    print "Total TCP probes returned: ", total_tcp_responses
+    print "Path Length distribution: "
     for p in num_probe_responses:
         print "\t", p, num_probe_responses[p]
 
