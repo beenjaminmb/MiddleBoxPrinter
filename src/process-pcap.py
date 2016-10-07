@@ -68,7 +68,6 @@ def process_ICMP(**kwargs):
             probe = icmpdata.data
             newdst = socket.inet_ntoa(probe.dst)
             newsrc = socket.inet_ntoa(probe.src)
-            COLLECT_TCP_RESPONSES = True
             if isinstance(icmpdata.data.data, dpkt.tcp.TCP):
                 if COLLECT_TCP_RESPONSES:
                     COLLECT_TCP_RESPONSES = False
