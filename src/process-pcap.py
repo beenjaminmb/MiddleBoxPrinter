@@ -70,9 +70,7 @@ def process_ICMP(**kwargs):
             newsrc = socket.inet_ntoa(probe.src)
             COLLECT_TCP_RESPONSES = True
             if isinstance(icmpdata.data.data, dpkt.tcp.TCP):
-                if COLLECT_TCP_RESPONSES:
-                    COLLECT_TCP_RESPONSES = False
-                    total_tcp_responses += 1
+                total_tcp_responses += 1
 
             if newdst not in responder_origin[responder][1]:
                 responder_origin[responder][1][newdst] = 0
