@@ -44,21 +44,20 @@ def process_ICMP(**kwargs):
                   "Unreach": [0, 0], "Quench": [0, 0]}
 
     icmp_responses = kwargs["icmp_responses"]
-    num_probes_responses = {}
+    num_probe_responses = {}
     responder_origin = {}
     for (src, dst) in icmp_responses:
         # Source IP and Target IP
         num_probes = len(icmp_responses[(src, dst)])
 
         if num_probes not in num_probe_responses:
-            path_lengths[path_len] = 0
-        path_lengths[path_len] += 1
+            num_probe_responses[num_probes] = 0
+        num_probe_responses[num_probes] += 1
         new_msg = True
         for (psrc, ip) in icmp_responses[(src, dst)]:  # Source IP and Target IP
             # psrc = Source of the probe response
             icmp = ip.data
             icmpdata = icmp.data
-            path_lengths
             responder = socket.inet_ntoa(ip.src)
             if responder not in responder_origin:
                 responder_origin[responder] = [0, {}]
@@ -100,8 +99,8 @@ def process_ICMP(**kwargs):
                     icmp_stats["Quench"][1] += 1
 
     print "Path Length distribution:"
-    for p in path_lengths:
-        print "\t", p, path_lengths[p]
+    for p in num_probe_responses:
+        print "\t", p, num_probe_responses[p]
 
     print "ICMP Response message type distribution:"
     for typee in icmp_stats:
