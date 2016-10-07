@@ -70,7 +70,8 @@ def process_ICMP(**kwargs):
             if newdst not in responder_origin[responder][1]:
                 responder_origin[responder][1][newdst] = 0
             responder_origin[responder][1][newdst] += 1
-
+            if isinstance(icmpdata.data.data, dpkt.tcp.TCP):
+                print "FOO"
             if isinstance(icmpdata, dpkt.icmp.ICMP.TimeExceed):
                 """ """
                 icmp_stats["TimeExceed"][0] += 1
