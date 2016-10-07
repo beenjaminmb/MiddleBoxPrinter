@@ -81,15 +81,15 @@ def process_ICMP(**kwargs):
             elif isinstance(icmpdata.data.data, dpkt.udp.UDP):
                 if collect_udp:
                     collect_udp = False
-                    total_udp_response += 1
+                    total_udp_responses += 1
             elif isinstance(icmpdata.data.data, dpkt.icmp.ICMP):
                 if collect_icmp:
                     collect_icmp = False
-                    total_icmp_response += 1
+                    total_icmp_responses += 1
             else:
                 if collect_other:
                     collect_other = False
-                    total_other_response += 1
+                    total_other_responses += 1
             if newdst not in responder_origin[responder][1]:
                 responder_origin[responder][1][newdst] = 0
             responder_origin[responder][1][newdst] += 1
