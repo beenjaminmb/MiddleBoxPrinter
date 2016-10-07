@@ -46,6 +46,7 @@ def process_ICMP(**kwargs):
     icmp_responses = kwargs["icmp_responses"]
     num_probe_responses = {}
     responder_origin = {}
+    total_tcp_responses = 0
     for (src, dst) in icmp_responses:
         # Source IP and Target IP
         num_probes = len(icmp_responses[(src, dst)])
@@ -54,7 +55,6 @@ def process_ICMP(**kwargs):
             num_probe_responses[num_probes] = 0
         num_probe_responses[num_probes] += 1
         new_msg = True
-        total_tcp_responses = 0
         COLLECT_TCP_RESPONSES = True
         for (psrc, ip) in icmp_responses[(src, dst)]:  # Source IP and Target IP
             # psrc = Source of the probe response
@@ -70,7 +70,9 @@ def process_ICMP(**kwargs):
             newsrc = socket.inet_ntoa(probe.src)
             COLLECT_TCP_RESPONSES = True
             if isinstance(icmpdata.data.data, dpkt.tcp.TCP):
-                total_tcp_responses += 1
+                if COLLECT_TCP_RESPONSES:
+                    COLLECT_TCP_RESPONSES = False
+                    total_tcp_responses += 1
 
             if newdst not in responder_origin[responder][1]:
                 responder_origin[responder][1][newdst] = 0
