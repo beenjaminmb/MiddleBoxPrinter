@@ -196,7 +196,10 @@ def process_TCP(**kwargs):
     for tcp_field in tcp_meta_stats:
         print "TCP Field Distributions: %s" % (tcp_field)
         for fieldval in tcp_meta_stats[tcp_field]:
-            print "\tfield value %s, value count %s" % (fieldval, tcp_meta_stats[tcp_field][fieldval])
+            metafieldval = tcp_meta_stats[tcp_field][fieldval]
+            if tcp_field == "opts":
+                metafieldval = map(ord, fieldval)
+            print "\tfield value %s, value count %s" % (fieldval, metafieldval)
 
 
 def process_pcap(**kwargs):
