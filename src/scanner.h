@@ -197,8 +197,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     printf("Couldn't allocate random_state storage for worker[%d]\n",
 	   id);
     return -1;
-  }
-  
+  }  
 
   if (initstate_r(TEST_SEED, worker->random_state, STATE_SIZE,
 		  worker->random_data) < 0) {
@@ -206,7 +205,6 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 	   id);
     return -1;
   }
-
   
   worker->probe_list = malloc(sizeof(probe_t) * ADDRS_PER_WORKER);
   if (worker->probe_list == NULL) {
@@ -240,7 +238,6 @@ static inline int new_worker(scanner_worker_t *worker, int id)
  *  interface
  *  to get at the statically declared one.
  */
-//static inline scanner_t *new_scanner_singleton()
 
 static inline scanner_t *new_scanner_singleton()
 {

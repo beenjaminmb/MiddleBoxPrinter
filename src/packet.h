@@ -378,7 +378,7 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
 		range_random(MTU - 256, worker->random_data, &result))
       % MTU;
   }
-  worker->probe_list[packet_idx].data_len = data_len;    
+  worker->probe_list[packet_idx].data_len = data_len;
   psh->source_address = inet_addr(source_ip);
   psh->dest_address = 
     worker->probe_list[packet_idx].sin->sin_addr.s_addr;

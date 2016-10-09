@@ -53,7 +53,6 @@ def process_ICMP(**kwargs):
     for (src, dst) in icmp_responses:
         # Source IP and Target IP
         num_probes = len(icmp_responses[(src, dst)])
-
         if num_probes not in num_probe_responses:
             num_probe_responses[num_probes] = 0
         num_probe_responses[num_probes] += 1
@@ -69,7 +68,7 @@ def process_ICMP(**kwargs):
             responder = socket.inet_ntoa(ip.src)
             if responder not in responder_origin:
                 responder_origin[responder] = [0, {}]
-            responder_origin[responder][0] == 1
+            responder_origin[responder][0] += 1
             icmpdata = icmp.data
             probe = icmpdata.data
             newdst = socket.inet_ntoa(probe.dst)
@@ -138,7 +137,7 @@ def process_ICMP(**kwargs):
 
     print "Response Stats:"
     for responder in responder_origin:
-        print "\t Responder: %s %s" % (responder, responder_origin[responder][0])
+        print "\t Responder: %s %s" % (responder, responder_origin[responder][1])
         for newdst in responder_origin[responder][1]:
             print "\t\tTarget: %s, #probes %s" % (newdst, responder_origin[responder][1][newdst])
 
