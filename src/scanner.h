@@ -59,6 +59,7 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
   int result;
 
   iph->ttl = ttl;
+  iph->check = 0;
   if ( worker->probe_list[probe_idx].good_csum ) {
     iph->check = csum((unsigned short *)packet_buffer,
 		      iph->tot_len);
@@ -104,6 +105,7 @@ static inline void *worker_routine(void *vself)
       make_packet((unsigned char *)&self->probe_list[i].probe_buff, 
 		  self, i);
     }
+
     int ttl = START_TTL;
     self->current_ttl = START_TTL;
     int probe_idx = self->probe_idx;
