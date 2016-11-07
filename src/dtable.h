@@ -4,44 +4,67 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <assert.h>
 #define INIT_DICT_SIZE 8 
 
 static unsigned long make_key(void *value, int right);
+int list_append_helper(list_t *l, void *value);
+
+typedef struct list_node_t {
+  struct list_node_t *prev;
+  struct list_node_t *next;
+  void *value;
+} list_node_t;
+
 
 typedef struct list_t {
-  struct list_t *prev;
-  struct list_t *next;
-  void *value;
+  list_node_t *list;
 } list_t;
 
+int list_empty(list_t *l)
+{
+  return l->list == NULL;
+}
 
-list_t * new_list(void *value){
+list_t * new_list(){
   list_t *l = malloc(sizeof(list_t));
-  l->prev = NULL;
-  l->next = NULL;
-  l->value = value;
+  l->list = NULL;
   return l;
 }
 
-void list_insert(list_t *list, void *value)
-{
-  
-  if (list->next == NULL){
-    list_t *current = new_list(value);
-    
-    list->next = current;
-    current->prev = list;
-    current->next = NULL;
-    return ;
+int list_insert(list_t *l, void *value) {
+  assert( (l != NULL) );
+
+  if ( l->list == NULL ) {
+    l->list = malloc(sizeof(list_node_t));
+    l->list->next = NULL;
+    l->list->prev = NULL;
+    l->list->value = value;
+    return 0;
   }
-  list_insert(list->next, value);
-  return ;
+  else {
+    return list_append_helper(l->list, value);
+  }
+}
+int list_append_helper(list_t *l, void *value)
+{
+  list_node_t *prev = l->list;
+  list_node_t *current = malloc(sizeof(list_node_t));
+  current->value = value;
+  prev->prev = current;
+  l->list = current;
+  current->next = prev;
+  current->prev = NULL;
+  return 0;
 }
 
-list_t* list_find(list_t *list, void *value)
+list_t* list_find(list_t *l, void *value) {
+  return list_find_helper(l->list, value);
+}
+
+list_t* list_find_helper(list_node_t *list, void *value)
 {
-  if (value == NULL) return NULL;
+  if (list == NULL) return NULL;
   if (list->next == NULL) {
     if (list->value == value) return list;
     else return NULL;
@@ -50,8 +73,12 @@ list_t* list_find(list_t *list, void *value)
   else return list_find(list->next, value);
 }
 
-list_t* list_remove(list_t *list, void *value){
-  list_t *l = list_find(list, value);
+list_t* list_remove (list_t *l, void *value){
+  return list_remove_helper(l->list, value);
+}
+
+list_t* list_remove_helper(list_node_t *l, void *value){
+  list_node_t *l = list_find(l, value);
   if (l == NULL) return NULL; // The list didn't contain the element.
   if (l->prev == NULL && l->next == NULL) { // One element list
     goto FINISH;
@@ -94,20 +121,25 @@ int dict_insert(dict *d, void *value)
   d->N = N;
   unsigned long key = make_key(value, size);
   if (((float)N/(float)d->size) <= 3/4.0) {
-    list_insert(&(d->elements[key]), value);
+    return list_insert(&(d->elements[key]), value);
   }
   else {
-    dict *dd = malloc( size * 2 * sizeof(list_t) );
+    dict *dd = malloc(sizeof(dict));
+    dd->elements = malloc( size * 2 * sizeof(list_t) ); 
     dd->N = N;
-    dd->size = size;
-    list_t *current = &(d->elements[0]);
-    for (int i = 0; i < N; i++) {
-      for (current = &(d->elements[i]); current != NULL;) {
-	current = list_remove(&(d->elements[i]), current->value);
-	key = make_key(current->value, size*2);
-	list_insert(&(dd->elements[key]), current->value);
-	free(current);
-      }
+    dd->size = size * 2;
+    for (int i = 0; i < size; i++) {
+      // for (current = &(d->elements[i]); current != NULL; current = (d->elements[i].next)) {
+      list_t *current = &(d->elements[i]);
+      while ( current && )
+	{
+	    key = make_key(current->value, size * 2);
+	    list_insert(&(dd->elements[key]), current->value);
+	    list_t *tmp = current->next; 
+	    current = list_remove(&(d->elements[i]), current->value);
+	    free(current);
+	    current = tmp;
+	}
     }
     return 0;
   }
@@ -119,8 +151,7 @@ int dict_delete(dict *d, void *value){
   int size = d->size;
   unsigned long key = make_key(value, size);
   if (((float) N)/((float) size) >= 1/4.0) { // We haven't reached the desired load factor.
-    list_insert(&(d->elements[key]), value);
-    return 0;
+    return list_insert(&(d->elements[key]), value);
   }
   else { // We are lower than the desired load factor.
     dict *dd = malloc( (size / 2) * sizeof(list_t));
@@ -141,13 +172,13 @@ int dict_delete(dict *d, void *value){
 
 static unsigned long make_key(void *value, int right)
 {
-  char *str = malloc(sizeof("0xffffffffffffffff") + 1);
-  sscanf(str, "%s", value);
-  
+  char *str = malloc(sizeof("0xffffffffffffffff\0") + 1);
   printf("%s %d %s %p\n", __func__, __LINE__, str, value);
+  sscanf(value, "%s", str);
   unsigned long hash = 5381;
   int c;
-  while (c = *str++)
+  char *tmp = str;
+  while ( (c = *tmp++) )
     hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
   free(str);
   return (unsigned long)(hash % right);
