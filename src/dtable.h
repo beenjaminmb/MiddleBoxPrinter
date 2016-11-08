@@ -83,7 +83,10 @@ list_node_t* list_find_helper(list_node_t *list, void *value)
 list_node_t* list_remove(list_t *l, void *value){
   l->size -= 1;
   list_node_t *element = list_find(l, value);
-  element = list_remove_helper(element, value);
+  if (l->list == element) {
+    l->list = element->next;
+  }
+  element = list_remove_helper(element, value);  
   return element;
 }
 

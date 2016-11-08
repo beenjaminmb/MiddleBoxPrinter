@@ -13,22 +13,27 @@ char *names_list[] = {"a\0", "b\0", "c\0", "d\0",
 
 int test_list_insert() {
   list_t *l = new_list();
+  printf("TEST: list insert\n");
   for (int i = 0; i < 26; i++) {
-    list_insert(&l, names_list[i]);
+    list_insert(l, names_list[i]);
   }
 
   list_node_t *current = l->list;
+  printf("TEST: list delete\n");
   while ( current ) {
     list_node_t *next = current->next;
-    current = list_remove(l, current);
+    current = list_remove(l, current->value);
+    printf("current->value = %s\n", ((char* )current->value));
     if (current->next != NULL) {
       printf("ERROR: next pointer is not NULL\n");
     }
     if (current->prev != NULL) {
       printf("ERROR: prev pointer is not NULL\n");
     }
+    free(current);
     current = next;
   }
+  free(l);
   return 0;
 }
 
