@@ -26,7 +26,7 @@
 //#define PERFORMANCE_DEBUG 1
 
 #define PACKET_LEN 2048
-#define START_TTL 2
+#define START_TTL 64
 #if PERFORMANCE_DEBUG == 1
   #define END_TTL 3
   #define START_TIMER(seconds) (seconds = -wall_time())
@@ -79,26 +79,30 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
 			      int packet_idx)
   __attribute__((always_inline));
 
-static inline tcphdr *make_tcpheader(unsigned char *restrict buffer, 
+static inline int
+make_phase1_packet(unsigned char *restrict packet_buffer,
+		   scanner_worker_t *restrict worker,
+		   int packet_idx)
+  __attribute__((always_inline));
+
+static inline tcphdr *make_tcpheader(unsigned char *restrict buffer,
 				     scanner_worker_t *restrict worker,
-				     int probe_idx) 
+				     int probe_idx)
   __attribute__((always_inline));
 
 static inline void 
 generate_destination_ip(char *restrict dst_ip, 
-			       scanner_worker_t *restrict worker)
+			scanner_worker_t *restrict worker)
   __attribute__((always_inline));
 
-
 static inline icmphdr *make_icmpheader(unsigned char *restrict buffer, 
-				       scanner_worker_t 
-				       *restrict worker, 
+				       scanner_worker_t
+				       *restrict worker,
 				       int datalen)
   __attribute__((always_inline));
 
-
 static inline udphdr *make_udpheader(unsigned char *buffer,
-				     scanner_worker_t *restrict 
+				     scanner_worker_t *restrict
 				     worker,
 				     int datalen)
   __attribute__((always_inline));
@@ -299,9 +303,10 @@ static inline tcphdr *make_tcpheader(unsigned char *restrict buffer,
   return tcph;
 }
 
-static inline iphdr *make_ipheader(unsigned char *restrict buffer, 
-				   struct sockaddr_in *restrict sin, 
-				   int datalen)
+static inline iphdr 
+*make_ipheader(unsigned char *restrict buffer, 
+	       struct sockaddr_in *restrict sin, 
+	       int datalen)
 {
   iphdr *iph = (iphdr *)buffer;
   iph->ihl = 5;
@@ -313,6 +318,7 @@ static inline iphdr *make_ipheader(unsigned char *restrict buffer,
   iph->check = 0;
   iph->saddr = inet_addr( SRC_IP );
   iph->daddr = sin->sin_addr.s_addr;
+  iph->check = 0;
   return iph;
 }
 
@@ -433,4 +439,102 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
   psh = NULL;
   return 0;
 }
+
+
+static inline int 
+make_phase1_packet(unsigned char *restrict packet_buffer,
+		   scanner_worker_t *restrict worker,
+		   int packet_idx)
+{
+  int result;
+  int data_len = range_random(MTU - 256, worker->random_data, &result);
+  char *src_ip = SRC_IP;
+  long prand = range_random(100, worker->random_data, &result);
+  pseudo_header *psh = malloc(sizeof(pseudo_header));
+  char *pseudogram = NULL, source_ip[32], dst_ip[32];
+  generate_destination_ip((char*)dst_ip, worker);
+  strcpy(source_ip, src_ip); // This can be optimized at some point.
+  memset(packet_buffer, 0, MTU);
+  worker->probe_list[packet_idx].sin->sin_addr.s_addr = 
+    inet_addr(dst_ip);
+  worker->probe_list[packet_idx].sin->sin_family = AF_INET;
+  iphdr *ip = make_ipheader(packet_buffer, 
+			    worker->probe_list[packet_idx].sin, 
+			    data_len);
+  
+  if (range_random(100, worker->random_data, &result) < 90) {
+    worker->probe_list[packet_idx].good_csum = TRUE;
+  }
+  else {
+    worker->probe_list[packet_idx].good_csum = FALSE;
+    data_len = (data_len + 
+		range_random(MTU - 256, worker->random_data, &result))
+      % MTU;
+  }
+  worker->probe_list[packet_idx].data_len = data_len;
+  psh->source_address = inet_addr(source_ip);
+  psh->dest_address = 
+    worker->probe_list[packet_idx].sin->sin_addr.s_addr;
+  psh->placeholder = 0;
+  if ( DO_TCP(prand) ) { /* Make a TCP packet */
+    worker->probe_list[packet_idx].proto = IPPROTO_TCP; 
+    ip->tot_len = sizeof(iphdr) + sizeof(tcphdr) + data_len;
+    ip->protocol = IPPROTO_TCP;
+    tcphdr *tcph = make_tcpheader(packet_buffer, worker, packet_idx);
+    psh->protocol = IPPROTO_TCP;
+    psh->total_length = htons(sizeof(tcphdr) + data_len);
+    int psize = sizeof(pseudo_header) + sizeof(tcphdr) + data_len;
+    pseudogram = malloc(psize);
+    memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
+    memcpy(pseudogram + sizeof(pseudo_header), tcph,
+	   sizeof(tcphdr) + data_len);
+    tcph->check = csum((unsigned short*)pseudogram, psize);
+    goto DONE;
+  }
+  else if ( DO_UDP(prand) ) { /* Make a UDP */
+    ip->tot_len = sizeof(iphdr) + sizeof(udphdr) + data_len;
+    ip->protocol = IPPROTO_UDP;
+    worker->probe_list[packet_idx].proto = IPPROTO_UDP;
+    udphdr *udph = make_udpheader(packet_buffer, worker, data_len);
+    psh->protocol = IPPROTO_UDP;
+    psh->total_length = htons(sizeof(udphdr) + data_len);
+    int psize = sizeof(pseudo_header) + sizeof(udphdr) + data_len;
+    pseudogram = malloc(psize);
+    memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
+    memcpy(pseudogram + sizeof(pseudo_header), udph,
+	   sizeof(udphdr) + data_len);
+    udph->check = csum((unsigned short*) pseudogram, psize);
+    goto DONE;
+  }
+  else if ( DO_ICMP(prand) ) { /* Make ICMP packet */
+    ip->tot_len = sizeof(iphdr) + sizeof(icmphdr) + data_len;
+    ip->protocol = IPPROTO_ICMP;
+    worker->probe_list[packet_idx].proto = IPPROTO_ICMP;
+    icmphdr *icmph = make_icmpheader(packet_buffer, worker, 0);
+    icmph->checksum = csum((unsigned short*) icmph, sizeof(icmphdr));
+    goto RETURN;
+  }
+  else {/* random junk */
+    worker->probe_list[packet_idx].proto = 0xff;
+    make_junk_header(packet_buffer, worker, data_len);
+  } 
+ DONE:
+  free(pseudogram);
+  pseudogram = NULL;
+ RETURN:
+  free(psh);
+  psh = NULL;
+
+  if ( worker->probe_list[packet_idx].good_csum ) {
+    ip->check = csum((unsigned short *)packet_buffer,
+		     ip->tot_len);
+  }
+  else {
+    ip->check = range_random(65536, worker->random_data,
+			     &result);
+  }
+
+  return 0;
+}
+
 #endif /* _PACKET_ */

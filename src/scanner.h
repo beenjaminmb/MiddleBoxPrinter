@@ -57,9 +57,6 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
   iphdr *iph = (iphdr *)packet_buffer;
   int len = iph->tot_len;
   int result;
-
-  iph->ttl = ttl;
-  iph->check = 0;
   if ( worker->probe_list[probe_idx].good_csum ) {
     iph->check = csum((unsigned short *)packet_buffer,
 		      iph->tot_len);
@@ -76,6 +73,57 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
   return ;
 }
 
+
+static inline void
+send_phase1_packet(unsigned char *restrict packet_buffer, 
+		   scanner_worker_t *restrict worker, int probe_idx,
+		   int sockfd)
+{
+  struct sockaddr *dest_addr =
+    (struct sockaddr *)worker->probe_list[probe_idx].sin;
+  iphdr *iph = (iphdr *)packet_buffer;
+  int len = iph->tot_len;
+  sendto(sockfd, packet_buffer, len, 0, dest_addr, 
+	 sizeof(struct sockaddr));
+
+  return ;
+}
+
+
+/**
+ * @param vself: Generic pointer to a scanner_worker_t.
+ * @return: Always return
+ *
+ * Overview:
+ * 
+ * 1. Generates packets based on my randomized
+ * algorithm for setting fields.
+ * 
+ * 2. Send packets from (1).
+ * 
+ * 3. Once finished, find packets that illicited a response.
+ * 
+ */
+static inline void *find_responses(void *vself)
+{
+  scanner_worker_t *self = vself;
+  
+  for (int i = 0; i < ADDRS_PER_WORKER; i++) {
+    make_phase1_packet((unsigned char *)
+		       &self->probe_list[i].probe_buff,
+		       self, i);
+  }
+  
+  int probe_idx = self->probe_idx;
+  for (; probe_idx < ADDRS_PER_WORKER; probe_idx++) {
+    send_phase1_packet((unsigned char *)
+		       &self->probe_list[probe_idx].probe_buff,
+		       self, probe_idx, self->ssocket->sockfd);
+  }
+  return NULL;
+}
+
+
 /**
  * This is the worker routine that generates packets with varying 
  * fields. Spins up a sniffer thread with with appropriate 
@@ -84,7 +132,7 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
  * @param: vself. A void pointer to the worker that is actually
  * sending of packets.
  *
- * @return: Allows returns NULL.
+ * @return: Always returns NULL.
  */
 static inline void *worker_routine(void *vself)
 {
@@ -244,7 +292,9 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 
 static inline scanner_t *new_scanner_singleton()
 {
-  if ( scanner ) return scanner;
+  if ( scanner ) {
+    return scanner;
+  }
   scanner = malloc(sizeof(scanner_t));
   scanner->keep_scanning = 1;
   scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
@@ -254,11 +304,15 @@ static inline scanner_t *new_scanner_singleton()
     }
   }
   scanner->continue_lock = malloc(sizeof(pthread_mutex_t));
-  if ((long)scanner->continue_lock == -1) return NULL;
+  if ((long)scanner->continue_lock == -1) {
+    return NULL;
+  }
   pthread_mutex_init(scanner->continue_lock, NULL);
   
   scanner->continue_cond = malloc(sizeof(pthread_cond_t));
-  if ((long)scanner->continue_cond == -1) return NULL;
+  if ((long)scanner->continue_cond == -1) {
+    return NULL;
+  }
   pthread_cond_init(scanner->continue_cond, NULL);
   return scanner;
 }

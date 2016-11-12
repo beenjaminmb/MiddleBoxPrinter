@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "dtable.h"
+#include "util.h"
 
 #define SIZE 52
 
@@ -113,9 +114,16 @@ int test_dict_delete() {
   return 0;
 }
 
+int test_read_ip_addresses(){
+  dict *d = new_dict();
+  read_blacklist(&d);
+  return 0;
+}
+
 int main(void) {
-  assert( test_dict_insert() == 0);
-  assert( test_dict_delete() == 0);
-  assert( test_dict_member() == 0);
+  assert( test_dict_insert() == 0 );
+  assert( test_dict_delete() == 0 );
+  assert( test_dict_member() == 0 );
+  assert( test_read_ip_addresses() == 0 );
   return 0;
 }
