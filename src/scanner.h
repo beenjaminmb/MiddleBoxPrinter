@@ -114,11 +114,13 @@ static inline void *find_responses(void *vself)
 		       self, i);
   }
   
-  int probe_idx = self->probe_idx;
-  for (; probe_idx < ADDRS_PER_WORKER; probe_idx++) {
-    send_phase1_packet((unsigned char *)
-		       &self->probe_list[probe_idx].probe_buff,
-		       self, probe_idx, self->ssocket->sockfd);
+  for (int i = 0; i <  ADDRS_PER_WORKER; i++) {
+    for (int probe_idx = 0;
+	 probe_idx < ADDRS_PER_WORKER; probe_idx++) {
+      send_phase1_packet((unsigned char *)
+			 &self->probe_list[probe_idx].probe_buff,
+			 self, probe_idx, self->ssocket->sockfd);
+    }
   }
   return NULL;
 }
@@ -187,7 +189,7 @@ static inline int scanner_main_loop()
   pthread_mutex_lock(scanner->continue_lock);
   for (int i = 0; i < MAX_WORKERS; i++) {
     if (pthread_create(scanner->workers[i].thread, NULL,
-		       worker_routine,
+		       find_responses,
 		       (void *)&scanner->workers[i]) < 0) {
       printf("Couldn't initialize thread for worker[%d]\n", i);
       exit(-1);
