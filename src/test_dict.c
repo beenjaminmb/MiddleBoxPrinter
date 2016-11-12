@@ -23,7 +23,6 @@ int test_list_insert() {
   while ( current ) {
     list_node_t *next = current->next;
     current = list_remove(l, current->value);
-    printf("current->value = %s\n", ((char* )current->value));
     if (current->next != NULL) {
       printf("ERROR: next pointer is not NULL\n");
     }
@@ -39,17 +38,32 @@ int test_list_insert() {
 
 int test_dict_insert() {
   dict *d = new_dict();
-  printf("Dynamic hash table implementation test\n");
+  printf("TEST: table insert\n");
   for (int i = 0; i < 26; i++) {
-    printf("i = %d\n", i);
     dict_insert(&d, names_list[i]);
+  }
+  printf("%s %d %d %d\n", __func__, __LINE__, d->N, d->size);
+  dict_destroy(d);
+  return 0;
+}
+
+int test_dict_delete() {
+  dict *d = new_dict();
+  printf("TEST: table delete\n");
+  for (int i = 0; i < 26; i++) {
+    dict_insert(&d, names_list[i]);
+  }
+
+  for (int i = 0; i < 26; i++) {
+    dict_delete(&d, names_list[i]);
   }
   dict_destroy(d);
   printf("%s %d %d %d\n", __func__, __LINE__, d->N, d->size);
-
+  return 0;
 }
-int main(void) {
-  test_list_insert();
 
+int main(void) {
+  //assert( test_dict_insert() == 0);
+  assert( test_dict_delete() == 0);
   return 0;
 }

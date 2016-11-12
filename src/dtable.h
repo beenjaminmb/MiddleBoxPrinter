@@ -125,6 +125,8 @@ typedef struct hash_table
   int N; // Number of elements currently in the hash table
 } dict;
 
+int dict_delete(dict **dp, void *value);
+int dict_destroy(dict  *d);
 
 dict *new_dict()
 {
@@ -162,59 +164,63 @@ int dict_insert(dict **dp, void *value)
       list_node_t *current = l->list;
       while ( current ) {
 	list_node_t *tmp = current->next;
-	current = list_remove(d->elements[i], current->value);
-	if (current->next != NULL || current->prev != NULL) {
-	  current->next = NULL;
-	  current->prev = NULL;
-	}
 	key = make_key(current->value, size * 2);
 	list_insert(dd->elements[key], current->value);
-	free(current);
-	printf("\t%s %d key = %x\n", __func__, __LINE__, key);
 	current = tmp;
-      } 
-      printf("\t%s %d key = %x\n", __func__, __LINE__, key);
+      }
     }
     dict_destroy(d);
+    d = NULL;
     *dp = dd;
-    return 0;
+    return dict_insert(dp, value);
   }
 }
 
-int dict_delete(dict *d, void *value){
+int dict_delete(dict **dp, void *value){
 //left is always zero, right is the parameter
+  dict *d = *dp;
   int N = d->N - 1;
   int size = d->size;
   unsigned long key = make_key(value, size);
-  if (((float) N)/((float) size) >= 1/4.0) { // We haven't reached the desired load factor.
-    return list_insert(d->elements[key], value);
+  if (((float) N)/((float) size) >= 1/4.0) {
+    // We haven't reached the desired load factor.
+    list_node_t *l = list_remove(d->elements[key], value);
+    free(l);
+    return 0;
   }
   else { // We are lower than the desired load factor.
-    dict *dd = malloc( (size / 2) * sizeof(list_t));
+    int new_size = ((size / 2) >= INIT_DICT_SIZE) ? 
+      (size / 2) : INIT_DICT_SIZE;
+    dict *dd = malloc(sizeof(dict));
+    dd->elements = malloc( new_size * sizeof(list_t) ); 
     dd->N = N;
-    dd->size = size/2;
+    dd->size = new_size;
+    for (int i = 0; i < new_size; i++) {
+      dd->elements[i] = new_list();
+    }
+    
     for (int i = 0; i < size; i++) {
       list_t *l = d->elements[i];
       list_node_t *current = l->list;
       while ( current ) {
 	list_node_t *tmp = current->next;
-	current = list_remove(d->elements[i], current->value);
-	key = make_key(current->value, size/2);
+	key = make_key(current->value, new_size);
 	list_insert(dd->elements[key], current->value);
-	free(current);
 	current = tmp;
       }
-      free(d->elements[i]->list);
     }
-    return 0;
+    dict_destroy(d);
+    d = NULL;
+    *dp = dd;
+    return dict_delete(dp, value);
   }
 }
 
 int dict_destroy(dict  *d) {
   int size = d->size;
-  for (int i = 0; i < size; i++) {
-    list_t *l = d->elements[i];
-    if ( l != NULL ) {
+  for (int i = size-1; i >= 0; i--) {
+    if ( d && d->elements && d->elements[i] != NULL ) {
+      list_t *l = d->elements[i];
       list_node_t *current = l->list;
       if (current == NULL) {
 	free(d->elements[i]->list);
@@ -226,6 +232,7 @@ int dict_destroy(dict  *d) {
 	  current = tmp;
 	}
       }
+      free(l);
     }
   }
   free(d->elements);

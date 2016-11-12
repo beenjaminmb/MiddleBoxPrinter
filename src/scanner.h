@@ -42,17 +42,17 @@ static inline int scanner_main_loop() __attribute__((always_inline));
 static inline int new_worker(scanner_worker_t *worker, int id)  
   __attribute__((always_inline));
 
-static inline scanner_t *new_scanner_singleton() 
+static inline scanner_t *new_scanner_singleton()
   __attribute__((always_inline));
 
 void got_packet(u_char * restrict args, const struct pcap_pkthdr * restrict header, const u_char *restrict packet);
 
-static inline void 
+static inline void
 send_scan_packet(unsigned char *restrict packet_buffer, int sockfd, 
 		 scanner_worker_t *restrict worker, int probe_idx,
 		 int ttl)
 {
-  struct sockaddr *dest_addr = 
+  struct sockaddr *dest_addr =
     (struct sockaddr *)worker->probe_list[probe_idx].sin;
   iphdr *iph = (iphdr *)packet_buffer;
   int len = iph->tot_len;
@@ -64,7 +64,7 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
     iph->check = csum((unsigned short *)packet_buffer,
 		      iph->tot_len);
   }
-  
+
   else {
     iph->check = range_random(65536, worker->random_data,
 			      &result);
@@ -102,8 +102,8 @@ static inline void *worker_routine(void *vself)
       break;
     }
     for (int i = 0; i < ADDRS_PER_WORKER; i++) {
-      make_packet((unsigned char *)&self->probe_list[i].probe_buff, 
-		  self, i);
+      make_packet ((unsigned char *)&self->probe_list[i].probe_buff,
+		   self, i);
     }
 
     int ttl = START_TTL;
@@ -125,7 +125,8 @@ static inline void *worker_routine(void *vself)
       self->probe_idx = 0;
     }
   }
-  printf("Done scanning. Total scan time %f sec\n", (end_time - start_time));
+  printf("Done scanning. Total scan time %f sec\n",
+	 (end_time - start_time));
   return NULL;
 }
 
