@@ -22,9 +22,9 @@ typedef struct list_t {
 
 
 static unsigned long make_key(void *value, int right);
-int list_append_helper(list_t *l, void *value);
-list_node_t* list_find_helper(list_node_t *list, void *value);
-list_node_t* list_remove_helper(list_node_t *l, void *value);
+static int list_append_helper(list_t *l, void *value);
+static list_node_t* list_find_helper(list_node_t *list, void *value);
+static list_node_t* list_remove_helper(list_node_t *l, void *value);
 
 int list_empty(list_t *l)
 {
@@ -52,7 +52,7 @@ int list_insert(list_t *l, void *value) {
     return list_append_helper(l, value);
   }
 }
-int list_append_helper(list_t *l, void *value)
+static int list_append_helper(list_t *l, void *value)
 {
   list_node_t *next = l->list;
   list_node_t *current = malloc(sizeof(list_node_t));
@@ -69,7 +69,7 @@ list_node_t* list_find(list_t *l, void *value) {
   return element;
 }
 
-list_node_t* list_find_helper(list_node_t *list, void *value)
+static list_node_t* list_find_helper(list_node_t *list, void *value)
 {
   if (list == NULL) return NULL;
   if (list->next == NULL) {
@@ -90,7 +90,7 @@ list_node_t* list_remove(list_t *l, void *value){
   return element;
 }
 
-list_node_t* list_remove_helper(list_node_t *l, void *value){
+static list_node_t* list_remove_helper(list_node_t *l, void *value){
   if (l == NULL) return NULL; // The list didn't contain the element.
   list_node_t *next = l->next;
   list_node_t *prev = l->prev;
@@ -240,8 +240,23 @@ int dict_destroy(dict  *d) {
   return 0;  
 }
 
+int dict_member(dict *d, void *value)
+{
+  unsigned long key = make_key(value, d->size);
+  list_node_t *l = list_find(d->elements[key], value);
+  int ismember = l ? (l->value == value) : 0;
+  return ismember;
+}
+
+/**
+ * Generate a hash in [0, right). The corner case if value is null is to
+ * return 0. This could be very bad if we have a lot of null values which
+ * SHOULD NEVER happen.
+ */
 static unsigned long make_key(void *value, int right)
 {
+  if (value == NULL)
+    return 0;
   char *str = malloc(sizeof("0xffffffffffffffff\0") + 1);
   sscanf(value, "%s", str);
   unsigned long hash = 5381;

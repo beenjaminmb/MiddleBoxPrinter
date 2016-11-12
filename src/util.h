@@ -9,6 +9,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include "dtable.h"
 /*https://stackoverflow.com/questions/2509679/how-to-generate-a-random-number-from-within-a-range */
 
 #define TRUE 1
@@ -50,4 +51,9 @@ static inline double wall_time()
   return 1. * t.tv_sec + 1.e-6 * t.tv_usec;
 }
 
+
+static void read_blacklist(dict *)
+{
+  
+}
 #endif /* _UTIL_ */
