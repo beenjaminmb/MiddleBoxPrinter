@@ -92,6 +92,39 @@ got_packet(u_char * restrict args,
 	   const struct pcap_pkthdr * restrict header,
 	   const u_char *restrict packet);
 
+
+static inline void start_sniffer() 
+  __attribute__((always_inline));
+
+static inline void stop_sniffer() 
+  __attribute__((always_inline));
+
+static inline void generate_phase2_packets()
+  __attribute__((always_inline));
+
+
+
+static inline void start_sniffer() 
+{
+  assert(0);
+  return;
+  
+}
+static inline void stop_sniffer() 
+{
+  assert(0);
+  return;
+}
+
+
+static inline void generate_phase2_packets()
+{
+  assert(0);
+  return;
+}
+
+
+
 static inline void
 send_scan_packet(unsigned char *restrict packet_buffer, int sockfd, 
 		 scanner_worker_t *restrict worker, int probe_idx,
@@ -198,6 +231,22 @@ static inline void phase2(scanner_worker_t *self)
   return;
 }
 
+static inline void phase2_wait(scanner_worker_t *self)
+  __attribute__((always_inline));
+
+static inline void phase2_wait(scanner_worker_t *self)
+{
+
+  pthread_mutex_lock(self->scanner->phase2_wait_lock);
+  while( self->scanner->phase2_wait ) {
+    pthread_cond_wait(self->scanner->phase2_wait_cond,
+		      self->scanner->phase2_wait_lock);
+  }
+  pthread_mutex_unlock(self->scanner->phase2_wait_lock);
+
+  return;
+}
+
 /**
  * @param vself: Generic pointer to a scanner_worker_t.
  * @return: Always return
@@ -217,13 +266,7 @@ static inline void *find_responses(void *vself)
   scanner_worker_t *self = vself;
   phase1(self);
 
-  pthread_mutex_lock(self->scanner->phase2_wait_lock);
-  while( self->scanner->phase2_wait ) {
-    pthread_cond_wait(self->scanner->phase2_wait_cond,
-		      self->scanner->phase2_wait_lock);
-  }
-  pthread_mutex_unlock(self->scanner->phase2_wait_lock);
-
+  phase2_wait(self);
   phase2(self);
 
   printf("DONE\n");
@@ -292,6 +335,11 @@ static inline int scanner_main_loop()
 {
   new_scanner_singleton();
   pthread_mutex_lock(scanner->continue_lock);
+  pthread_mutex_lock(scanner->phase1_lock);
+  pthread_mutex_lock(scanner->phase2_lock);
+  pthread_mutex_lock(scanner->phase2_wait_lock);
+
+  start_sniffer();
   for (int i = 0; i < MAX_WORKERS; i++) {
     if (pthread_create(scanner->workers[i].thread, NULL,
 		       find_responses,
@@ -301,14 +349,26 @@ static inline int scanner_main_loop()
     }
   }
   
-  pthread_mutex_lock(scanner->phase1_lock);
-  pthread_mutex_lock(scanner->phase2_lock);
-  pthread_mutex_lock(scanner->phase2_wait_lock);
 
   while(scanner->phase1 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase1_cond, scanner->phase1_lock);
   }
+  /** 
+   * By this point, all of the workers should have 
+   * finished sending all of their phase 1 probes.
+   */
   pthread_mutex_unlock(scanner->phase1_lock);
+  
+  /* 
+   * We should wait 1 minute before signalling the 
+   * sniffer to pause sniffing.
+   */
+  sleep(60);
+
+  stop_sniffer();
+
+  generate_phase2_packets();
+
   
   scanner->phase2_wait = 0;
   pthread_cond_signal(scanner->phase2_wait_cond);
