@@ -4,7 +4,7 @@ CFLAGS=-O0 -g -Wall -std=gnu99
 
 LDLIBS=-pthread -lpcap
 
-targets = main.c dtable.c
+targets = main.c dtable.c scanner.c
 unittests = unit_tests.c
 tablesrc = test_dict.c dtable.c
 
