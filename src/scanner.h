@@ -22,7 +22,6 @@
 #define STATE_SIZE 8
 #define SCAN_DURATION 3600.0
 
-
 typedef struct scanner_t {
   scanner_worker_t *workers;
   pthread_mutex_t *continue_lock;
@@ -37,7 +36,6 @@ typedef struct scanner_t {
   pthread_mutex_t *phase2_wait_lock;
   pthread_cond_t *phase2_wait_cond;
 
-
   int keep_scanning;
   int phase1;
   int phase2;
@@ -46,10 +44,11 @@ typedef struct scanner_t {
 
 static scanner_t *scanner = NULL;
 
-static inline void send_scan_packet(unsigned char *restrict packet_buffer, 
-				    int sockfd, 
-				    scanner_worker_t *restrict worker,
-				    int probe_idx, int ttl)
+static inline void
+send_scan_packet(unsigned char *restrict packet_buffer, 
+		 int sockfd, 
+		 scanner_worker_t *restrict worker,
+		 int probe_idx, int ttl)
   __attribute__((always_inline));
 
 static inline void *worker_routine(void* vself) 
@@ -73,6 +72,19 @@ static inline void phase1(scanner_worker_t *self)
   __attribute__((always_inline));
 
 static inline void phase2(scanner_worker_t *self)
+  __attribute__((always_inline));
+
+
+static inline void delete_conds(scanner_t *scanner)
+  __attribute__((always_inline));
+
+static inline void delete_conds(scanner_t *scanner)
+  __attribute__((always_inline));
+
+static inline void delete_workers(scanner_worker_t *scanner)
+  __attribute__((always_inline));
+
+static inline void delete_scanner(scanner_t *scanner)
   __attribute__((always_inline));
 
 void 
@@ -206,13 +218,12 @@ static inline void *find_responses(void *vself)
   phase1(self);
 
   pthread_mutex_lock(self->scanner->phase2_wait_lock);
-
   while( self->scanner->phase2_wait ) {
     pthread_cond_wait(self->scanner->phase2_wait_cond,
 		      self->scanner->phase2_wait_lock);
   }
-
   pthread_mutex_unlock(self->scanner->phase2_wait_lock);
+
   phase2(self);
 
   printf("DONE\n");
@@ -294,7 +305,6 @@ static inline int scanner_main_loop()
   pthread_mutex_lock(scanner->phase2_lock);
   pthread_mutex_lock(scanner->phase2_wait_lock);
 
-
   while(scanner->phase1 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase1_cond, scanner->phase1_lock);
   }
@@ -303,10 +313,15 @@ static inline int scanner_main_loop()
   scanner->phase2_wait = 0;
   pthread_cond_signal(scanner->phase2_wait_cond);
   pthread_mutex_unlock(scanner->phase2_wait_lock);
+
   while(scanner->phase2 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase2_cond, scanner->phase2_lock);
   }
   pthread_mutex_unlock(scanner->phase2_lock);
+
+  delete_scanner(scanner);
+  free(scanner);
+  scanner = NULL;
   return 0;
 }
 /**
@@ -470,6 +485,7 @@ static inline scanner_t *new_scanner_singleton()
   scanner->phase2 = 0;
   scanner->phase2_wait = 1;
   scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
+
   for (int i = 0 ; i < MAX_WORKERS; i++) {
     if (new_worker(&scanner->workers[i], i) != i) {
       exit(-1);
@@ -483,5 +499,61 @@ static inline scanner_t *new_scanner_singleton()
 
   return scanner;
 }
+
+
+static inline void delete_conds(scanner_t *scanner)
+{
+  free(scanner->continue_cond);
+  free(scanner->phase1_cond);
+  free(scanner->phase2_cond);
+  free(scanner->phase2_wait_cond);
+  return;
+}
+static inline void  delete_locks(scanner_t *scanner)
+{ 
+  free(scanner->continue_lock);
+  free(scanner->phase1_lock);
+  free(scanner->phase2_lock);
+  free(scanner->phase2_wait_lock);
+
+  return;
+}
+
+static inline void delete_workers(scanner_worker_t *worker)
+{
+
+  close(worker->ssocket->sockfd);
+  free(worker->ssocket);
+  worker->ssocket = NULL;
+
+  free(worker->thread);
+  worker->thread = NULL;
+
+  free(worker->random_data);
+  worker->random_data = NULL;  
+
+  free(worker->random_state);
+  worker->random_state = NULL;
+
+  for (int i = 0; i < ADDRS_PER_WORKER; i++) {
+    free(worker->probe_list[i].sin);
+  }
+  free(worker->probe_list);
+  worker->probe_list = NULL;
+  return;
+}
+
+static inline void delete_scanner(scanner_t *scanner)
+{
+  delete_conds(scanner);
+  delete_locks(scanner);
+  for(int i = 0; i < MAX_WORKERS; i++) {
+    delete_workers(&(scanner->workers[i]));
+  }
+  free(scanner->workers);
+  scanner->workers = NULL;
+  return ;
+}
+
 
 #endif /* _SCANNER_ */
