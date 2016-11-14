@@ -12,7 +12,9 @@
 #include "packet.h"
 #include "worker.h"
 #include "util.h"
-#include <pcap/pcap.h>
+#include "sniffer.h"
+#include "dtable.h"
+#include <pcap.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -21,6 +23,7 @@
 #define TEST_SEED 0
 #define STATE_SIZE 8
 #define SCAN_DURATION 3600.0
+#define QR_DICT_SIZE 128
 
 typedef struct scanner_t {
   scanner_worker_t *workers;
@@ -36,6 +39,8 @@ typedef struct scanner_t {
   pthread_mutex_t *phase2_wait_lock;
   pthread_cond_t *phase2_wait_cond;
 
+  sniffer_t *sniffer;
+  
   int keep_scanning;
   int phase1;
   int phase2;
@@ -59,7 +64,15 @@ static inline int scanner_main_loop() __attribute__((always_inline));
 static inline int new_worker(scanner_worker_t *worker, int id)  
   __attribute__((always_inline));
 
-static inline scanner_t *new_scanner_singleton()
+scanner_t *new_scanner_singleton();
+
+static inline void start_sniffer() 
+  __attribute__((always_inline));
+
+static inline void stop_sniffer() 
+  __attribute__((always_inline));
+
+static inline void init_sniffer()
   __attribute__((always_inline));
 
 static inline void
@@ -74,52 +87,123 @@ static inline void phase1(scanner_worker_t *self)
 static inline void phase2(scanner_worker_t *self)
   __attribute__((always_inline));
 
-
-static inline void delete_conds(scanner_t *scanner)
+static inline void delete_sniffer()
   __attribute__((always_inline));
 
-static inline void delete_conds(scanner_t *scanner)
+static inline void delete_conds()
+  __attribute__((always_inline));
+
+static inline void delete_conds()
   __attribute__((always_inline));
 
 static inline void delete_workers(scanner_worker_t *scanner)
   __attribute__((always_inline));
 
-static inline void delete_scanner(scanner_t *scanner)
-  __attribute__((always_inline));
-
+void delete_scanner();
 void 
 got_packet(u_char * restrict args,
 	   const struct pcap_pkthdr * restrict header,
 	   const u_char *restrict packet);
 
 
-static inline void start_sniffer() 
-  __attribute__((always_inline));
-
-static inline void stop_sniffer() 
-  __attribute__((always_inline));
 
 static inline void generate_phase2_packets()
   __attribute__((always_inline));
 
 
+static void *sniffer_function(void * args)
+{
+  sniffer_t *sniffer = scanner->sniffer;
+  int run = 1;
+  struct pcap_pkthdr header;/* The header that pcap gives us */
+  const u_char *packet;/* The actual packet */
+
+  while ( run ) {
+    packet = pcap_next(sniffer->cap_handle, &header);
+    pthread_mutex_lock(sniffer->lock);
+    if ( !sniffer->sniff ) {
+      
+    }
+    pthread_mutex_unlock(sniffer->lock);
+    
+  }
+  
+  
+  return NULL;
+}
 
 static inline void start_sniffer() 
 {
-  assert(0);
+
+  /* if (pthread_create(scanner->workers[i].thread, NULL, */
+  /* 		       find_responses, */
+  /* 		       (void *)&scanner->workers[i]) < 0) { */
+
+  if ((pthread_create(scanner->sniffer->thread, NULL,
+		      sniffer_function,
+		      NULL)) < 0) {
+    printf("%s %d: Scanner couldn't start sniffer thread.\n", __func__, __LINE__);
+    exit(-1);
+  }
+    
   return;
   
 }
+
 static inline void stop_sniffer() 
 {
-  assert(0);
+  
+  sniffer_t * sniffer = scanner->sniffer;
+  pthread_mutex_lock(sniffer->lock);
+  sniffer->sniff = 0;
+  pthread_mutex_unlock(sniffer->lock);
   return;
 }
 
 
+static inline dict_t * split_query_response()
+{
+  /**
+   * 1. R = pcap file sniffer just saved. 
+   * 2. for p in pcap_file
+   * 4.    if p.src == 64.106.82.6: 
+   * 5.       handle_query(p)
+   * 6.    else if p.dst == 64.106.82.6:
+   * 7.       handle_qresponse(p)
+   * 8.    else :
+   * 9.       continue
+   *
+   */
+
+  dict_t *q_r = new_dict_size(QR_DICT_SIZE);
+  return q_r;
+    
+}
+
+static inline void *response_replay()
+{
+
+}
+
 static inline void generate_phase2_packets()
 {
-  assert(0);
+  /**
+   * 1. Split queries and response
+   * 2. Generate response replays.  
+   *    
+   *    For each host that responsded, take its response
+   *    and reply at back to set how people respond to THESE
+   *    packets. 
+   * 
+   * 3. 
+   * 2. For query in : 
+   * 3.   for response in query[response]
+   * 4.      
+   */
+
+  dict_t *query_response = split_query_response();
+
+  dict_destroy(query_response);
   return;
 }
 
@@ -384,6 +468,7 @@ static inline int scanner_main_loop()
   scanner = NULL;
   return 0;
 }
+
 /**
  * Creates a new scanner_worker_t and initializes all of its fields.
  * @param: worker. Pointer to the scanner_worker_t to be initialized
@@ -468,7 +553,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
   return id;
 }
 
-static void init_conds(scanner_t *scanner)
+static inline void init_conds()
 {
 
   scanner->continue_cond = malloc(sizeof(pthread_cond_t));
@@ -499,7 +584,7 @@ static void init_conds(scanner_t *scanner)
   return;
 }
 
-static void init_locks(scanner_t *scanner)
+static inline void init_locks()
 {
   scanner->continue_lock = malloc(sizeof(pthread_mutex_t));
   if ((long)scanner->continue_lock == -1) {
@@ -528,13 +613,56 @@ static void init_locks(scanner_t *scanner)
   return;
 }
 
+
+static inline void init_sniffer()
+{
+  scanner->sniffer = malloc(sizeof(sniffer_t));
+  if (scanner->sniffer == NULL) {
+    printf("%s %d: scannercouldn't allocate sniffer\n",
+	   __func__, __LINE__);
+    exit(-1);
+  }
+
+  scanner->sniffer->thread = malloc(sizeof(pthread_t));
+  if (scanner->sniffer->thread == NULL) {
+    printf("%s %d scanner couldn't allocate sniffer thread\n",
+	   __func__, __LINE__);
+    exit(-1);
+  }
+
+  scanner->sniffer->lock = malloc(sizeof(pthread_mutex_t));
+  if (scanner->sniffer->lock == NULL) {
+    printf("%s %d scanner couldn't allocate sniffer lock\n",
+	   __func__, __LINE__);
+    exit(-1);
+  }
+  pthread_mutex_init(scanner->sniffer->lock, NULL);
+
+  scanner->sniffer->cond = malloc(sizeof(pthread_cond_t));
+  if (scanner->sniffer->cond == NULL) {
+    printf("%s %d scanner couldn't allocate sniffer condition "
+	   "variable\n", __func__, __LINE__);
+    exit(-1);
+  }
+  pthread_cond_init(scanner->sniffer->cond, NULL);
+
+  /* scanner->sniffer->cap_handle = malloc(sizeof(pcap_t)); */
+  /* if (scanner->sniffer->cap_handle == NULL) { */
+  /*   printf("%s %d scanner couldn't allocate sniffer capture handle\n", */
+  /* 	   __func__, __LINE__); */
+  /*   exit(-1); */
+  /* } */
+  scanner->sniffer->sniff = 1;
+  return;  
+}
+
 /** 
  * Either build a scanner singleton or create a completely new one
  *  if we have already built on in the past. This is simply an 
  *  interface
  *  to get at the statically declared one.
  */
-static inline scanner_t *new_scanner_singleton()
+scanner_t *new_scanner_singleton()
 {
   if ( scanner ) {
     return scanner;
@@ -553,15 +681,17 @@ static inline scanner_t *new_scanner_singleton()
     scanner->workers[i].scanner = scanner;
   }
 
-  init_locks(scanner);
+  init_sniffer();
   
-  init_conds(scanner);
+  init_locks();
+  
+  init_conds();
 
   return scanner;
 }
 
 
-static inline void delete_conds(scanner_t *scanner)
+static inline void delete_conds()
 {
   free(scanner->continue_cond);
   free(scanner->phase1_cond);
@@ -569,13 +699,32 @@ static inline void delete_conds(scanner_t *scanner)
   free(scanner->phase2_wait_cond);
   return;
 }
-static inline void  delete_locks(scanner_t *scanner)
+static inline void  delete_locks()
 { 
   free(scanner->continue_lock);
   free(scanner->phase1_lock);
   free(scanner->phase2_lock);
   free(scanner->phase2_wait_lock);
 
+  return;
+}
+
+static inline void delete_sniffer()
+{
+  free(scanner->sniffer->thread);
+  scanner->sniffer->thread = NULL;
+
+  free(scanner->sniffer->cap_handle);
+  scanner->sniffer->cap_handle = NULL;
+
+  free(scanner->sniffer->lock);
+  scanner->sniffer->lock = NULL;
+  
+  free(scanner->sniffer->cond);
+  scanner->sniffer->cond = NULL;
+
+  free(scanner->sniffer);
+  scanner->sniffer = NULL;
   return;
 }
 
@@ -603,10 +752,10 @@ static inline void delete_workers(scanner_worker_t *worker)
   return;
 }
 
-static inline void delete_scanner(scanner_t *scanner)
+void delete_scanner()
 {
-  delete_conds(scanner);
-  delete_locks(scanner);
+  delete_conds();
+  delete_locks();
   for(int i = 0; i < MAX_WORKERS; i++) {
     delete_workers(&(scanner->workers[i]));
   }

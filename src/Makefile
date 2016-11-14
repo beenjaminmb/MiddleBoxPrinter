@@ -4,7 +4,7 @@ CFLAGS=-O0 -g -Wall -std=gnu99
 
 LDLIBS=-pthread -lpcap
 
-targets = main.c
+targets = main.c dtable.c
 unittests = unit_tests.c
 test_dict = test_dict.c
 
@@ -21,7 +21,7 @@ vmscanner : $(targets)
 all:
 	${CC}
 
-dict: $(test_dict) 
+test_dict: $(test_dict) 
 	$(CC)  $(CFLAGS) -o test_dict $(test_dict) 
 
 clean:
