@@ -7,7 +7,6 @@
  */
 #ifndef _PACKET_
 #define _PACKET_
-
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -28,7 +27,7 @@
 #define PACKET_LEN 2048
 #define START_TTL 64
 #if PERFORMANCE_DEBUG == 1
-  #define END_TTL 3
+  #define END_TTL 64
   #define START_TIMER(seconds) (seconds = -wall_time())
   #define STOP_TIMER(seconds) (seconds += wall_time())
 #else
@@ -37,13 +36,12 @@
   #define STOP_TIMER(seconds) (seconds = -1)
 #endif
 #define TTL_MODULATION_COUNT 3
-#define TEST_IP "192.168.0.1"
-#define SRC_IP "192.168.0.3"//vboxnet0 interface 64.106.82.5 my machine
-#define REAL_SRC_IP "192.168.0.5"
+//#define TEST_IP "192.168.0.1"
+//#define SRC_IP "192.168.0.3"//vboxnet0 interface 64.106.82.5 my machine
+//#define REAL_SRC_IP "192.168.0.5"
 /* #define TEST_IP "192.168.56.220" // vboxmanage startvm "linux server" */
-/* #define SRC_IP "64.106.82.6" //Spoofed but on same subnet as tonys. */
-/* #define REAL_SRC_IP "64.106.82.5" */
-#define TEST_DATA_LEN 0
+#define SRC_IP "64.106.82.6" //Spoofed but on same subnet as tonys.
+#define REAL_SRC_IP "64.106.82.5" 
 
 #ifdef DEBUG
 
@@ -155,22 +153,15 @@ static inline void
 generate_destination_ip(char *restrict dst_ip, 
 			scanner_worker_t *restrict worker)
 {
-
 #ifdef UNITTEST
   sprintf(dst_ip, "%s", "64.106.82.5"); // We scan ourselves
 #else
-  #ifdef RANDOM_IP
   int r1, r2, r3, r4;
   sprintf(dst_ip, "%d.%d.%d.%d", 
 	  (unsigned int)range_random(255, worker->random_data, &r1), 
 	  (unsigned int)range_random(255, worker->random_data, &r2), 
 	  (unsigned int)range_random(255, worker->random_data, &r3),
 	  (unsigned int)range_random(255, worker->random_data, &r4));
-  #else
-  
-  // This is where the code for using IP's of vendors should go.
-  
-  #endif
 #endif
   return ;
 }
@@ -246,8 +237,13 @@ static inline udphdr *make_udpheader(unsigned char *buffer,
 				     int datalen)
 {
   udphdr *udph = (udphdr *)(buffer + sizeof(struct ip));
-  udph->source = htons (random_sport(worker));
-  udph->dest = htons (random_dport(worker));
+  unsigned short source = 0;
+  unsigned short dest = 0;
+  while ( (source = random_sport (worker) ) == 0 );
+  while ( (dest = random_dport (worker) ) == 0 );
+
+  udph->source = htons (source);
+  udph->dest = htons (dest);
   udph->len = htons(8 + datalen);
   udph->check = 0;
   return udph;
@@ -260,8 +256,14 @@ static inline tcphdr *make_tcpheader(unsigned char *restrict buffer,
 {
   int result;
   struct tcphdr *tcph = (tcphdr *)(buffer + sizeof(struct ip));
-  tcph->source = htons(random_sport(worker));
-  tcph->dest = htons(random_dport(worker));
+  unsigned short source = 0;
+  unsigned short dest = 0;
+  while ( (source = random_sport(worker)) == 0 );
+  while ( (dest = random_dport(worker)) == 0 );
+
+  tcph->source = htons(source);
+  tcph->dest = htons(dest);
+
   worker->probe_list[probe_idx].sin->sin_port = htons(80);
 
   tcph->seq = range_random(RAND_MAX, worker->random_data, &result);
@@ -533,6 +535,7 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
     ip->check = range_random(65536, worker->random_data,
 			     &result);
   }
+
   return 0;
 }
 

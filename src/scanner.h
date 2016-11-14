@@ -13,14 +13,13 @@
 #include "worker.h"
 #include "util.h"
 #include <pcap/pcap.h>
-
+#include <errno.h>
+#include <string.h>
+#include <unistd.h>
 #define DEBUG 0
 #define TEST_SEED 0
 #define STATE_SIZE 8
-#define MAX_FILTER_SIZE sizeof("host 255.255.255.255") + 1
 #define SCAN_DURATION 3600.0
-#define PHASE1_ITERATIONS 10
-
 typedef struct scanner_t {
   scanner_worker_t *workers;
   pthread_mutex_t *continue_lock;
@@ -46,6 +45,11 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 
 static inline scanner_t *new_scanner_singleton()
   __attribute__((always_inline));
+
+static inline void send_phase1_packet(unsigned char *restrict packet_buffer, 
+				      scanner_worker_t *restrict worker, int probe_idx,
+				      int sockfd)   __attribute__((always_inline));
+
 
 void got_packet(u_char * restrict args, const struct pcap_pkthdr * restrict header, const u_char *restrict packet);
 
@@ -75,6 +79,17 @@ send_scan_packet(unsigned char *restrict packet_buffer, int sockfd,
   return ;
 }
 
+static const char* get_proto(iphdr *ip){
+ switch(ip->protocol){
+ case IPPROTO_TCP:
+   return "TCP";
+ case IPPROTO_ICMP:
+   return "ICMP";
+ case IPPROTO_UDP:
+   return "UDP";
+ }
+ return "Other";
+}
 
 static inline void
 send_phase1_packet(unsigned char *restrict packet_buffer, 
@@ -85,9 +100,21 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
     (struct sockaddr *)worker->probe_list[probe_idx].sin;
   iphdr *iph = (iphdr *)packet_buffer;
   int len = iph->tot_len;
-  sendto(sockfd, packet_buffer, len, 0, dest_addr, 
-	 sizeof(struct sockaddr));
 
+  int ret = sendto(sockfd, packet_buffer, len, 0, dest_addr, 
+		   sizeof(struct sockaddr));
+
+  int localerror = errno;
+
+  if (localerror == EINVAL) {
+    printf("FOO: %d %s %d %d %s %d %s\n",__LINE__,__func__, ret, errno, strerror(errno), len, get_proto(iph));
+  }
+  else if (localerror == EMSGSIZE){
+    printf("BAR: %d %s %d %d %s %d %s\n",__LINE__,__func__, ret, errno, strerror(errno), len, get_proto(iph));
+  }
+  else {
+    printf("BAZ: %d %s %d %d %s %d %s\n",__LINE__,__func__, ret, errno, strerror(errno), len, get_proto(iph));
+  }
   return ;
 }
 
@@ -109,21 +136,24 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
 static inline void *find_responses(void *vself)
 {
   scanner_worker_t *self = vself;
-  
+  printf("%d %s %d\n",__LINE__,__func__, ADDRS_PER_WORKER);
   for (int i = 0; i < ADDRS_PER_WORKER; i++) {
     make_phase1_packet((unsigned char *)
 		       &self->probe_list[i].probe_buff,
 		       self, i);
   }
 
-  for (int i = 0; i < PHASE1_ITERATIONS; i++) {
-    for (int probe_idx = 0;
-	 probe_idx < ADDRS_PER_WORKER; probe_idx++) {
-      send_phase1_packet((unsigned char *)
-			 &self->probe_list[probe_idx].probe_buff,
-			 self, probe_idx, self->ssocket->sockfd);
-    }
+  for (int probe_idx = 0;
+       probe_idx < ADDRS_PER_WORKER; probe_idx++) {
+    send_phase1_packet((unsigned char *)
+		       &self->probe_list[probe_idx].probe_buff,
+		       self, probe_idx, self->ssocket->sockfd);
+    sleep(1);
   }
+
+  
+  
+  printf("DONE\n");
   return NULL;
 }
 
@@ -226,7 +256,7 @@ static inline int new_worker(scanner_worker_t *worker, int id)
     printf("Couldn't open socket fd for worker[%d]\n", id);
     return -1;
   };
-  
+
   if (setsockopt(worker->ssocket->sockfd, SOL_SOCKET, SO_BINDTODEVICE,
 		 CAPTURE_INTERFACE, strlen(CAPTURE_INTERFACE)) ) {
     printf("getsockopt() for worker[%d]\n", id);
