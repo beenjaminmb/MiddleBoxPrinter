@@ -59,12 +59,6 @@ int scanner_main_loop();
 
 int new_worker(scanner_worker_t *worker, int id);
 
-void start_sniffer();
-
-void stop_sniffer();
-
-void init_sniffer();
-
 void send_phase1_packet(unsigned char *restrict packet_buffer, 
 		   scanner_worker_t *restrict worker, int probe_idx,
 		   int sockfd);
@@ -73,8 +67,6 @@ void send_phase1_packet(unsigned char *restrict packet_buffer,
 void phase1(scanner_worker_t *self);
 
 void phase2(scanner_worker_t *self);
-
-void delete_sniffer();
 
 void delete_conds();
 

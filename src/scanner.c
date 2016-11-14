@@ -19,56 +19,6 @@
 
 static struct scanner_t *scanner = NULL;
 
-void *sniffer_function(void * args)
-{
-  sniffer_t *sniffer = scanner->sniffer;
-  int run = 1;
-  struct pcap_pkthdr header;/* The header that pcap gives us */
-  const u_char *packet;/* The actual packet */
-
-  while ( run ) {
-    packet = pcap_next(sniffer->cap_handle, &header);
-    pthread_mutex_lock(sniffer->lock);
-    if ( !sniffer->sniff ) {
-      
-    }
-    pthread_mutex_unlock(sniffer->lock);
-    
-  }
-  
-  
-  return NULL;
-}
-
-void  start_sniffer() 
-{
-
-  /* if (pthread_create(scanner->workers[i].thread, NULL, */
-  /* 		       find_responses, */
-  /* 		       (void *)&scanner->workers[i]) < 0) { */
-
-  if ((pthread_create(scanner->sniffer->thread, NULL,
-		      sniffer_function,
-		      NULL)) < 0) {
-    printf("%s %d: Scanner couldn't start sniffer thread.\n", __func__, __LINE__);
-    exit(-1);
-  }
-    
-  return;
-  
-}
-
-void stop_sniffer() 
-{
-  
-  sniffer_t * sniffer = scanner->sniffer;
-  pthread_mutex_lock(sniffer->lock);
-  sniffer->sniff = 0;
-  pthread_mutex_unlock(sniffer->lock);
-  return;
-}
-
-
 dict_t * split_query_response()
 {
   /**
@@ -329,7 +279,8 @@ int scanner_main_loop()
   pthread_mutex_lock(scanner->phase2_lock);
   pthread_mutex_lock(scanner->phase2_wait_lock);
 
-  start_sniffer();
+  start_sniffer(scanner->sniffer, (void*)scanner);
+
   for (int i = 0; i < MAX_WORKERS; i++) {
     if (pthread_create(scanner->workers[i].thread, NULL,
 		       find_responses,
@@ -355,7 +306,7 @@ int scanner_main_loop()
    */
   sleep(60);
 
-  stop_sniffer();
+  stop_sniffer(scanner->sniffer);
 
   generate_phase2_packets();
 
@@ -520,47 +471,6 @@ void init_locks()
 }
 
 
-void init_sniffer()
-{
-  scanner->sniffer = malloc(sizeof(sniffer_t));
-  if (scanner->sniffer == NULL) {
-    printf("%s %d: scannercouldn't allocate sniffer\n",
-	   __func__, __LINE__);
-    exit(-1);
-  }
-
-  scanner->sniffer->thread = malloc(sizeof(pthread_t));
-  if (scanner->sniffer->thread == NULL) {
-    printf("%s %d scanner couldn't allocate sniffer thread\n",
-	   __func__, __LINE__);
-    exit(-1);
-  }
-
-  scanner->sniffer->lock = malloc(sizeof(pthread_mutex_t));
-  if (scanner->sniffer->lock == NULL) {
-    printf("%s %d scanner couldn't allocate sniffer lock\n",
-	   __func__, __LINE__);
-    exit(-1);
-  }
-  pthread_mutex_init(scanner->sniffer->lock, NULL);
-
-  scanner->sniffer->cond = malloc(sizeof(pthread_cond_t));
-  if (scanner->sniffer->cond == NULL) {
-    printf("%s %d scanner couldn't allocate sniffer condition "
-	   "variable\n", __func__, __LINE__);
-    exit(-1);
-  }
-  pthread_cond_init(scanner->sniffer->cond, NULL);
-
-  /* scanner->sniffer->cap_handle = malloc(sizeof(pcap_t)); */
-  /* if (scanner->sniffer->cap_handle == NULL) { */
-  /*   printf("%s %d scanner couldn't allocate sniffer capture handle\n", */
-  /* 	   __func__, __LINE__); */
-  /*   exit(-1); */
-  /* } */
-  scanner->sniffer->sniff = 1;
-  return;  
-}
 
 /** 
  * Either build a scanner singleton or create a completely new one
@@ -587,7 +497,7 @@ scanner_t *new_scanner_singleton()
     scanner->workers[i].scanner = scanner;
   }
 
-  init_sniffer();
+  init_sniffer(&scanner->sniffer);
   
   init_locks();
   
@@ -615,24 +525,6 @@ void  delete_locks()
   return;
 }
 
-void delete_sniffer()
-{
-  free(scanner->sniffer->thread);
-  scanner->sniffer->thread = NULL;
-
-  free(scanner->sniffer->cap_handle);
-  scanner->sniffer->cap_handle = NULL;
-
-  free(scanner->sniffer->lock);
-  scanner->sniffer->lock = NULL;
-  
-  free(scanner->sniffer->cond);
-  scanner->sniffer->cond = NULL;
-
-  free(scanner->sniffer);
-  scanner->sniffer = NULL;
-  return;
-}
 
 void delete_workers(scanner_worker_t *worker)
 {

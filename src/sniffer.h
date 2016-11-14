@@ -11,4 +11,13 @@ typedef struct sniffer_t {
   int sniff;
 } sniffer_t;
 
+
+void start_sniffer(sniffer_t *sniffer, void *args);
+
+void stop_sniffer(sniffer_t *sniffer);
+
+void init_sniffer(sniffer_t **snifferp);
+
+void delete_sniffer(sniffer_t *sniffer);
+
 #endif /* _SNIFFER_*/
