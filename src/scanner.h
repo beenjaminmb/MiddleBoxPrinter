@@ -20,11 +20,21 @@
 #define TEST_SEED 0
 #define STATE_SIZE 8
 #define SCAN_DURATION 3600.0
+
+
 typedef struct scanner_t {
   scanner_worker_t *workers;
   pthread_mutex_t *continue_lock;
   pthread_cond_t *continue_cond;
+
+  pthread_mutex_t *phase1_lock;
+  pthread_cond_t *phase1_cond;
+
+  pthread_mutex_t *phase2_lock;
+  pthread_cond_t *phase2_cond;
   int keep_scanning;
+  int phase1;
+  int phase2;
 } scanner_t;
 
 static scanner_t *scanner = NULL;
@@ -46,12 +56,22 @@ static inline int new_worker(scanner_worker_t *worker, int id)
 static inline scanner_t *new_scanner_singleton()
   __attribute__((always_inline));
 
-static inline void send_phase1_packet(unsigned char *restrict packet_buffer, 
-				      scanner_worker_t *restrict worker, int probe_idx,
-				      int sockfd)   __attribute__((always_inline));
+static inline void
+send_phase1_packet(unsigned char *restrict packet_buffer, 
+		   scanner_worker_t *restrict worker, int probe_idx,
+		   int sockfd)  __attribute__((always_inline));
 
 
-void got_packet(u_char * restrict args, const struct pcap_pkthdr * restrict header, const u_char *restrict packet);
+static inline void phase1(scanner_worker_t *self)
+  __attribute__((always_inline));
+
+static inline void phase2(scanner_worker_t *self)
+  __attribute__((always_inline));
+
+void 
+got_packet(u_char * restrict args,
+	   const struct pcap_pkthdr * restrict header,
+	   const u_char *restrict packet);
 
 static inline void
 send_scan_packet(unsigned char *restrict packet_buffer, int sockfd, 
@@ -107,17 +127,57 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
   int localerror = errno;
 
   if (localerror == EINVAL) {
-    printf("FOO: %d %s %d %d %s %d %s\n",__LINE__,__func__, ret, errno, strerror(errno), len, get_proto(iph));
+    printf("FOO: %d %s %d %d %s %d %s\n",
+	   __LINE__,__func__, ret, errno,
+	   strerror(errno), len, get_proto(iph));
   }
   else if (localerror == EMSGSIZE){
-    printf("BAR: %d %s %d %d %s %d %s\n",__LINE__,__func__, ret, errno, strerror(errno), len, get_proto(iph));
+    printf("BAR: %d %s %d %d %s %d %s\n",
+	   __LINE__,__func__, ret, errno,
+	   strerror(errno), len, get_proto(iph));
   }
   else {
-    printf("BAZ: %d %s %d %d %s %d %s\n",__LINE__,__func__, ret, errno, strerror(errno), len, get_proto(iph));
+    printf("BAZ: %d %s %d %d %s %d %s\n",
+	   __LINE__,__func__, ret, errno, 
+	   strerror(errno), len, get_proto(iph));
   }
   return ;
 }
 
+
+static inline void phase1(scanner_worker_t *self)
+{
+  for (int i = 0; i < ADDRS_PER_WORKER; i++) {
+    make_phase1_packet((unsigned char *)
+		       &self->probe_list[i].probe_buff,
+		       self, i);
+  }
+
+  for (int probe_idx = 0;
+       probe_idx < ADDRS_PER_WORKER; probe_idx++) {
+    send_phase1_packet((unsigned char *)
+		       &self->probe_list[probe_idx].probe_buff,
+		       self, probe_idx, self->ssocket->sockfd);
+    sleep(1);
+  }  
+  pthread_mutex_lock(self->scanner->phase1_lock);
+  self->scanner->phase1 += 1;
+  pthread_cond_signal(self->scanner->phase1_cond);
+  pthread_mutex_unlock(self->scanner->phase1_lock);
+
+  printf("%d %s %d\n",__LINE__,__func__, ADDRS_PER_WORKER);
+
+  return ;
+}
+
+static inline void phase2(scanner_worker_t *self)
+{
+  pthread_mutex_lock(self->scanner->phase2_lock);
+  self->scanner->phase2 += 1;
+  pthread_cond_signal(self->scanner->phase2_cond);
+  pthread_mutex_unlock(self->scanner->phase2_lock);
+  return;
+}
 
 /**
  * @param vself: Generic pointer to a scanner_worker_t.
@@ -136,23 +196,10 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
 static inline void *find_responses(void *vself)
 {
   scanner_worker_t *self = vself;
-  printf("%d %s %d\n",__LINE__,__func__, ADDRS_PER_WORKER);
-  for (int i = 0; i < ADDRS_PER_WORKER; i++) {
-    make_phase1_packet((unsigned char *)
-		       &self->probe_list[i].probe_buff,
-		       self, i);
-  }
+  phase1(self);
 
-  for (int probe_idx = 0;
-       probe_idx < ADDRS_PER_WORKER; probe_idx++) {
-    send_phase1_packet((unsigned char *)
-		       &self->probe_list[probe_idx].probe_buff,
-		       self, probe_idx, self->ssocket->sockfd);
-    sleep(1);
-  }
+  phase2(self);
 
-  
-  
   printf("DONE\n");
   return NULL;
 }
@@ -227,10 +274,18 @@ static inline int scanner_main_loop()
       exit(-1);
     }
   }
-  while (scanner->keep_scanning) {
-    pthread_cond_wait(scanner->continue_cond, scanner->continue_lock);
+  
+  pthread_mutex_lock(scanner->phase1_lock);
+  pthread_mutex_lock(scanner->phase2_lock);
+  while(scanner->phase1 < MAX_WORKERS) {
+    pthread_cond_wait(scanner->phase1_cond, scanner->phase1_lock);
   }
-  pthread_mutex_unlock(scanner->continue_lock);
+  pthread_mutex_unlock(scanner->phase1_lock);
+
+  while(scanner->phase2 < MAX_WORKERS) {
+    pthread_cond_wait(scanner->phase2_cond, scanner->phase2_lock);
+  }
+  pthread_mutex_unlock(scanner->phase2_lock);
   return 0;
 }
 /**
@@ -317,13 +372,59 @@ static inline int new_worker(scanner_worker_t *worker, int id)
   return id;
 }
 
+static void init_conds(scanner_t *scanner)
+{
+
+  scanner->continue_cond = malloc(sizeof(pthread_cond_t));
+  if ((long)scanner->continue_cond == -1) {
+    exit(-1);
+  }
+  pthread_cond_init(scanner->continue_cond, NULL);
+
+  scanner->phase1_cond = malloc(sizeof(pthread_cond_t));
+  if ((long)scanner->phase1_cond == -1) {
+    exit(-1);
+  }
+  pthread_cond_init(scanner->phase1_cond, NULL);
+
+  scanner->phase2_cond = malloc(sizeof(pthread_cond_t));
+  if ((long)scanner->phase2_cond == -1) {
+    exit(-1);
+  }
+  pthread_cond_init(scanner->phase2_cond, NULL);
+
+  return;
+}
+
+static void init_locks(scanner_t *scanner)
+{
+  scanner->continue_lock = malloc(sizeof(pthread_mutex_t));
+  if ((long)scanner->continue_lock == -1) {
+    exit(-1);
+  }
+  pthread_mutex_init(scanner->continue_lock, NULL);
+
+  scanner->phase1_lock = malloc(sizeof(pthread_mutex_t));
+  if ((long)scanner->phase1_lock == -1) {
+    exit(-1);
+  }
+  pthread_mutex_init(scanner->phase1_lock, NULL);
+
+  scanner->phase2_lock = malloc(sizeof(pthread_mutex_t));
+  if ((long)scanner->phase2_lock == -1) {
+    exit(-1);
+  }
+  pthread_mutex_init(scanner->phase2_lock, NULL);
+
+  return;
+}
+
 /** 
  * Either build a scanner singleton or create a completely new one
  *  if we have already built on in the past. This is simply an 
  *  interface
  *  to get at the statically declared one.
  */
-
 static inline scanner_t *new_scanner_singleton()
 {
   if ( scanner ) {
@@ -331,23 +432,21 @@ static inline scanner_t *new_scanner_singleton()
   }
   scanner = malloc(sizeof(scanner_t));
   scanner->keep_scanning = 1;
+  scanner->phase1 = 0;
+  scanner->phase2 = 0;
+
   scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
   for (int i = 0 ; i < MAX_WORKERS; i++) {
     if (new_worker(&scanner->workers[i], i) != i) {
       exit(-1);
     }
+    scanner->workers[i].scanner = scanner;
   }
-  scanner->continue_lock = malloc(sizeof(pthread_mutex_t));
-  if ((long)scanner->continue_lock == -1) {
-    return NULL;
-  }
-  pthread_mutex_init(scanner->continue_lock, NULL);
-  
-  scanner->continue_cond = malloc(sizeof(pthread_cond_t));
-  if ((long)scanner->continue_cond == -1) {
-    return NULL;
-  }
-  pthread_cond_init(scanner->continue_cond, NULL);
+
+  init_locks(scanner);
+
+  init_conds(scanner);
+
   return scanner;
 }
 

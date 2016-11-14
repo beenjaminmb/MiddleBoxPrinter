@@ -5,11 +5,14 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <pcap/pcap.h>
+#include "scanner.h"
 
 
-
-#define CAPTURE_INTERFACE "enp0s8"
-//#define CAPTURE_IFACE "wlan0"
+#ifdef DILLINGER
+ #define CAPTURE_INTERFACE "enp0s8"
+#else
+ #define CAPTURE_INTERFACE "wlan0"
+#endif
 //#define CAPTURE_IFACE "eth0"
 #define MAX_ADDR_SIZE sizeof("255.255.255.255\0")
 #define MTU 1500 /* Make size for a probe including payload*/
@@ -25,7 +28,7 @@
   #define RATE 100.0 /* 1000 packets per second, 1 Gb/sec */
 #else
   #define MAX_WORKERS 1
-  #define ADDRS_PER_WORKER 400 //RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
+  #define ADDRS_PER_WORKER 1 //RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
 #endif
 
 typedef struct scanner_socket_t {
@@ -45,6 +48,7 @@ typedef struct scanner_worker_t {
   pthread_t *thread;
   scanner_socket_t *ssocket;
   struct random_data *random_data;
+  struct scanner_t *scanner;
   char *random_state;
   probe_t *probe_list;
   long probe_idx;
