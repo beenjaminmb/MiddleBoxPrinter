@@ -21,4 +21,4 @@ test_dict: $(tablesrc)
 	$(CC) $(CFLAGS) -o test_table $(tablesrc)
 
 clean:
-	rm -f vmscanner scanner *~ test_dict core
+	rm -f vmscanner scanner *~ test_table core

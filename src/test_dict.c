@@ -123,6 +123,7 @@ int test_read_ip_addresses()
 {
   dict_t *d = new_dict();
   read_blacklist(&d);
+  dict_destroy(d);
   return 0;
 }
 
