@@ -533,7 +533,6 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
     ip->check = range_random(65536, worker->random_data,
 			     &result);
   }
-
   return 0;
 }
 

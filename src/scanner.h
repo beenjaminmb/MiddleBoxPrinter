@@ -19,6 +19,8 @@
 #define STATE_SIZE 8
 #define MAX_FILTER_SIZE sizeof("host 255.255.255.255") + 1
 #define SCAN_DURATION 3600.0
+#define PHASE1_ITERATIONS 10
+
 typedef struct scanner_t {
   scanner_worker_t *workers;
   pthread_mutex_t *continue_lock;
@@ -113,8 +115,8 @@ static inline void *find_responses(void *vself)
 		       &self->probe_list[i].probe_buff,
 		       self, i);
   }
-  
-  for (int i = 0; i <  ADDRS_PER_WORKER; i++) {
+
+  for (int i = 0; i < PHASE1_ITERATIONS; i++) {
     for (int probe_idx = 0;
 	 probe_idx < ADDRS_PER_WORKER; probe_idx++) {
       send_phase1_packet((unsigned char *)
