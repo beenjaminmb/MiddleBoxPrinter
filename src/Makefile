@@ -6,7 +6,7 @@ LDLIBS=-pthread -lpcap
 
 targets = main.c dtable.c
 unittests = unit_tests.c
-test_dict = test_dict.c
+tablesrc = test_dict.c dtable.c
 
 dist : $(targets)
 	$(CC) $(CFLAGS) -o scanner $(targets) $(LDLIBS)
@@ -17,12 +17,8 @@ dist_dillinger : $(targets)
 vmscanner : $(targets)
 	$(CC)  -O0 -std=gnu99 -DUNITTEST=1 -o vmscanner $(targets) $(LDLIBS)
 
-
-all:
-	${CC}
-
-test_dict: $(test_dict) 
-	$(CC)  $(CFLAGS) -o test_dict $(test_dict) 
+test_dict: $(tablesrc)
+	$(CC) $(CFLAGS) -o test_table $(tablesrc)
 
 clean:
 	rm -f vmscanner scanner *~ test_dict core

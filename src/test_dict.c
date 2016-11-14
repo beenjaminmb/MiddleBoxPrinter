@@ -62,7 +62,7 @@ int test_list_insert() {
 }
 
 int test_dict_insert() {
-  dict *d = new_dict();
+  dict_t *d = new_dict();
   printf("TEST: table insert\n");
   for (int i = 0; i < SIZE; i++) {
     dict_insert(&d, names_list[i]);
@@ -73,7 +73,7 @@ int test_dict_insert() {
 }
 
 int test_dict_member() {
-  dict *d = new_dict();
+  dict_t *d = new_dict();
   printf("TEST: table member\n");
   for (int i = 0; i < SIZE; i++) {
     dict_insert(&d, names_list[i]);
@@ -100,7 +100,7 @@ int test_dict_member() {
 
 
 int test_dict_delete() {
-  dict *d = new_dict();
+  dict_t *d = new_dict();
   printf("TEST: table delete\n");
   for (int i = 0; i < SIZE; i++) {
     dict_insert(&d, names_list[i]);
@@ -114,8 +114,14 @@ int test_dict_delete() {
   return 0;
 }
 
-int test_read_ip_addresses(){
-  dict *d = new_dict();
+
+void read_blacklist(dict_t **d)
+{
+  return ;
+}
+int test_read_ip_addresses()
+{
+  dict_t *d = new_dict();
   read_blacklist(&d);
   return 0;
 }
