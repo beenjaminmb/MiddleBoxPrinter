@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+
 #define DEBUG 0
 #define TEST_SEED 0
 #define STATE_SIZE 8
@@ -32,9 +33,15 @@ typedef struct scanner_t {
 
   pthread_mutex_t *phase2_lock;
   pthread_cond_t *phase2_cond;
+
+  pthread_mutex_t *phase2_wait_lock;
+  pthread_cond_t *phase2_wait_cond;
+
+
   int keep_scanning;
   int phase1;
   int phase2;
+  int phase2_wait;
 } scanner_t;
 
 static scanner_t *scanner = NULL;
@@ -198,6 +205,14 @@ static inline void *find_responses(void *vself)
   scanner_worker_t *self = vself;
   phase1(self);
 
+  pthread_mutex_lock(self->scanner->phase2_wait_lock);
+
+  while( self->scanner->phase2_wait ) {
+    pthread_cond_wait(self->scanner->phase2_wait_cond,
+		      self->scanner->phase2_wait_lock);
+  }
+
+  pthread_mutex_unlock(self->scanner->phase2_wait_lock);
   phase2(self);
 
   printf("DONE\n");
@@ -277,11 +292,17 @@ static inline int scanner_main_loop()
   
   pthread_mutex_lock(scanner->phase1_lock);
   pthread_mutex_lock(scanner->phase2_lock);
+  pthread_mutex_lock(scanner->phase2_wait_lock);
+
+
   while(scanner->phase1 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase1_cond, scanner->phase1_lock);
   }
   pthread_mutex_unlock(scanner->phase1_lock);
-
+  
+  scanner->phase2_wait = 0;
+  pthread_cond_signal(scanner->phase2_wait_cond);
+  pthread_mutex_unlock(scanner->phase2_wait_lock);
   while(scanner->phase2 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase2_cond, scanner->phase2_lock);
   }
@@ -393,6 +414,13 @@ static void init_conds(scanner_t *scanner)
   }
   pthread_cond_init(scanner->phase2_cond, NULL);
 
+
+  scanner->phase2_wait_cond = malloc(sizeof(pthread_cond_t));
+  if ((long)scanner->phase2_wait_cond == -1) {
+    exit(-1);
+  }
+  pthread_cond_init(scanner->phase2_wait_cond, NULL);
+
   return;
 }
 
@@ -416,6 +444,12 @@ static void init_locks(scanner_t *scanner)
   }
   pthread_mutex_init(scanner->phase2_lock, NULL);
 
+  scanner->phase2_wait_lock = malloc(sizeof(pthread_mutex_t));
+  if ((long)scanner->phase2_wait_lock == -1) {
+    exit(-1);
+  }
+  pthread_mutex_init(scanner->phase2_wait_lock, NULL);
+
   return;
 }
 
@@ -434,7 +468,7 @@ static inline scanner_t *new_scanner_singleton()
   scanner->keep_scanning = 1;
   scanner->phase1 = 0;
   scanner->phase2 = 0;
-
+  scanner->phase2_wait = 1;
   scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
   for (int i = 0 ; i < MAX_WORKERS; i++) {
     if (new_worker(&scanner->workers[i], i) != i) {
@@ -444,7 +478,7 @@ static inline scanner_t *new_scanner_singleton()
   }
 
   init_locks(scanner);
-
+  
   init_conds(scanner);
 
   return scanner;

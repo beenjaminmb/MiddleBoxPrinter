@@ -51,6 +51,8 @@ static inline double wall_time()
   return 1. * t.tv_sec + 1.e-6 * t.tv_usec;
 }
 
+#ifdef EXPERIMENTAL
+
 static char* subnet_prefix(char *ip){
   printf("%s", ip);
   return NULL;
@@ -70,4 +72,6 @@ static void read_blacklist(dict **d)
   }
   return;
 }
+#endif /* EXPERIMENTAL */
+
 #endif /* _UTIL_ */

@@ -27,8 +27,8 @@
   #define MAX_WORKERS 1
   #define RATE 100.0 /* 1000 packets per second, 1 Gb/sec */
 #else
-  #define MAX_WORKERS 1
-  #define ADDRS_PER_WORKER 1 //RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
+  #define MAX_WORKERS 10
+  #define ADDRS_PER_WORKER 2 //RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
 #endif
 
 typedef struct scanner_socket_t {
