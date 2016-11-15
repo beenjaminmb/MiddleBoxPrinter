@@ -8,6 +8,10 @@
 #include <assert.h>
 #include "dtable.h"
 
+static int list_append_helper(list_t *l, void *value);
+static list_node_t* list_find_helper(list_node_t *list, void *value);
+static list_node_t* list_remove_helper(list_node_t *l, void *value);
+
 unsigned long make_key(void *value, int right, void * args);
 
 int list_empty(list_t *l)
@@ -37,7 +41,7 @@ int list_insert(list_t *l, void *value) {
   }
 }
 
-int list_append_helper(list_t *l, void *value)
+static int list_append_helper(list_t *l, void *value)
 {
   list_node_t *next = l->list;
   list_node_t *current = malloc(sizeof(list_node_t));
@@ -54,7 +58,7 @@ list_node_t* list_find(list_t *l, void *value) {
   return element;
 }
 
-list_node_t* list_find_helper(list_node_t *list, void *value)
+static list_node_t* list_find_helper(list_node_t *list, void *value)
 {
   if (list == NULL) return NULL;
   if (list->next == NULL) {
@@ -75,7 +79,7 @@ list_node_t* list_remove(list_t *l, void *value){
   return element;
 }
 
-list_node_t* list_remove_helper(list_node_t *l, void *value){
+static list_node_t* list_remove_helper(list_node_t *l, void *value){
   if (l == NULL) return NULL; // The list didn't contain the element.
   list_node_t *next = l->next;
   list_node_t *prev = l->prev;
