@@ -18,8 +18,29 @@
 #include "dtable.h"
 #include <arpa/inet.h>
 
+struct hash_args {
+  unsigned char *keystr;
+  unsigned char *value;
+};
+
 static struct scanner_t *scanner = NULL;
 
+unsigned long fourtuple_hash(void *args, int right)
+{
+  struct hash_args *hargs = args;
+  unsigned char *str = hargs->keystr;
+  unsigned char *value = hargs->value;
+
+  unsigned long hash = 5381;
+  int c;
+  char *tmp = (char*)str;
+  while ( (c = *tmp++) )
+    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+  if (right)
+    return (unsigned long)(hash % right);
+  else
+    return 0;
+}
 
 void process_packet(dict_t **dictp, const unsigned char *packet,
 		    struct timeval ts, unsigned int capture_len)
@@ -53,14 +74,17 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   memcpy(dst_addr, addr, len);
 
   struct tcphdr *tcp;
-  
+  int sport = 0;
+  int dport = 0;
+
   capture_len -= sizeof(struct ether_header);
   int IP_header_len = ip->ip_hl * 4;
+
   switch( ip->ip_p ) {
   case IPPROTO_TCP:
     tcp = (struct tcphdr*)(packet + IP_header_len);  
-    int sport = ntohl(tcp->th_sport);
-    int dport = ntohl(tcp->th_dport);
+    sport = ntohl(tcp->th_sport);
+    dport = ntohl(tcp->th_dport);
     printf("TCP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
     break;
@@ -78,8 +102,25 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
     break ;
   }
 
+  struct hash_args *hargs = malloc(sizeof(struct hash_args));
+  hargs->keystr = (unsigned char *)malloc(strlen((char*)src_addr) + strlen((char*)dst_addr) + 8);
+  hargs->value =  (unsigned char *)malloc(capture_len);
+  
+  memcpy(hargs->value, packet, capture_len);
+  sprintf((char*)hargs->keystr, "%s %s %d %d", (char*)src_addr, 
+	  (char*)dst_addr, sport, dport);
+  
+  dict_insert_fn(&dict, (void *)hargs, fourtuple_hash);
+
+  free(hargs->value);
+  free(hargs->keystr);
+  free(hargs);
+
+  hargs = NULL;
   return ;
 }
+
+
 
 dict_t * split_query_response()
 {
