@@ -3,12 +3,18 @@
 #include <pthread.h>
 #include <pcap/pcap.h>
 
+#define CAPTURE_FILTER "host " CAPTURE_INTERFACE
 typedef struct sniffer_t {
+  int sniff;
+  int pid;
+
   pthread_t *thread;
+#ifdef USE_PCAP
   pcap_t *cap_handle;
+#endif
+
   pthread_mutex_t *lock;
   pthread_cond_t *cond;
-  int sniff;
 } sniffer_t;
 
 

@@ -9,7 +9,6 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include "packet.h"
 #include "worker.h"
 #include "util.h"
 #include "sniffer.h"

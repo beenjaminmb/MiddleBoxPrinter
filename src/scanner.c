@@ -9,8 +9,8 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include "scanner.h"
 
+#include "scanner.h"
 #include "sniffer.h"
 #include "packet.h"
 #include "worker.h"
@@ -34,8 +34,10 @@ dict_t * split_query_response()
    */
 
   dict_t *q_r = new_dict_size(QR_DICT_SIZE);
-  return q_r;
-    
+ 
+
+
+ return q_r;    
 }
 
 void *response_replay()
@@ -66,11 +68,9 @@ void generate_phase2_packets()
   return;
 }
 
-
-
-void send_scan_packet(unsigned char *restrict packet_buffer, int sockfd, 
-		      scanner_worker_t *restrict worker, int probe_idx,
-		      int ttl)
+void send_scan_packet(unsigned char *restrict packet_buffer, 
+		      int sockfd, scanner_worker_t *restrict worker,
+		      int probe_idx, int ttl)
 {
   struct sockaddr *dest_addr =
     (struct sockaddr *)worker->probe_list[probe_idx].sin;
@@ -113,9 +113,10 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
   struct sockaddr *dest_addr =
     (struct sockaddr *)worker->probe_list[probe_idx].sin;
   iphdr *iph = (iphdr *)packet_buffer;
+
   int len = iph->tot_len;
 
-  int ret = sendto(sockfd, packet_buffer, len, 0, dest_addr, 
+  int ret = sendto(sockfd, packet_buffer, len, 0, dest_addr,
 		   sizeof(struct sockaddr));
 
   int localerror = errno;
@@ -173,8 +174,7 @@ void phase2(scanner_worker_t *self)
   return;
 }
 
-
- void phase2_wait(scanner_worker_t *self)
+void phase2_wait(scanner_worker_t *self)
 {
 
   pthread_mutex_lock(self->scanner->phase2_wait_lock);
@@ -201,13 +201,14 @@ void phase2(scanner_worker_t *self)
  * 3. Once finished, find packets that illicited a response.
  * 
  */
-void *find_responses(void *vself)
+void *find_responses(void *vworker)
 {
-  scanner_worker_t *self = vself;
-  phase1(self);
+  scanner_worker_t *worker = vworker;
+  phase1(worker);
 
-  phase2_wait(self);
-  phase2(self);
+  phase2_wait(worker);
+
+  phase2(worker);
 
   printf("DONE\n");
   return NULL;
