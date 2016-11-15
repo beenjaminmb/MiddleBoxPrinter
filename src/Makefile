@@ -22,7 +22,7 @@ vmscanner : $(targets)
 	$(CC)  -O0 -std=gnu99 -DUNITTEST=1 -o vmscanner $(targets) $(LDLIBS)
 
 test_pcap_reader: $(testpcap)
-	$(CC) $(CFLAGS) -o rest_pcap_reader $(testpcap)	$(LDLIBS)
+	$(CC) $(CFLAGS) -o test_pcap_reader $(testpcap)	$(LDLIBS)
 
 test_dict: $(tablesrc)
 	$(CC) $(CFLAGS) -o test_table $(tablesrc)
