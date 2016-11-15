@@ -1,3 +1,7 @@
+/**
+ * @author: Ben Mixon-Baca
+ * @email: bmixonb1@cs.unm.edu
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

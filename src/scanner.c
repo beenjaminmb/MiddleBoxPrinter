@@ -1,6 +1,6 @@
-/*
-  @author: Ben Mixon-Baca
-  @email: bmixonb1@cs.unm.edu
+/**
+ * @author: Ben Mixon-Baca
+ * @email: bmixonb1@cs.unm.edu
  */
 #include <pthread.h>
 #include <sys/socket.h>
@@ -103,8 +103,11 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   }
 
   struct hash_args *hargs = malloc(sizeof(struct hash_args));
-  hargs->keystr = (unsigned char *)malloc(strlen((char*)src_addr) + strlen((char*)dst_addr) + 8);
-  hargs->value =  (unsigned char *)malloc(capture_len);
+  hargs->keystr = (unsigned char *)malloc(strlen((char*)src_addr) +
+					  strlen((char*)dst_addr) + 
+					  8);
+
+  hargs->value = (unsigned char *)malloc(capture_len);
   
   memcpy(hargs->value, packet, capture_len);
   sprintf((char*)hargs->keystr, "%s %s %d %d", (char*)src_addr, 

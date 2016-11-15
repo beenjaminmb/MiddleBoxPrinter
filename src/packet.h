@@ -2,7 +2,7 @@
  * @author: Ben Mixon-Baca
  * @email: bmixonb1@cs.unm.edu
  *  
- * packet header code and checksum from:
+ * pseudo packet header code and checksum from:
  * http://www.tenouk.com/Module43a.html
  */
 #ifndef _PACKET_

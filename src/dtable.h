@@ -1,3 +1,7 @@
+/**
+ * @author: Ben Mixon-Baca
+ * @email: bmixonb1@cs.unm.edu
+ */
 #ifndef _DTABLE_
 #define _DTABLE_
 
