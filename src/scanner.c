@@ -19,6 +19,13 @@
 
 static struct scanner_t *scanner = NULL;
 
+
+void process_packet(dict_t **dictp, const unsigned char *packet,
+		    struct timeval ts, unsigned int capture_len)
+{
+
+  return ;
+}
 dict_t * split_query_response()
 {
   /**
