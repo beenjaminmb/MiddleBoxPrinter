@@ -1,6 +1,6 @@
 RM=rm
 CC=gcc
-CFLAGS=-O0 -g -Wall -std=gnu99
+CFLAGS=-O3 -Wall -std=gnu99
 
 LDLIBS=-pthread -lpcap
 
@@ -13,6 +13,9 @@ dist : $(targets)
 
 dist_dillinger : $(targets)
 	$(CC) -DDILLINGER $(CFLAGS) -o scanner $(targets) $(LDLIBS)
+
+test_dillinger : $(targets)
+	$(CC) -DUNITTEST -DDILLINGER $(CFLAGS) -o scanner $(targets) $(LDLIBS)
 
 vmscanner : $(targets)
 	$(CC)  -O0 -std=gnu99 -DUNITTEST=1 -o vmscanner $(targets) $(LDLIBS)

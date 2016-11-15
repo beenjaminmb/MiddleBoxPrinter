@@ -26,6 +26,7 @@
 
 #define PACKET_LEN 2048
 #define START_TTL 64
+
 #if PERFORMANCE_DEBUG == 1
   #define END_TTL 64
   #define START_TIMER(seconds) (seconds = -wall_time())
@@ -65,10 +66,12 @@ static inline unsigned short csum(unsigned short *ptr, int nbytes)
   __attribute__((always_inline));
 
 static inline unsigned short random_sport(scanner_worker_t *restrict 
-					  worker)   __attribute__((always_inline));
+					  worker)
+  __attribute__((always_inline));
 
 static inline unsigned short random_dport(scanner_worker_t *restrict 
-					  worker)   __attribute__((always_inline));
+					  worker)
+  __attribute__((always_inline));
 
 static inline int make_packet(unsigned char *restrict packet_buffer,
 			      scanner_worker_t *restrict worker,
@@ -151,9 +154,11 @@ static inline void
 generate_destination_ip(char *restrict dst_ip, 
 			scanner_worker_t *restrict worker)
 {
+
 #ifdef UNITTEST
-  sprintf(dst_ip, "%s", "64.106.82.5"); // We scan ourselves
+  sprintf(dst_ip, "%s", "64.106.81.7"); // We scan ourselves
 #else
+
   int r1, r2, r3, r4;
   sprintf(dst_ip, "%d.%d.%d.%d", 
 	  (unsigned int)range_random(255, worker->random_data, &r1), 

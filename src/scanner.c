@@ -72,6 +72,7 @@ void send_scan_packet(unsigned char *restrict packet_buffer,
 		      int sockfd, scanner_worker_t *restrict worker,
 		      int probe_idx, int ttl)
 {
+
   struct sockaddr *dest_addr =
     (struct sockaddr *)worker->probe_list[probe_idx].sin;
   iphdr *iph = (iphdr *)packet_buffer;
@@ -118,9 +119,8 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
 
   int ret = sendto(sockfd, packet_buffer, len, 0, dest_addr,
 		   sizeof(struct sockaddr));
-
+#ifdef UNITTEST
   int localerror = errno;
-
   if (localerror == EINVAL) {
     printf("FOO: %d %s %d %d %s %d %s\n",
 	   __LINE__,__func__, ret, errno,
@@ -136,12 +136,14 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
 	   __LINE__,__func__, ret, errno, 
 	   strerror(errno), len, get_proto(iph));
   }
+#endif
   return ;
 }
 
 
 void phase1(scanner_worker_t *self)
 {
+  
   for (int i = 0; i < ADDRS_PER_WORKER; i++) {
     make_phase1_packet((unsigned char *)
 		       &self->probe_list[i].probe_buff,
@@ -153,14 +155,11 @@ void phase1(scanner_worker_t *self)
     send_phase1_packet((unsigned char *)
 		       &self->probe_list[probe_idx].probe_buff,
 		       self, probe_idx, self->ssocket->sockfd);
-    sleep(1);
   }  
-  pthread_mutex_lock(self->scanner->phase1_lock);
-  self->scanner->phase1 += 1;
-  pthread_cond_signal(self->scanner->phase1_cond);
-  pthread_mutex_unlock(self->scanner->phase1_lock);
 
-  printf("%d %s %d\n",__LINE__,__func__, ADDRS_PER_WORKER);
+#ifdef UNITTEST
+  printf("%d %s %f\n",__LINE__,__func__, ADDRS_PER_WORKER);
+#endif
 
   return ;
 }
@@ -204,7 +203,15 @@ void phase2_wait(scanner_worker_t *self)
 void *find_responses(void *vworker)
 {
   scanner_worker_t *worker = vworker;
-  phase1(worker);
+
+  for (int i = 0; i < 100; i++) {
+    phase1(worker);
+  }
+
+  pthread_mutex_lock(scanner->phase1_lock);
+  worker->scanner->phase1 += 1;
+  pthread_cond_signal(worker->scanner->phase1_cond);
+  pthread_mutex_unlock(worker->scanner->phase1_lock);
 
   phase2_wait(worker);
 
@@ -280,7 +287,7 @@ int scanner_main_loop()
   pthread_mutex_lock(scanner->phase2_lock);
   pthread_mutex_lock(scanner->phase2_wait_lock);
 
-  start_sniffer(scanner->sniffer, "test-launch.pcap");
+  start_sniffer(scanner->sniffer, "/vagrant/test-launch.pcap");
 
   for (int i = 0; i < MAX_WORKERS; i++) {
     if (pthread_create(scanner->workers[i].thread, NULL,
@@ -337,7 +344,10 @@ int scanner_main_loop()
  */
 int new_worker(scanner_worker_t *worker, int id)
 {
+#ifdef UNITTEST
   printf("%d %s \n", __LINE__, __func__);
+#endif
+
   worker->ssocket = malloc(sizeof(scanner_socket_t));
   if ((long)worker->ssocket == -1) {
     printf("Couldn't allocate scanner_socket_t for worker[%d]\n", id);
@@ -400,14 +410,14 @@ int new_worker(scanner_worker_t *worker, int id)
       return -1;
     }
   }
-  printf("%d %s \n", __LINE__, __func__);
-  double time = wall_time();
+
+  double time = wall_time() + id;
   srandom_r((long)time, worker->random_data);
-  printf("%d %s \n", __LINE__, __func__);
+
+  worker->seed = time;
   worker->worker_id = id;
   worker->probe_idx = 0;
   worker->current_ttl = START_TTL;
-  printf("%d %s FUCK\n", __LINE__, __func__);
   return id;
 }
 

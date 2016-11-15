@@ -2,6 +2,7 @@
 #define _SNIFFER_
 #include <pthread.h>
 #include <pcap/pcap.h>
+
 #ifdef DILLINGER
  #define CAPTURE_FILTER "host 64.106.82.6"
 #else

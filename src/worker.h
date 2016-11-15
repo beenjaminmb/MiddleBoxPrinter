@@ -17,18 +17,16 @@
 #define MAX_ADDR_SIZE sizeof("255.255.255.255\0")
 #define MTU 1500 /* Make size for a probe including payload*/
 #define NORMAL_MTU 576 /* Official MTU of the Internet. */
-#define RATE 1000.0 /* 1000 packets per second, 1 Gb/sec */
+#define RATE 1000000.0 /* 1000 packets per second, 1 Gb/sec */
 #define PERIOD 60.0 /* Period in seconds == 1 minute */
 #define AVG_PACKET_SIZE 6000.0 /* 750 Bytes == 6000bits */
 
 #ifdef UNITTEST
-  //#define ADDRS_PER_WORKER RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
-  #define ADDRS_PER_WORKER 1 //RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
+  #define ADDRS_PER_WORKER 10 //RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
   #define MAX_WORKERS 1
-  #define RATE 100.0 /* 1000 packets per second, 1 Gb/sec */
 #else
   #define MAX_WORKERS 10
-  #define ADDRS_PER_WORKER 100 //RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
+  #define ADDRS_PER_WORKER RATE*PERIOD/(MAX_WORKERS*AVG_PACKET_SIZE)
 #endif
 
 typedef struct scanner_socket_t {
@@ -48,13 +46,14 @@ typedef struct scanner_worker_t {
   pthread_t *thread;
   scanner_socket_t *ssocket;
   struct random_data *random_data;
-  struct scanner_t *scanner;
+  struct scanner_t *scanner;  
   char *random_state;
   probe_t *probe_list;
   long probe_idx;
   int current_ttl;
   int state_size;
   int worker_id;
+  double seed;
   // list_t *addr_list;
 } scanner_worker_t;
 
