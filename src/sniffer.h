@@ -9,14 +9,13 @@ typedef struct sniffer_t {
   int pid;
 
   pthread_t *thread;
+  pthread_mutex_t *lock;
+  pthread_cond_t *cond;
+
 #ifdef USE_PCAP
   pcap_t *cap_handle;
 #endif
-
-  pthread_mutex_t *lock;
-  pthread_cond_t *cond;
 } sniffer_t;
-
 
 void start_sniffer(sniffer_t *sniffer, void *args);
 
