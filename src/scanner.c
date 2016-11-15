@@ -58,7 +58,7 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 #endif
     return ;
   }
-  unsigned char *tmppacket = packet;
+  const unsigned char *tmppacket = packet;
   packet += sizeof(struct ether_header);
   struct ip *ip = (struct ip*)packet;
   unsigned char src_addr[32];
@@ -229,8 +229,15 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
 
   int len = iph->tot_len;
 
+
+#ifdef UNITTEST
   int ret = sendto(sockfd, packet_buffer, len, 0, dest_addr,
 		   sizeof(struct sockaddr));
+#else
+  sendto(sockfd, packet_buffer, len, 0, dest_addr,
+	 sizeof(struct sockaddr));
+#endif
+
 #ifdef UNITTEST
   int localerror = errno;
   if (localerror == EINVAL) {

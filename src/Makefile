@@ -1,4 +1,4 @@
-RM=rm
+B1;3409;0cRM=rm
 CC=gcc
 CFLAGS=-O0 -g -Wall -std=gnu99
 
@@ -13,13 +13,14 @@ dist : $(targets)
 	$(CC) $(CFLAGS) -o scanner $(targets) $(LDLIBS)
 
 dist_dillinger : $(targets)
-	$(CC) -DDILLINGER $(CFLAGS) -o scanner $(targets) $(LDLIBS)
+	$(CC) -DDILLINGER -Wall -std=gnu99 -03 -o scanner $(targets) $(LDLIBS)
 
-test_dillinger : $(targets)
-	$(CC) -DUNITTEST -DDILLINGER $(CFLAGS) -o scanner $(targets) $(LDLIBS)
 
 vmscanner : $(targets)
 	$(CC)  -O0 -std=gnu99 -DUNITTEST=1 -o vmscanner $(targets) $(LDLIBS)
+
+test_dillinger : $(targets)
+	$(CC) -DUNITTEST -DDILLINGER $(CFLAGS) -o scanner $(targets) $(LDLIBS)
 
 test_pcap_reader: $(testpcap)
 	$(CC) $(CFLAGS) -o test_pcap_reader $(testpcap)	$(LDLIBS)

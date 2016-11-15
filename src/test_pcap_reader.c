@@ -40,8 +40,8 @@ int test_parse_pcap()
     process_packet(&q_r, packet, header.ts, header.caplen);    
   }
   dict_destroy_fn(q_r, (free_fn)free);
-  free(pcap);
-  free(packet);
+  free((void*)pcap);
+  free((void*)packet);
 
   printf("%s %d: According to valgrind, there are "
 	 "there are two missing free's here\n", __func__, __LINE__);
