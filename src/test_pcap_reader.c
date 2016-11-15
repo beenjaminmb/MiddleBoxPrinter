@@ -33,7 +33,6 @@ int test_parse_pcap()
 
   pcap = pcap_open_offline(PCAP_FILE_NAME, errbuf);
   assert( pcap );
-
   
   printf("%s %d\n", __func__, __LINE__);
 
@@ -43,8 +42,10 @@ int test_parse_pcap()
   dict_destroy_fn(q_r, (free_fn)free);
   free(pcap);
   free(packet);
+
   printf("%s %d: According to valgrind, there are "
 	 "there are two missing free's here\n", __func__, __LINE__);
+
   return 0;
 }
 
