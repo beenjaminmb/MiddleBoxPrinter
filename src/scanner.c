@@ -29,7 +29,6 @@ unsigned long fourtuple_hash(void *v, int right, void *args)
 {
   struct hash_args *hargs = args;
   unsigned char *str = hargs->keystr;
-  unsigned char *value = (char*)hargs->value;
 
   unsigned long hash = 5381;
   int c;
@@ -45,8 +44,6 @@ unsigned long fourtuple_hash(void *v, int right, void *args)
 void process_packet(dict_t **dictp, const unsigned char *packet,
 		    struct timeval ts, unsigned int capture_len)
 {
-
-  dict_t *dict = *dictp;
   if ( capture_len < sizeof(struct ether_header) ) {
     printf("Capture length not big enough\n");
     return ;
@@ -57,12 +54,13 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
     printf("Datagram is not IPv4\n");
     return ;
   }
-
+  unsigned char *tmppacket = packet;
   packet += sizeof(struct ether_header);
   struct ip *ip = (struct ip*)packet;
   unsigned char *src_addr[32];
   unsigned char *dst_addr[32];
   int len;
+  int caplen = capture_len;
   char *addr = inet_ntoa(ip->ip_src);
   len = strlen(addr);
   memset(src_addr, 0, sizeof(src_addr));
@@ -102,23 +100,22 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
     break ;
   }
 
-  struct hash_args *hargs = malloc(sizeof(struct hash_args));
-  hargs->keystr = (unsigned char *)malloc(strlen((char*)src_addr) +
+  char *keystr = (unsigned char *)malloc(strlen((char*)src_addr) +
 					  strlen((char*)dst_addr) + 
 					  8);
 
-  hargs->value = (unsigned char *)malloc(capture_len);
+  char *value = (unsigned char *)malloc(caplen);
   
-  memcpy(hargs->value, packet, capture_len);
-  sprintf((char*)hargs->keystr, "%s %s %d %d", (char*)src_addr, 
+  memcpy(value, tmppacket, caplen);
+  sprintf((char*)keystr, "%s %s %d %d", (char*)src_addr, 
 	  (char*)dst_addr, sport, dport);
   
-  dict_insert_fn(dictp, (void *)hargs->value,
-		 fourtuple_hash, hargs);
+  struct hash_args args = {keystr, value};
+  dict_insert_fn(dictp, (void*)value,
+		 fourtuple_hash,
+		 ((void*)&args));
   
-  free(hargs->keystr);
-  free(hargs);
-  hargs = NULL;
+  free(keystr);
   return ;
 }
 

@@ -20,7 +20,7 @@
 #define PCAP_FILE_NAME "capnext.pcap"
 #define TS_SPOOF_IP "64.106.82.6" /* IP address tonysoprano 
 				     uses to spoof ip addresses. */
-#define QR_DICT_SIZE 2
+#define QR_DICT_SIZEp 2
 
 int test_parse_pcap()
 {
@@ -29,7 +29,7 @@ int test_parse_pcap()
   char errbuf[PCAP_ERRBUF_SIZE];
   struct pcap_pkthdr header;
 
-  dict_t *q_r = new_dict_size(QR_DICT_SIZE);
+  dict_t *q_r = new_dict_size(QR_DICT_SIZEp);
 
   pcap = pcap_open_offline(PCAP_FILE_NAME, errbuf);
   assert( pcap );
@@ -37,6 +37,7 @@ int test_parse_pcap()
   printf("%s %d\n", __func__, __LINE__);
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, header.ts, header.caplen);
+    break ;
   }
   printf("%s %d\n", __func__, __LINE__);
   return 0;
