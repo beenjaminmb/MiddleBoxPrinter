@@ -112,10 +112,6 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   
   dict_insert_fn(&dict, (void *)hargs, fourtuple_hash);
 
-  free(hargs->value);
-  free(hargs->keystr);
-  free(hargs);
-
   hargs = NULL;
   return ;
 }
