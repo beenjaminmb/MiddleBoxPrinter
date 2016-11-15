@@ -16,6 +16,7 @@
 #include "worker.h"
 #include "util.h"
 #include "dtable.h"
+#include <arpa/inet.h>
 
 static struct scanner_t *scanner = NULL;
 
@@ -24,21 +25,59 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 		    struct timeval ts, unsigned int capture_len)
 {
 
-  printf("%s %d \n", __func__, __LINE__);
   dict_t *dict = *dictp;
   if ( capture_len < sizeof(struct ether_header) ) {
+    printf("Capture length not big enough\n");
     return ;
   }
- 
+  struct ether_header *eth = (struct ether_header*)packet;
+  int ethtype = ntohs(eth->ether_type);
+  if ( ethtype != ETHERTYPE_IP) {
+    printf("Datagram is not IPv4\n");
+    return ;
+  }
+
   packet += sizeof(struct ether_header);
-  iphdr *ip = packet;
+  struct ip *ip = (struct ip*)packet;
+  unsigned char *src_addr[32];
+  unsigned char *dst_addr[32];
+  int len;
+  char *addr = inet_ntoa(ip->ip_src);
+  len = strlen(addr);
+  memset(src_addr, 0, sizeof(src_addr));
+  memcpy(src_addr, addr, len);
+
+  addr = inet_ntoa(ip->ip_dst);
+  len = strlen(addr);
+  memset(dst_addr, 0, sizeof(dst_addr));
+  memcpy(dst_addr, addr, len);
+
+  struct tcphdr *tcp;
   
   capture_len -= sizeof(struct ether_header);
-  IP_header_len = ip->ip_hl * 4;
-  
-  
-      
-  
+  int IP_header_len = ip->ip_hl * 4;
+  switch( ip->ip_p ) {
+  case IPPROTO_TCP:
+    tcp = (struct tcphdr*)(packet + IP_header_len);  
+    int sport = ntohl(tcp->th_sport);
+    int dport = ntohl(tcp->th_dport);
+    printf("TCP %s %d %s %s\n", __func__, __LINE__,
+	   (char *)src_addr, (char *)dst_addr);
+    break;
+  case IPPROTO_UDP:
+    printf("UDP %s %d %s %s\n", __func__, __LINE__,
+	   (char *)src_addr, (char *)dst_addr);
+    break;
+  case IPPROTO_ICMP:
+    printf("ICMP %s %d %s %s\n", __func__, __LINE__,
+	   (char *)src_addr, (char *)dst_addr);
+    break;
+  default:
+    printf("Other %s %d %s %s\n", __func__, __LINE__,
+	   (char *)src_addr, (char *)dst_addr);
+    break ;
+  }
+
   return ;
 }
 

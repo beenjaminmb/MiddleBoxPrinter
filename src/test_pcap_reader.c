@@ -28,10 +28,12 @@ int test_parse_pcap()
 
   pcap = pcap_open_offline(PCAP_FILE_NAME, errbuf);
   assert( pcap );
-  
+
+  printf("%s %d\n", __func__, __LINE__);
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, header.ts, header.caplen);
   }
+  printf("%s %d\n", __func__, __LINE__);
   return 0;
 }
 
