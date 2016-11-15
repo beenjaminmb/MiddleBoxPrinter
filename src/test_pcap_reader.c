@@ -1,6 +1,7 @@
-#include <assert.h>
-#include "sniffer.h"
+#include "scanner.h"
 #include "dtable.h"
+
+#include <assert.h>
 #include <pcap.h>
 #include <net/if.h>
 #include <netinet/ether.h>
@@ -12,6 +13,8 @@
 #include <netinet/ip_icmp.h>
 
 #define PCAP_FILE_NAME "test-launch.pcap"
+
+#define QR_DICT_SIZE 128
 
 int test_parse_pcap()
 {
@@ -26,16 +29,16 @@ int test_parse_pcap()
   assert( pcap );
   
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
-    process_packet(&q_r, packet, header.ts, header.capture_len);
+    process_packet(&q_r, packet, header.ts, header.caplen);
   }
   return 0;
 }
 
-int test_split_query_response()
-{
-  dict_t *dict = split_query_response();
-  return 0;
-}
+/* int test_split_query_response() */
+/* { */
+/*   dict_t *dict = split_query_response(); */
+/*   return 0; */
+/* } */
 
 int main(void)
 {

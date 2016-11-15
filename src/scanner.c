@@ -26,6 +26,7 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
   return ;
 }
+
 dict_t * split_query_response()
 {
   /**
