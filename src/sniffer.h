@@ -2,8 +2,12 @@
 #define _SNIFFER_
 #include <pthread.h>
 #include <pcap/pcap.h>
+#ifdef DILLINGER
+ #define CAPTURE_FILTER "host 64.106.82.6"
+#else
+ #define CAPTURE_FILTER "host 192.168.0.6"
+#endif
 
-#define CAPTURE_FILTER "host " CAPTURE_INTERFACE
 typedef struct sniffer_t {
   int sniff;
   int pid;
@@ -21,7 +25,7 @@ void start_sniffer(sniffer_t *sniffer, void *args);
 
 void stop_sniffer(sniffer_t *sniffer);
 
-void init_sniffer(sniffer_t **snifferp);
+void init_sniffer(sniffer_t *snifferp);
 
 void delete_sniffer(sniffer_t *sniffer);
 

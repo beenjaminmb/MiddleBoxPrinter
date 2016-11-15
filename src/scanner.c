@@ -280,7 +280,7 @@ int scanner_main_loop()
   pthread_mutex_lock(scanner->phase2_lock);
   pthread_mutex_lock(scanner->phase2_wait_lock);
 
-  start_sniffer(scanner->sniffer, (void*)scanner);
+  start_sniffer(scanner->sniffer, "test-launch.pcap");
 
   for (int i = 0; i < MAX_WORKERS; i++) {
     if (pthread_create(scanner->workers[i].thread, NULL,
@@ -498,7 +498,15 @@ scanner_t *new_scanner_singleton()
     scanner->workers[i].scanner = scanner;
   }
 
-  init_sniffer(&scanner->sniffer);
+  scanner->sniffer = malloc(sizeof(sniffer_t));
+
+  if (scanner->sniffer == NULL) {
+    printf("%s %d: scannercouldn't allocate sniffer\n",
+	   __func__, __LINE__);
+    exit(-1);
+  }
+
+  init_sniffer(scanner->sniffer);
   
   init_locks();
   

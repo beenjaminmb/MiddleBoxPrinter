@@ -7,16 +7,8 @@
 #include "packet.h"
 #include <pcap.h>
 
-void init_sniffer(sniffer_t **snifferp)
+void init_sniffer(sniffer_t *sniffer)
 {
-  sniffer_t *sniffer = *snifferp;
-  sniffer = malloc(sizeof(sniffer_t));
-
-  if (sniffer == NULL) {
-    printf("%s %d: scannercouldn't allocate sniffer\n",
-	   __func__, __LINE__);
-    exit(-1);
-  }
 
   sniffer->thread = malloc(sizeof(pthread_t));
   if (sniffer->thread == NULL) {
@@ -97,10 +89,13 @@ void start_sniffer(sniffer_t *sniffer, void *args)
   int pid = fork();
   if ( pid  ==  0 ) {
     char *capture_file = (char*)args;
-    const char *tcpdump[] = {"tcpdump" , "-i" , CAPTURE_INTERFACE , 
-			     "-w", capture_file, CAPTURE_FILTER};
-    int ret = execve(tcpdump[0], (char**)tcpdump, NULL);
+    printf("sniffing sniffer in child\n");
+    const char *tcpdump[] = {"/usr/sbin/tcpdump" , "-i" , CAPTURE_INTERFACE, 
+			     "-w", capture_file, CAPTURE_FILTER, NULL};
+    const char *argp[] = {NULL};
+    int ret = execve(tcpdump[0], (char**)tcpdump, (char**)argp);
     if ( ret == -1 ) {
+      printf("Failed to open tcpdump exiting %d %s\n", errno, strerror(errno));
       exit(-1);
     }
     return;
@@ -109,6 +104,7 @@ void start_sniffer(sniffer_t *sniffer, void *args)
   else {
     sleep(1);
     sniffer->pid = pid;
+    printf("sniffer started\n");
   }
   return;
 #endif /* Return should be handled by either section of code.*/
