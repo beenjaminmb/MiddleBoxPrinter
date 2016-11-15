@@ -33,7 +33,7 @@ unsigned long fourtuple_hash(void *v, int right, void *args)
   unsigned long hash = 5381;
   int c;
   char *tmp = (char*)str;
-  while ( (c = *tmp++) )
+  while ( (c = *tmp++) ) /*Invalid read?*/
     hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
   if (right)
     return (unsigned long)(hash % right);
@@ -45,30 +45,34 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 		    struct timeval ts, unsigned int capture_len)
 {
   if ( capture_len < sizeof(struct ether_header) ) {
+#ifdef UNITTEST
     printf("Capture length not big enough\n");
+#endif
     return ;
   }
   struct ether_header *eth = (struct ether_header*)packet;
   int ethtype = ntohs(eth->ether_type);
   if ( ethtype != ETHERTYPE_IP) {
+#ifdef UNITTEST
     printf("Datagram is not IPv4\n");
+#endif
     return ;
   }
   unsigned char *tmppacket = packet;
   packet += sizeof(struct ether_header);
   struct ip *ip = (struct ip*)packet;
-  unsigned char *src_addr[32];
-  unsigned char *dst_addr[32];
+  unsigned char src_addr[32];
+  unsigned char dst_addr[32];
   int len;
   int caplen = capture_len;
   char *addr = inet_ntoa(ip->ip_src);
   len = strlen(addr);
-  memset(src_addr, 0, sizeof(src_addr));
+  memset(src_addr, 0, sizeof(src_addr) + 1);
   memcpy(src_addr, addr, len);
 
   addr = inet_ntoa(ip->ip_dst);
   len = strlen(addr);
-  memset(dst_addr, 0, sizeof(dst_addr));
+  memset(dst_addr, 0, sizeof(dst_addr)+1);
   memcpy(dst_addr, addr, len);
 
   struct tcphdr *tcp;
@@ -80,46 +84,52 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
   switch( ip->ip_p ) {
   case IPPROTO_TCP:
-    tcp = (struct tcphdr*)(packet + IP_header_len);  
+    tcp = (struct tcphdr*)(packet + IP_header_len);
     sport = ntohl(tcp->th_sport);
     dport = ntohl(tcp->th_dport);
+#ifdef UNITTEST
     printf("TCP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
+#endif
     break;
   case IPPROTO_UDP:
+#ifdef UNITTEST
     printf("UDP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
+#endif
     break;
   case IPPROTO_ICMP:
+#ifdef UNITTEST
     printf("ICMP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
+#endif
     break;
   default:
+#ifdef UNITTEST
     printf("Other %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
+#endif
     break ;
   }
 
-  char *keystr = (unsigned char *)malloc(strlen((char*)src_addr) +
-					  strlen((char*)dst_addr) + 
-					  8);
+  char keystr[128];
 
-  char *value = (unsigned char *)malloc(caplen);
-  
+  char *value = (char *)malloc(caplen + 1);
+  memset(value, 0, caplen + 1);
   memcpy(value, tmppacket, caplen);
-  sprintf((char*)keystr, "%s %s %d %d", (char*)src_addr, 
-	  (char*)dst_addr, sport, dport);
+  memset(keystr, 0, 128);
+
+  sprintf((char*)keystr, "%s %s %d %d", (char*)src_addr,
+  	  (char*)dst_addr, sport, dport);
   
-  struct hash_args args = {keystr, value};
+  struct hash_args args = {.keystr = (unsigned char *)keystr,
+			   .value = (unsigned char *)value};
+
   dict_insert_fn(dictp, (void*)value,
 		 fourtuple_hash,
-		 ((void*)&args));
-  
-  free(keystr);
+		 ((void*)&args), NULL);
   return ;
 }
-
-
 
 dict_t * split_query_response()
 {

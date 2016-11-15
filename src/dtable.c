@@ -130,11 +130,11 @@ dict_t *new_dict()
 
 int dict_insert(dict_t **dp, void *value) 
 {
-  return dict_insert_fn(dp, value, ((key_fn)make_key), NULL);
+  return dict_insert_fn(dp, value, ((key_fn)make_key), NULL, NULL);
 }
 
 int dict_insert_fn(dict_t **dp, void *value, key_fn hash_fn,
-		   void *args) 
+		   void *args, free_fn ufree) 
 {
   dict_t *d = *dp;
   int N = d->N + 1;
@@ -163,20 +163,21 @@ int dict_insert_fn(dict_t **dp, void *value, key_fn hash_fn,
 	current = tmp;
       }
     }
-    dict_destroy(d);
+    dict_destroy_fn(d, ufree);
     d = NULL;
     *dp = dd;
-    return dict_insert_fn(dp, value, hash_fn, args);
+    return dict_insert_fn(dp, value, hash_fn, args, ufree);
   }
 }
 
 int dict_delete(dict_t **dp, void *value)
 {
-  return dict_delete_fn(dp, value, ((key_fn)make_key), NULL);
+  return dict_delete_fn(dp, value, ((key_fn)make_key), NULL, NULL);
 }
 
 int dict_delete_fn(dict_t **dp, void *value,
-		   key_fn hash_fn, void *args)
+		   key_fn hash_fn, void *args,
+		   free_fn ufree)
 {
   dict_t *d = *dp;
   int N = d->N - 1;
@@ -209,14 +210,23 @@ int dict_delete_fn(dict_t **dp, void *value,
 	current = tmp;
       }
     }
-    dict_destroy(d);
+    dict_destroy_fn(d, ufree);
     d = NULL;
     *dp = dd;
-    return dict_delete_fn(dp, value, hash_fn, args);
+    return dict_delete_fn(dp, value, hash_fn, args, ufree);
   }
 }
 
-int dict_destroy(dict_t  *d) {
+int dict_destroy(dict_t  *d)
+{
+  return dict_destroy_fn(d, NULL);
+}
+
+
+
+
+int dict_destroy_fn(dict_t  *d, free_fn ufree)
+{
   int size = d->size;
   for (int i = size-1; i >= 0; i--) {
     if ( d && d->elements && d->elements[i] != NULL ) {
@@ -228,6 +238,10 @@ int dict_destroy(dict_t  *d) {
       else { 
 	while ( current ) {
 	  list_node_t *tmp = current->next;
+	  if ( ufree != NULL) {
+	  /* User defined free function */
+	    ufree(current->value);
+	  }
 	  free(current);
 	  current = tmp;
 	}
@@ -239,6 +253,7 @@ int dict_destroy(dict_t  *d) {
   free(d);
   return 0;  
 }
+
 
 int dict_member(dict_t *d, void *value)
 {

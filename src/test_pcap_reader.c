@@ -34,20 +34,19 @@ int test_parse_pcap()
   pcap = pcap_open_offline(PCAP_FILE_NAME, errbuf);
   assert( pcap );
 
+  
   printf("%s %d\n", __func__, __LINE__);
+
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
-    process_packet(&q_r, packet, header.ts, header.caplen);
-    break ;
+    process_packet(&q_r, packet, header.ts, header.caplen);    
   }
-  printf("%s %d\n", __func__, __LINE__);
+  dict_destroy_fn(q_r, (free_fn)free);
+  free(pcap);
+  free(packet);
+  printf("%s %d: According to valgrind, there are "
+	 "there are two missing free's here\n", __func__, __LINE__);
   return 0;
 }
-
-/* int test_split_query_response() */
-/* { */
-/*   dict_t *dict = split_query_response(); */
-/*   return 0; */
-/* } */
 
 int main(void)
 {
