@@ -34,17 +34,20 @@ list_node_t* list_remove(list_t *l, void *value);
 list_node_t* list_find_helper(list_node_t *list, void *value);
 list_node_t* list_remove_helper(list_node_t *l, void *value);
 
-typedef unsigned long (*key_fn)(void *, int);
-unsigned long make_key(void *value, int right);
+typedef unsigned long (*key_fn)(void *, int, void*);
+unsigned long make_key(void *value, int right, void *args);
 
 dict_t *new_dict();
 dict_t *new_dict_size(int dict_size);
 int dict_insert(dict_t **dp, void *value);
-int dict_insert_fn(dict_t **dp, void *value, key_fn hash_fn);
+int dict_insert_fn(dict_t **dp, void *value,
+		   key_fn hash_fn, void *args);
 int dict_delete(dict_t **dp, void *value);
-int dict_delete_fn(dict_t **dp, void *value, key_fn hash_fn);
+int dict_delete_fn(dict_t **dp, void *value, key_fn hash_fn, 
+		   void *args);
 int dict_member(dict_t *d, void *value);
-int dict_member_fn(dict_t *d, void *value, key_fn hash_fn);
+int dict_member_fn(dict_t *d, void *value, key_fn hash_fn,
+		   void *args);
 int dict_destroy(dict_t  *d);
 
 #endif /* _DTABLE_ */

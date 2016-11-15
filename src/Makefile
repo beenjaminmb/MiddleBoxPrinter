@@ -1,6 +1,6 @@
 RM=rm
 CC=gcc
-CFLAGS=-O3 -Wall -std=gnu99
+CFLAGS=-O0 -g -Wall -std=gnu99
 
 LDLIBS=-pthread -lpcap
 

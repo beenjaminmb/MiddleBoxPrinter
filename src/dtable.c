@@ -8,7 +8,7 @@
 #include <assert.h>
 #include "dtable.h"
 
-unsigned long make_key(void *value, int right);
+unsigned long make_key(void *value, int right, void * args);
 
 int list_empty(list_t *l)
 {
@@ -130,50 +130,17 @@ dict_t *new_dict()
 
 int dict_insert(dict_t **dp, void *value) 
 {
-  return dict_insert_fn(dp, value, ((key_fn)make_key));
+  return dict_insert_fn(dp, value, ((key_fn)make_key), NULL);
 }
-  /* dict_t *d = *dp; */
-  /* int N = d->N + 1; */
-  /* int size = d->size; */
-  /* d->N = N; */
-  /* unsigned long key = make_key(value, size); */
-  /* if (((float)N/(float)d->size) <= 3/4.0) { */
-  /*   return list_insert( d->elements[key], value); */
-  /* } */
-  /* else { */
-  /*   dict_t *dd = malloc(sizeof(dict_t)); */
-  /*   dd->elements = malloc( size * 2 * sizeof(list_t) );  */
-  /*   dd->N = N; */
-  /*   dd->size = size * 2; */
-  /*   for (int i = 0; i < size * 2; i++) { */
-  /*     dd->elements[i] = new_list(); */
-  /*   } */
 
-  /*   for (int i = 0; i < size; i++) { */
-  /*     list_t *l = d->elements[i]; */
-  /*     list_node_t *current = l->list; */
-  /*     while ( current ) { */
-  /* 	list_node_t *tmp = current->next; */
-  /* 	key = make_key(current->value, size * 2); */
-  /* 	list_insert(dd->elements[key], current->value); */
-  /* 	current = tmp; */
-  /*     } */
-  /*   } */
-  /*   dict_destroy(d); */
-  /*   d = NULL; */
-  /*   *dp = dd; */
-  /*   return dict_insert(dp, value); */
-  /* } */
-/* } */
-
-
-int dict_insert_fn(dict_t **dp, void *value, key_fn hash_fn) 
+int dict_insert_fn(dict_t **dp, void *value, key_fn hash_fn,
+		   void *args) 
 {
   dict_t *d = *dp;
   int N = d->N + 1;
   int size = d->size;
   d->N = N;
-  unsigned long key = hash_fn(value, size);
+  unsigned long key = hash_fn(value, size, args);
   if (((float)N/(float)d->size) <= 3/4.0) {
     return list_insert( d->elements[key], value);
   }
@@ -191,7 +158,7 @@ int dict_insert_fn(dict_t **dp, void *value, key_fn hash_fn)
       list_node_t *current = l->list;
       while ( current ) {
 	list_node_t *tmp = current->next;
-	key = hash_fn(current->value, size * 2);
+	key = hash_fn(current->value, size * 2, args);
 	list_insert(dd->elements[key], current->value);
 	current = tmp;
       }
@@ -199,59 +166,22 @@ int dict_insert_fn(dict_t **dp, void *value, key_fn hash_fn)
     dict_destroy(d);
     d = NULL;
     *dp = dd;
-    return dict_insert_fn(dp, value, hash_fn);
+    return dict_insert_fn(dp, value, hash_fn, args);
   }
 }
 
 int dict_delete(dict_t **dp, void *value)
 {
-  return dict_delete_fn(dp, value, ((key_fn)make_key));
+  return dict_delete_fn(dp, value, ((key_fn)make_key), NULL);
 }
-/* //left is always zero, right is the parameter */
-/*   dict_t *d = *dp; */
-/*   int N = d->N - 1; */
-/*   int size = d->size; */
-/*   unsigned long key = make_key(value, size); */
-/*   if (((float) N)/((float) size) >= 1/4.0) { */
-/*     // We haven't reached the desired load factor. */
-/*     list_node_t *l = list_remove(d->elements[key], value); */
-/*     free(l); */
-/*     return 0; */
-/*   } */
-/*   else { // We are lower than the desired load factor. */
-/*     int new_size = ((size / 2) >= INIT_DICT_SIZE) ?  */
-/*       (size / 2) : INIT_DICT_SIZE; */
-/*     dict_t *dd = malloc(sizeof(dict_t)); */
-/*     dd->elements = malloc( new_size * sizeof(list_t) );  */
-/*     dd->N = N; */
-/*     dd->size = new_size; */
-/*     for (int i = 0; i < new_size; i++) { */
-/*       dd->elements[i] = new_list(); */
-/*     } */
-    
-/*     for (int i = 0; i < size; i++) { */
-/*       list_t *l = d->elements[i]; */
-/*       list_node_t *current = l->list; */
-/*       while ( current ) { */
-/* 	list_node_t *tmp = current->next; */
-/* 	key = make_key(current->value, new_size); */
-/* 	list_insert(dd->elements[key], current->value); */
-/* 	current = tmp; */
-/*       } */
-/*     } */
-/*     dict_destroy(d); */
-/*     d = NULL; */
-/*     *dp = dd; */
-/*     return dict_delete(dp, value); */
-/*   } */
-/* } */
 
-int dict_delete_fn(dict_t **dp, void *value, key_fn hash_fn)
+int dict_delete_fn(dict_t **dp, void *value,
+		   key_fn hash_fn, void *args)
 {
   dict_t *d = *dp;
   int N = d->N - 1;
   int size = d->size;
-  unsigned long key = hash_fn(value, size);
+  unsigned long key = hash_fn(value, size, args);
   if (((float) N)/((float) size) >= 1/4.0) {
     // We haven't reached the desired load factor.
     list_node_t *l = list_remove(d->elements[key], value);
@@ -274,7 +204,7 @@ int dict_delete_fn(dict_t **dp, void *value, key_fn hash_fn)
       list_node_t *current = l->list;
       while ( current ) {
 	list_node_t *tmp = current->next;
-	key = hash_fn(current->value, new_size);
+	key = hash_fn(current->value, new_size, args);
 	list_insert(dd->elements[key], current->value);
 	current = tmp;
       }
@@ -282,7 +212,7 @@ int dict_delete_fn(dict_t **dp, void *value, key_fn hash_fn)
     dict_destroy(d);
     d = NULL;
     *dp = dd;
-    return dict_delete_fn(dp, value, hash_fn);
+    return dict_delete_fn(dp, value, hash_fn, args);
   }
 }
 
@@ -312,16 +242,13 @@ int dict_destroy(dict_t  *d) {
 
 int dict_member(dict_t *d, void *value)
 {
-  return dict_member_fn(d, value, ((key_fn)make_key));
-  /* unsigned long key = make_key(value, d->size); */
-  /* list_node_t *l = list_find(d->elements[key], value); */
-  /* int ismember = l ? (l->value == value) : 0; */
-  /* return ismember; */
+  return dict_member_fn(d, value, ((key_fn)make_key), NULL);
 }
 
-int dict_member_fn(dict_t *d, void *value, key_fn hash_fn)
+int dict_member_fn(dict_t *d, void *value,
+		   key_fn hash_fn, void *args)
 {
-  unsigned long key = hash_fn(value, d->size);
+  unsigned long key = hash_fn(value, d->size, args);
   list_node_t *l = list_find(d->elements[key], value);
   int ismember = l ? (l->value == value) : 0;
   return ismember;
@@ -332,7 +259,7 @@ int dict_member_fn(dict_t *d, void *value, key_fn hash_fn)
  * return 0. This could be very bad if we have a lot of null values which
  * SHOULD NEVER happen.
  */
-unsigned long make_key(void *value, int right)
+unsigned long make_key(void *value, int right, void *args)
 {
   if (value == NULL)
     return 0;

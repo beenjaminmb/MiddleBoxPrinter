@@ -25,11 +25,11 @@ struct hash_args {
 
 static struct scanner_t *scanner = NULL;
 
-unsigned long fourtuple_hash(void *args, int right)
+unsigned long fourtuple_hash(void *v, int right, void *args)
 {
   struct hash_args *hargs = args;
   unsigned char *str = hargs->keystr;
-  unsigned char *value = hargs->value;
+  unsigned char *value = (char*)hargs->value;
 
   unsigned long hash = 5381;
   int c;
@@ -113,8 +113,11 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   sprintf((char*)hargs->keystr, "%s %s %d %d", (char*)src_addr, 
 	  (char*)dst_addr, sport, dport);
   
-  dict_insert_fn(&dict, (void *)hargs, fourtuple_hash);
-
+  dict_insert_fn(dictp, (void *)hargs->value,
+		 fourtuple_hash, hargs);
+  
+  free(hargs->keystr);
+  free(hargs);
   hargs = NULL;
   return ;
 }

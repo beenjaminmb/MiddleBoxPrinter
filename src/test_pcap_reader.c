@@ -20,7 +20,7 @@
 #define PCAP_FILE_NAME "capnext.pcap"
 #define TS_SPOOF_IP "64.106.82.6" /* IP address tonysoprano 
 				     uses to spoof ip addresses. */
-#define QR_DICT_SIZE 128
+#define QR_DICT_SIZE 2
 
 int test_parse_pcap()
 {
