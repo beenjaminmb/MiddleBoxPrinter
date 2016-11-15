@@ -49,12 +49,12 @@ int test_parse_pcap()
 int test_split_qr()
 {
   dict_t *qr = splot_query_response(PCAP_FILE_NAME);
-  
+  dict_destroy_fn(qr, (free_fn)free);
 }
 
 int main(void)
 {
-  assert( (test_parse_pcap() == 0) );
+  //assert( (test_parse_pcap() == 0) );
   assert( (test_split_qr() == 0) );
 
   return 0;

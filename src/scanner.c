@@ -141,13 +141,20 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
    * 3. else:
    *        do nothing.
    */
-  
-  if ( dict_member_fn(dictp, fourtuble_hash, ((void*)&args)) ) {
-    dict_insert_fn(dictp, (void*)value,
-      fourtuple_hash,
+  int is_probe = strcmp(src_addr, SRC_IP);  
+  if ( is_probe ) {
+    if (dict_member_fn(dictp, fourtuble_hash, ((void*)&args, NULL)) ) {
+    dict_insert_fn(dictp, (void*)value, fourtuple_hash, 
       ((void*)&args), NULL);
+    }
+    goto DONE:
   }
-  return ;
+  int is_response = strcmp(dst_addr, SRC_IP);
+  if ( is_response ) {
+    
+  }
+  DONE:
+  return ;      
 }
 
 dict_t * split_query_response(const char* pcap_fname)
@@ -170,20 +177,20 @@ dict_t * split_query_response(const char* pcap_fname)
   char errbuf[PCAP_ERRBUF_SIZE];
   struct pcap_pkthdr header;
 
-  pcap = pcap_open_offline(pcap_fnme, errbuf);
+  pcap = pcap_open_offline(pcap_fname, errbuf);
   assert( pcap );
   
 #ifdef UNITTEST
   printf("%s %d\n", __func__, __LINE__);
-#emdif
+#endif
 
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, header.ts, header.caplen);    
   }
-  dict_destroy_fn(q_r, (free_fn)free);
   free((void*)pcap);
+  pcap = NULL;
   free((void*)packet);
-
+  packet = NULL;
 #ifdef UNITTEST
   printf("%s %d: According to valgrind, there are "
 	 "there are two missing free's here\n", __func__, __LINE__);
