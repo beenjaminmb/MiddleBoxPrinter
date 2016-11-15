@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <net/ethernet.h>
 #include "scanner.h"
 #include "sniffer.h"
 #include "packet.h"
@@ -25,6 +25,20 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 {
 
   printf("%s %d \n", __func__, __LINE__);
+  dict_t *dict = *dictp;
+  if ( capture_len < sizeof(struct ether_header) ) {
+    return ;
+  }
+ 
+  packet += sizeof(struct ether_header);
+  iphdr *ip = packet;
+  
+  capture_len -= sizeof(struct ether_header);
+  IP_header_len = ip->ip_hl * 4;
+  
+  
+      
+  
   return ;
 }
 

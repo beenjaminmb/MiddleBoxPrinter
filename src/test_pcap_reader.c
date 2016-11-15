@@ -12,8 +12,9 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
-#define PCAP_FILE_NAME "test-launch.pcap"
-
+#define PCAP_FILE_NAME "capnext.pcap"
+#define TS_SPOOF_IP "64.106.82.6" /* IP address tonysoprano 
+				     uses to spoof ip addresses. */
 #define QR_DICT_SIZE 128
 
 int test_parse_pcap()
