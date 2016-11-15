@@ -24,10 +24,6 @@
 
 int test_parse_pcap()
 {
-  pcap_t *pcap;
-  const unsigned char *packet;
-  char errbuf[PCAP_ERRBUF_SIZE];
-  struct pcap_pkthdr header;
 
   dict_t *q_r = new_dict_size(QR_DICT_SIZEp);
 
@@ -49,9 +45,17 @@ int test_parse_pcap()
   return 0;
 }
 
+
+int test_split_qr()
+{
+  dict_t *qr = splot_query_response(PCAP_FILE_NAME);
+  
+}
+
 int main(void)
 {
-  assert( (test_parse_pcap() == 0));
-  
+  assert( (test_parse_pcap() == 0) );
+  assert( (test_split_qr() == 0) );
+
   return 0;
 }

@@ -125,13 +125,32 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   struct hash_args args = {.keystr = (unsigned char *)keystr,
 			   .value = (unsigned char *)value};
 
-  dict_insert_fn(dictp, (void*)value,
-		 fourtuple_hash,
-		 ((void*)&args), NULL);
+  /**
+   * 1. If the p.src == DILLINGER_SPOOF:
+   *        we are looking at a probe going out.
+   *    if p in dict:
+   *      
+   *    else:
+   * 
+   * 2. else if p.dst == DILLINGER_SPOOF:
+   *        we are looking at a probe  response coming back.
+   *     if p in dict:
+   *        append it to the list.
+   *     else:
+   *        create a new entry and added it to the head of the list.
+   * 3. else:
+   *        do nothing.
+   */
+  
+  if ( dict_member_fn(dictp, fourtuble_hash, ((void*)&args)) ) {
+    dict_insert_fn(dictp, (void*)value,
+      fourtuple_hash,
+      ((void*)&args), NULL);
+  }
   return ;
 }
 
-dict_t * split_query_response()
+dict_t * split_query_response(const char* pcap_fname)
 {
   /**
    * 1. R = pcap file sniffer just saved. 
@@ -144,10 +163,32 @@ dict_t * split_query_response()
    * 9.       continue
    *
    */
-
   dict_t *q_r = new_dict_size(QR_DICT_SIZE);
  
+  pcap_t *pcap;
+  const unsigned char *packet;
+  char errbuf[PCAP_ERRBUF_SIZE];
+  struct pcap_pkthdr header;
 
+  pcap = pcap_open_offline(pcap_fnme, errbuf);
+  assert( pcap );
+  
+#ifdef UNITTEST
+  printf("%s %d\n", __func__, __LINE__);
+#emdif
+
+  while ( (packet = pcap_next(pcap, &header)) != NULL ) {
+    process_packet(&q_r, packet, header.ts, header.caplen);    
+  }
+  dict_destroy_fn(q_r, (free_fn)free);
+  free((void*)pcap);
+  free((void*)packet);
+
+#ifdef UNITTEST
+  printf("%s %d: According to valgrind, there are "
+	 "there are two missing free's here\n", __func__, __LINE__);
+
+#endif
 
  return q_r;    
 }
