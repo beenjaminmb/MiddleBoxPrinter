@@ -143,7 +143,10 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
    * 3. else:
    *        do nothing.
    */
-  int is_probe = strcmp((const char*)src_addr, (const char*)SRC_IP);  
+  int is_probe = strcmp((const char*)src_addr, (const char*)SRC_IP);
+  int is_response = strcmp((const char*)dst_addr,
+			   (const char*)SRC_IP);
+
   if ( is_probe ) {
     if ( !dict_member_fn(*dictp, (void*)value, fourtuple_hash,
 			 ((void*)&args)) ) {
@@ -156,11 +159,9 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
     }
     goto DONE;
   }
-  int is_response = strcmp((const char*)dst_addr,
-			   (const char*)SRC_IP);
-  if ( is_response ) {
+  else  if ( is_response ) {
     if ( dict_member_fn(*dictp, fourtuple_hash,
-			 ((void*)&args), NULL) ) {
+			((void*)&args), NULL) ) {
       list_t *l = dict_get_value_fn(*dictp, (void*)value,
 				    fourtuple_hash, ((void*)&args));
       list_insert(l, value);
@@ -171,8 +172,7 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
     goto DONE;
   }
  FREE_VALUE:
-  free(value);  
-
+  free(value);
  DONE:
   return ;      
 }
@@ -208,7 +208,7 @@ dict_t * split_query_response(const char* pcap_fname)
 #endif
   
   int i = 0;
-  while ( (i++ < 6) && (packet = pcap_next(pcap, &header)) != NULL ) {
+  while ( (i++ < 2) && (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, header.ts, header.caplen);
   }
   free((void*)pcap);
