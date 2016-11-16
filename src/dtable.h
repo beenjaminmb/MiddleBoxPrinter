@@ -109,7 +109,7 @@ int  dict_member(dict_t *d, void *value);
  * 
  */
 int dict_member_fn(dict_t *d, void *value, key_fn hash_fn,
-			    void *args);
+		   void *args);
 
 
 

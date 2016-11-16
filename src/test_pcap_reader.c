@@ -26,9 +26,12 @@ int test_parse_pcap()
 {
 
   dict_t *q_r = new_dict_size(QR_DICT_SIZEp);
-
-  pcap = pcap_open_offline(PCAP_FILE_NAME, errbuf);
+  const unsigned char *packet;
+  char errbuf[PCAP_ERRBUF_SIZE];
+  struct pcap_pkthdr header;  
+  pcap_t *pcap = pcap_open_offline(PCAP_FILE_NAME, errbuf);
   assert( pcap );
+
   
   printf("%s %d\n", __func__, __LINE__);
 
@@ -45,17 +48,33 @@ int test_parse_pcap()
   return 0;
 }
 
+unsigned long free_list(void *list)
+{
+  list_t *l = list;
+  list_node_t *current = l->list;  
+  while( current ) {
+    list_node_t *tmp = current->next; 
+    free(current->value);
+    free(current);
+    current = tmp;
+  }
+  free(list);
+  return 0;
+}
 
 int test_split_qr()
 {
-  dict_t *qr = splot_query_response(PCAP_FILE_NAME);
-  dict_destroy_fn(qr, (free_fn)free);
+  printf("%s %d: Test Starting\n",__func__, __LINE__);
+  dict_t *qr = split_query_response(PCAP_FILE_NAME);
+  dict_destroy_fn(qr, (free_fn)free_list);
+  printf("%s %d: Test Ending\n",__func__, __LINE__);
+  return 0;
 }
 
 int main(void)
 {
   //assert( (test_parse_pcap() == 0) );
   assert( (test_split_qr() == 0) );
-
+  
   return 0;
 }

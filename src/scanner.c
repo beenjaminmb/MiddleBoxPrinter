@@ -18,7 +18,7 @@
 #include "dtable.h"
 #include <arpa/inet.h>
 
-#define PCAP_TEST_FILE "./../../MiscFingerPrinting/capnext.pcap"
+#define PCAP_TEST_FILE "./capnext.pcap"
 
 struct hash_args {
   unsigned char *keystr;
@@ -145,11 +145,14 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
    */
   int is_probe = strcmp((const char*)src_addr, (const char*)SRC_IP);  
   if ( is_probe ) {
-    if ( !dict_member_fn(*dictp, fourtuple_hash,
-			 ((void*)&args), NULL) ) {
+    if ( !dict_member_fn(*dictp, (void*)value, fourtuple_hash,
+			 ((void*)&args)) ) {
       list_t *l = new_list();
-      dict_insert_fn(dictp, l, fourtuple_hash,
+      dict_insert_fn(dictp, (void*)l, fourtuple_hash,
 		     ((void*)&args), NULL);
+    }
+    else {
+      goto FREE_VALUE;
     }
     goto DONE;
   }
@@ -159,12 +162,18 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
     if ( dict_member_fn(*dictp, fourtuple_hash,
 			 ((void*)&args), NULL) ) {
       list_t *l = dict_get_value_fn(*dictp, (void*)value,
-				    fourtuple_hash,
-				    ((void*)&args));
+				    fourtuple_hash, ((void*)&args));
       list_insert(l, value);
     }
+    else {
+      goto FREE_VALUE;
+    }
+    goto DONE;
   }
-  DONE:
+ FREE_VALUE:
+  free(value);  
+
+ DONE:
   return ;      
 }
 
@@ -189,13 +198,17 @@ dict_t * split_query_response(const char* pcap_fname)
   struct pcap_pkthdr header;
 
   pcap = pcap_open_offline(pcap_fname, errbuf);
-  assert( pcap );
-  
+  if (pcap == NULL) {
+    printf("%s %d %s %d %s\n",__func__, __LINE__, pcap_fname, errno,
+	   strerror(errno) );
+    assert( pcap );
+  }  
 #ifdef UNITTEST
   printf("%s %d\n", __func__, __LINE__);
 #endif
-
-  while ( (packet = pcap_next(pcap, &header)) != NULL ) {
+  
+  int i = 0;
+  while ( (i++ < 6) && (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, header.ts, header.caplen);
   }
   free((void*)pcap);
