@@ -18,6 +18,8 @@
 #include "dtable.h"
 #include <arpa/inet.h>
 
+#define PCAP_TEST_FILE "test-capture.pcap"
+
 struct hash_args {
   unsigned char *keystr;
   unsigned char *value;
@@ -67,13 +69,13 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   int caplen = capture_len;
   char *addr = inet_ntoa(ip->ip_src);
   len = strlen(addr);
-  memset(src_addr, 0, sizeof(src_addr) + 1);
-  memcpy(src_addr, addr, len);
+  memset((void*)src_addr, 0, sizeof(src_addr));
+  memcpy((void*)src_addr, (void*)addr, len);
 
   addr = inet_ntoa(ip->ip_dst);
   len = strlen(addr);
-  memset(dst_addr, 0, sizeof(dst_addr)+1);
-  memcpy(dst_addr, addr, len);
+  memset((void*)dst_addr, 0, sizeof(dst_addr));
+  memcpy((void*)dst_addr, (void*)addr, len);
 
   struct tcphdr *tcp;
   int sport = 0;
@@ -116,7 +118,7 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
   char *value = (char *)malloc(caplen + 1);
   memset(value, 0, caplen + 1);
-  memcpy(value, tmppacket, caplen);
+  memcpy(value, (void*)tmppacket, caplen);
   memset(keystr, 0, 128);
 
   sprintf((char*)keystr, "%s %s %d %d", (char*)src_addr,
@@ -141,17 +143,24 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
    * 3. else:
    *        do nothing.
    */
-  int is_probe = strcmp(src_addr, SRC_IP);  
+  int is_probe = strcmp((const char*)src_addr, (const char*)SRC_IP);  
   if ( is_probe ) {
-    if (dict_member_fn(dictp, fourtuble_hash, ((void*)&args, NULL)) ) {
-    dict_insert_fn(dictp, (void*)value, fourtuple_hash, 
-      ((void*)&args), NULL);
+    if ( !dict_member_fn(*dictp, fourtuple_hash,
+			 ((void*)&args), NULL) ) {
+      list_t *l = new_list();
+      dict_insert_fn(dictp, l, fourtuple_hash,
+		     ((void*)&args), NULL);
     }
-    goto DONE:
+    goto DONE;
   }
-  int is_response = strcmp(dst_addr, SRC_IP);
+  int is_response = strcmp((const char*)dst_addr,
+			   (const char*)SRC_IP);
   if ( is_response ) {
-    
+    if ( dict_member_fn(*dictp, fourtuple_hash,
+			 ((void*)&args), NULL) ) {
+      list_t *l = dict_get_value_fn(*dictp, (void*)value,
+				    fourtuple_hash, ((void*)&args));
+    }
   }
   DONE:
   return ;      
@@ -185,7 +194,7 @@ dict_t * split_query_response(const char* pcap_fname)
 #endif
 
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
-    process_packet(&q_r, packet, header.ts, header.caplen);    
+    process_packet(&q_r, packet, header.ts, header.caplen);
   }
   free((void*)pcap);
   pcap = NULL;
@@ -222,7 +231,7 @@ void generate_phase2_packets()
    * 4.      
    */
 
-  dict_t *query_response = split_query_response();
+  dict_t *query_response = split_query_response(PCAP_TEST_FILE);
 
   dict_destroy(query_response);
   return;

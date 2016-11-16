@@ -92,6 +92,6 @@ scanner_t *new_scanner_singleton();
 void process_packet(dict_t **dictp, const unsigned char *packetp,
 		    struct timeval ts, unsigned int capture_len);
 
-dict_t * split_query_response();
+dict_t * split_query_response(const char* pcap_fname);
 
 #endif

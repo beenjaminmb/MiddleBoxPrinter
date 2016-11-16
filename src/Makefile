@@ -13,7 +13,7 @@ dist : $(targets)
 	$(CC) $(CFLAGS) -o scanner $(targets) $(LDLIBS)
 
 dist_dillinger : $(targets)
-	$(CC) -DDILLINGER -Wall -std=gnu99 -03 -o scanner $(targets) $(LDLIBS)
+	$(CC) -DDILLINGER -Wall -std=gnu99 -O3 -o scanner $(targets) $(LDLIBS)
 
 
 vmscanner : $(targets)

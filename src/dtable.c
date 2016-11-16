@@ -14,6 +14,14 @@ static list_node_t* list_remove_helper(list_node_t *l, void *value);
 
 unsigned long make_key(void *value, int right, void * args);
 
+
+list_node_t *list_merge(list_t *l1, list_t *l2)
+{
+  list_node_t *current = l1->list;
+  
+  return NULL;
+}
+
 int list_empty(list_t *l)
 {
   return (l->size == 0); 
@@ -272,6 +280,29 @@ int dict_member_fn(dict_t *d, void *value,
   int ismember = l ? (l->value == value) : 0;
   return ismember;
 }
+
+
+/**
+ *
+ */
+void* dict_get_value(dict_t *d, void *value)
+{
+  return dict_get_value_fn(d, value, make_key, NULL);
+}
+
+/**
+ * 
+ */
+void* dict_get_value_fn(dict_t *d, void *value, key_fn hash_fn,
+			void *args)
+{
+  unsigned long key = hash_fn(value, d->size, args);
+  list_node_t *l = list_find(d->elements[key], value);
+  assert(l);
+  return l->value;
+}
+
+
 
 /**
  * Generate a hash in [0, right). The corner case if value is null is to

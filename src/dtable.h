@@ -60,6 +60,11 @@ list_node_t* list_remove(list_t *l, void *value);
 /**
  *
  */
+list_node_t *list_merge(list_t *l1, list_t *l2);
+
+/**
+ *
+ */
 unsigned long make_key(void *value, int right, void *args);
 
 /**
@@ -98,13 +103,30 @@ int dict_delete_fn(dict_t **dp, void *value, key_fn hash_fn,
 /**
  *
  */
-int dict_member(dict_t *d, void *value);
+int  dict_member(dict_t *d, void *value);
 
 /**
  * 
  */
 int dict_member_fn(dict_t *d, void *value, key_fn hash_fn,
-		   void *args);
+			    void *args);
+
+
+
+/**
+ * 
+ */
+void* dict_get_value(dict_t *d, void *value);
+
+
+
+/**
+ * 
+ */
+void* dict_get_value_fn(dict_t *d, void *value, key_fn hash_fn,
+			void *args);
+
+
 /**
  * Will delete the dictionary and all of the lists it 
  * is composed of. Does not free the values inside each of the 
