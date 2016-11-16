@@ -101,17 +101,30 @@ int dict_delete_fn(dict_t **dp, void *value, key_fn hash_fn,
 int dict_member(dict_t *d, void *value);
 
 /**
- *
+ * 
  */
 int dict_member_fn(dict_t *d, void *value, key_fn hash_fn,
 		   void *args);
 /**
+ * Will delete the dictionary and all of the lists it 
+ * is composed of. Does not free the values inside each of the 
+ * list nodes.
  *
+ * @param d: Pointer to the dict_t to be destroyed.
+ * @return: 0 upon completion. Always returns 0.
  */
 int dict_destroy(dict_t  *d);
 
 /**
+ * Destroy a dictionary and apply a user defined free function
+ * to each of the elements in the hash table linked lists.
+ * @param d: Pointer to the dict_t to be destroyed.
  *
+ * @param ufree: Function pointer to a user-defined destruction
+ * function. It will be applied to everyone member of the list value
+ * pointers instead of freeing only the list_node_t pointers.
+ * 
+ * @return: 0 upon completion. *should* always return 0.
  */
 int dict_destroy_fn(dict_t  *d, free_fn ufree);
 
