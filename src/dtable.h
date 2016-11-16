@@ -58,7 +58,7 @@ list_node_t* list_find(list_t *l, void *value);
 list_node_t* list_remove(list_t *l, void *value);
 
 /**
- *
+ * @warning: FUNCTION NOT YET IMPLEMENTED. IT WILL DUMP CORE.
  */
 list_node_t *list_merge(list_t *l1, list_t *l2);
 

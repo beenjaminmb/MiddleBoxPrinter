@@ -18,8 +18,8 @@ unsigned long make_key(void *value, int right, void * args);
 list_node_t *list_merge(list_t *l1, list_t *l2)
 {
   list_node_t *current = l1->list;
-  
-  return NULL;
+  assert(0);
+  return current;
 }
 
 int list_empty(list_t *l)

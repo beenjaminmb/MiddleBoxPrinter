@@ -18,7 +18,7 @@
 #include "dtable.h"
 #include <arpa/inet.h>
 
-#define PCAP_TEST_FILE "test-capture.pcap"
+#define PCAP_TEST_FILE "./../../MiscFingerPrinting/capnext.pcap"
 
 struct hash_args {
   unsigned char *keystr;
@@ -159,7 +159,9 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
     if ( dict_member_fn(*dictp, fourtuple_hash,
 			 ((void*)&args), NULL) ) {
       list_t *l = dict_get_value_fn(*dictp, (void*)value,
-				    fourtuple_hash, ((void*)&args));
+				    fourtuple_hash,
+				    ((void*)&args));
+      list_insert(l, value);
     }
   }
   DONE:
