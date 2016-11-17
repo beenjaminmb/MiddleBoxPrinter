@@ -53,65 +53,10 @@ int test_parse_pcap()
   return 0;
 }
 
-void stringify_node( char **str, void *vnode)
-{
-  char *s = *str;
-  unsigned char *packet = (unsigned char*)vnode;
-  unsigned char src_addr[32];
-  unsigned char dst_addr[32];
-  
-  struct ether_header *eth = (struct ether_header*)packet;
-  packet += sizeof(struct ether_header);
-  struct ip *ip = (struct ip*)packet;
-
-  char *addr = inet_ntoa(ip->ip_src);
-
-  int len = strlen(addr);
-  memset((void*)src_addr, 0, sizeof(src_addr));
-  memcpy((void*)src_addr, (void*)addr, len);
-
-  addr = inet_ntoa(ip->ip_dst);
-  len = strlen(addr);
-  memset((void*)dst_addr, 0, sizeof(dst_addr));
-  memcpy((void*)dst_addr, (void*)addr, len);
-
-  struct tcphdr *tcp;
-  struct udphdr *udp;
-  struct icmphdr *icmp;
-  unsigned short sport = 0;
-  unsigned short dport = 0;
-
-  int IP_header_len = ip->ip_hl * 4;
-
-  switch( ip->ip_p ) {
-  case IPPROTO_TCP:
-    tcp = (struct tcphdr*)(packet + IP_header_len);
-    sport = ntohs(tcp->th_sport);
-    dport = ntohs(tcp->th_dport);
-
-    break;
-  case IPPROTO_UDP:
-    udp = (struct udphdr*)(packet + IP_header_len);
-    sport = ntohs(udp->uh_sport);
-    dport = ntohs(udp->uh_dport);
-    break;
-  case IPPROTO_ICMP:
-    icmp = (struct icmphdr*)(packet + IP_header_len);
-    break;
-  default:
-    break ;
-  }
-
-  sprintf((char*)s, "%s %s %d %d", (char*)src_addr,
-	  (char*)dst_addr, sport, dport);
-  return ;
-}
-
 void print_qr_dict(dict_t *d)
 {
   int size = d->size;
   list_t *element_list = NULL;
-  list_node_t *node = NULL;
   int avgsize = 0;
   char *str = malloc(MTU * sizeof(char));
   int nzeros = 0;
@@ -122,7 +67,9 @@ void print_qr_dict(dict_t *d)
   int other = 0;
   for (int i = 0; i < size; i++) {
     element_list = d->elements[i];
-    node = element_list->list;
+#ifdef DEBUG_STRINGIFY
+    list_node_t *node = element_list->list;
+#endif
     avgsize += element_list->size;
     if ( element_list->size == 0 ) {
       nzeros += 1;
@@ -139,7 +86,7 @@ void print_qr_dict(dict_t *d)
     }
 
     if (element_list->size > 100 && element_list->size <= 100) {
-      nghlt += 1; 
+      nghlt += 1;
     }
     else if (element_list->size > 1000){
       printf("\tsize!!! %d\n", element_list->size);
@@ -148,12 +95,10 @@ void print_qr_dict(dict_t *d)
 #ifdef DEBUG_STRINGIFY
     while ( element_list->size && node ) {
       list_node_t *tmp = node->next;
-      
       list_t *l = node->value;
-      
       stringify_node(&str, l->list->value);
       printf("%s %d %s\n", __func__, __LINE__, str);
-      node = tmp;      
+      node = tmp;
     }
 #endif
   }
@@ -169,20 +114,6 @@ void print_qr_dict(dict_t *d)
   printf("Major problems!!!!!:                              %d\n", other);
 }
 
-unsigned long free_list(void *list)
-{
-  list_t *l = list;
-  list_node_t *current = l->list;  
-  while( current ) {
-    list_node_t *tmp = current->next; 
-    free(current->value);
-    free(current);
-    current = tmp;
-  }
-  free(list);
-  return 0;
-}
-
 int test_split_qr()
 {
   printf("%s %d: Test Starting\n",__func__, __LINE__);
@@ -195,10 +126,19 @@ int test_split_qr()
   return 0;
 }
 
+int test_response_reply()
+{
+  printf("%s %d: Test starting\n", __func__, __LINE__);
+  dict_t *qr = split_query_response(PCAP_FILE_NAME);
+  response_replay(&qr);
+  dict_destroy_fn(qr, (free_fn)free_list);
+  printf("%s %d: Test Ending\n",__func__, __LINE__);
+  return 0;
+}
 int main(void)
 {
-  //assert( (test_parse_pcap() == 0) );
-  assert( (test_split_qr() == 0) );
-  
+  // assert( (test_parse_pcap() == 0) );
+  // assert( (test_split_qr() == 0) );
+  assert( (test_response_reply() == 0) );
   return 0;
 }

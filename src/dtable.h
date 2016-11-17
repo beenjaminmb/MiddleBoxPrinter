@@ -32,8 +32,11 @@ typedef unsigned long (*key_fn)(void *, int, void*);
 /* User defined freeing function. */
 typedef unsigned long (*free_fn)(void *);
 
+
 /* User defined equality function. */
 typedef int (*equal_fn)(void *v1, void *v2);
+
+
 
 /**
  * Malloc's and returns a new dynamic hash table. 
@@ -165,5 +168,10 @@ int dict_destroy(dict_t  *d);
  * @return: 0 upon completion. *should* always return 0.
  */
 int dict_destroy_fn(dict_t  *d, free_fn ufree);
+
+/**
+ * Frees the list elements if the value in the dictionary is a list.
+ */
+unsigned long free_list(void *list);
 
 #endif /* _DTABLE_ */

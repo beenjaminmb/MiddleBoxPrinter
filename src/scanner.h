@@ -93,6 +93,11 @@ scanner_t *new_scanner_singleton();
 void process_packet(dict_t **dictp, const unsigned char *packetp,
 		    struct timeval ts, unsigned int capture_len);
 
+
+void response_replay(dict_t **dp);
+
 dict_t * split_query_response(const char* pcap_fname);
+
+void stringify_node( char **str, void *vnode);
 
 #endif

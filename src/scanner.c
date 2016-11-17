@@ -29,7 +29,60 @@ struct hash_args {
   unsigned char *value;
 };
 
+
+
 static struct scanner_t *scanner = NULL;
+
+void stringify_node( char **str, void *vnode)
+{
+  char *s = *str;
+  unsigned char *packet = (unsigned char*)vnode;
+  unsigned char src_addr[32];
+  unsigned char dst_addr[32];
+  
+
+  packet += sizeof(struct ether_header);
+  struct ip *ip = (struct ip*)packet;
+
+  char *addr = inet_ntoa(ip->ip_src);
+
+  int len = strlen(addr);
+  memset((void*)src_addr, 0, sizeof(src_addr));
+  memcpy((void*)src_addr, (void*)addr, len);
+
+  addr = inet_ntoa(ip->ip_dst);
+  len = strlen(addr);
+  memset((void*)dst_addr, 0, sizeof(dst_addr));
+  memcpy((void*)dst_addr, (void*)addr, len);
+
+  struct tcphdr *tcp;
+  struct udphdr *udp;
+  unsigned short sport = 0;
+  unsigned short dport = 0;
+
+  int IP_header_len = ip->ip_hl * 4;
+
+  switch( ip->ip_p ) {
+  case IPPROTO_TCP:
+    tcp = (struct tcphdr*)(packet + IP_header_len);
+    sport = ntohs(tcp->th_sport);
+    dport = ntohs(tcp->th_dport);
+
+    break;
+  case IPPROTO_UDP:
+    udp = (struct udphdr*)(packet + IP_header_len);
+    sport = ntohs(udp->uh_sport);
+    dport = ntohs(udp->uh_dport);
+    break;
+  default:
+    break ;
+  }
+
+  sprintf((char*)s, "%s %s %d %d", (char*)src_addr,
+	  (char*)dst_addr, sport, dport);
+  return ;
+}
+
 
 unsigned long fourtuple_hash(void *v, int right, void *args)
 {
@@ -73,7 +126,6 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
   struct tcphdr *tcp;
   struct udphdr *udp;
-  struct icmphdr *icmp;
   unsigned short sport = 0;
   unsigned short dport = 0;
 
@@ -96,13 +148,6 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
     dport = ntohs(udp->uh_dport);
 #ifdef UNITTEST
     printf("UDP %s %d %s %s\n", __func__, __LINE__,
-	   (char *)src_addr, (char *)dst_addr);
-#endif
-    break;
-  case IPPROTO_ICMP:
-    icmp = (struct icmphdr*)(packet + IP_header_len);
-#ifdef UNITTEST
-    printf("ICMP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
 #endif
     break;
@@ -234,10 +279,43 @@ dict_t * split_query_response(const char* pcap_fname)
  return q_r;    
 }
 
-void *response_replay()
+void response_replay(dict_t **dp)
 {
-  
-  return NULL;
+  /* d is the query response dictionary */
+  unsigned char *packet = NULL;
+  dict_t *d = *dp;
+  packet += sizeof(struct ether_header);
+  list_t *element_list = NULL;
+  list_node_t *node = NULL;
+  int size = d->size;
+
+  printf("%s %d size = %d, N = %d\n", __func__, __LINE__, 
+	 d->size, d->N);
+
+  char *str = malloc(MTU * sizeof(char));
+  for (int i = 0; i < size; i++) {
+    element_list = d->elements[i];
+    node = element_list->list;
+    if ( element_list->size == 1 ) { /*Cull the empty ones*/
+      list_node_t *tmp = node->next;
+      list_t *l = node->value;
+      dict_delete_fn(dp, l, (key_fn)make_key,
+		     NULL, NULL, (equal_fn)logical_equal);
+      free_list(l);
+    }
+    else {
+      while ( element_list->size && node ) {
+	list_node_t *tmp = node->next;
+	list_t *l = node->value;      
+	//stringify_node(&str, l->list->value);
+	node = tmp;
+      }
+    }
+  }
+  printf("%s %d size = %d, N = %d\n", __func__, __LINE__, 
+	 d->size, d->N);
+  free(str);
+  return ;
 }
 
 void generate_phase2_packets()
@@ -257,7 +335,6 @@ void generate_phase2_packets()
    */
 
   dict_t *query_response = split_query_response(PCAP_TEST_FILE);
-
   dict_destroy(query_response);
   return;
 }

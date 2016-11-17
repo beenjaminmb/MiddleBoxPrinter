@@ -15,6 +15,22 @@ static list_node_t* list_find_helper(list_node_t *list, void *value,
 
 static list_node_t* list_remove_helper(list_node_t *l, void *value);
 
+
+unsigned long free_list(void *list)
+{
+  list_t *l = list;
+  list_node_t *current = l->list;  
+  while( current ) {
+    list_node_t *tmp = current->next; 
+    free(current->value);
+    free(current);
+    current = tmp;
+  }
+  free(list);
+  return 0;
+}
+
+
 list_node_t *list_merge(list_t *l1, list_t *l2)
 {
   list_node_t *current = l1->list;
