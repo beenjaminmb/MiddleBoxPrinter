@@ -60,7 +60,7 @@ void stringify_node( char **str, void *vnode)
   unsigned char dst_addr[32];
 
   struct ether_header *eth = vnode;
-  struct ip *ip = (struct ip*)(eth + sizeof(struct ip));
+  struct ip *ip = (struct ip*)(eth + sizeof(struct ether_header));
   char *addr = inet_ntoa(ip->ip_src);
 
   int len = strlen(addr);
@@ -120,7 +120,7 @@ void print_qr_dict(dict_t *d)
       list_node_t *tmp = node->next;
       
       list_t *l = node->value;
-	
+
       stringify_node(&str, l->list->value);
       printf("%s %d %s\n", __func__, __LINE__, str);
 
