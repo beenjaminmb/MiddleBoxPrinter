@@ -154,8 +154,11 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
       list_t *l = new_list();
       dict_insert_fn(dictp, (void*)l, fourtuple_hash,
 		     ((void*)&args), NULL);
+
+      list_insert(l, value);
     }
-    goto FREE_VALUE;
+    goto DONE; /*ATTENTION: normally I wouldn't insert query node
+		however in this case I need to for testing.*/
   }
   else  if ( is_response ) {
     if ( dict_member_fn(*dictp, fourtuple_hash,
