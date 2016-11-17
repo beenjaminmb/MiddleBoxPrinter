@@ -23,8 +23,8 @@
 #define STATE_SIZE 8
 #define SCAN_DURATION 3600.0
 /* Change back to 128 when we fix the memory leak.*/
-#define QR_DICT_SIZE 2
-//#define QR_DICT_SIZE 256
+//#define QR_DICT_SIZE 2
+#define QR_DICT_SIZE 4096
 
 typedef struct scanner_t {
   scanner_worker_t *workers;

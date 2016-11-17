@@ -17,7 +17,11 @@
 #include "util.h"
 #include "dtable.h"
 #include <arpa/inet.h>
-
+#include <netinet/ip.h>
+#include <netinet/udp.h>
+#include <netinet/tcp.h>
+#include <netinet/ip_icmp.h>
+#include <netinet/in.h>
 #define PCAP_TEST_FILE "./capnext.pcap"
 
 struct hash_args {
@@ -29,18 +33,8 @@ static struct scanner_t *scanner = NULL;
 
 unsigned long fourtuple_hash(void *v, int right, void *args)
 {
-  struct hash_args *hargs = args;
-  unsigned char *str = hargs->keystr;
-
-  unsigned long hash = 5381;
-  int c;
-  char *tmp = (char*)str;
-  while ( (c = *tmp++) ) /*Invalid read?*/
-    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-  if (right)
-    return (unsigned long)(hash % right);
-  else
-    return 0;
+  unsigned long key = make_key(v, right, args);
+  return key;
 }
 
 void process_packet(dict_t **dictp, const unsigned char *packet,
@@ -78,6 +72,8 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   memcpy((void*)dst_addr, (void*)addr, len);
 
   struct tcphdr *tcp;
+  struct udphdr *udp;
+  struct icmphdr *icmp;
   unsigned short sport = 0;
   unsigned short dport = 0;
 
@@ -95,12 +91,16 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 #endif
     break;
   case IPPROTO_UDP:
+    udp = (struct udphdr*)(packet + IP_header_len);
+    sport = ntohs(udp->uh_sport);
+    dport = ntohs(udp->uh_dport);
 #ifdef UNITTEST
     printf("UDP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
 #endif
     break;
   case IPPROTO_ICMP:
+    icmp = (struct icmphdr*)(packet + IP_header_len);
 #ifdef UNITTEST
     printf("ICMP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
@@ -143,9 +143,10 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
    * 3. else:
    *        do nothing.
    */
-  int is_probe = strcmp((const char*)src_addr, (const char*)SRC_IP);
-  int is_response = strcmp((const char*)dst_addr,
-			   (const char*)SRC_IP);
+  int is_probe = (strcmp((const char*)src_addr, SRC_IP) == 0);
+  //printf("FUCK SRC_IP = %s, src_addr %s, dst_addr %s, is_probe = %d\n", SRC_IP, src_addr, dst_addr, is_probe);
+  int is_response = (strcmp((const char*)dst_addr,
+			    (const char*)SRC_IP) == 0);
 
   if ( is_probe ) {
     if ( !dict_member_fn(*dictp, (void*)value, fourtuple_hash,
@@ -158,12 +159,11 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
       list_insert(l, value);
     }
     goto DONE; /*ATTENTION: normally I wouldn't insert query node
-		however in this case I need to for testing.*/
+		 however in this case I need to for testing.*/
   }
   else  if ( is_response ) {
-    if ( dict_member_fn(*dictp, fourtuple_hash,
-			((void*)&args), NULL,
-			logical_equal) ) {
+    if ( dict_member_fn(*dictp, (void*)value, fourtuple_hash,
+			((void*)&args), logical_equal) ) {
       list_t *l = dict_get_value_fn(*dictp, (void*)value,
 				    fourtuple_hash, ((void*)&args),
 				    logical_equal);
@@ -212,10 +212,11 @@ dict_t * split_query_response(const char* pcap_fname)
   
 
   /* int i = 0; */
-  /* while ( (i++ < 2) && (packet = pcap_next(pcap, &header)) != NULL ) { */
+  /* while (  (packet = pcap_next(pcap, &header)) != NULL ) { */
+  /*   i++; */
+  /*   printf("i = %d\n", i); */
   /*   process_packet(&q_r, packet, header.ts, header.caplen); */
   /* } */
-
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, header.ts, header.caplen);
   }

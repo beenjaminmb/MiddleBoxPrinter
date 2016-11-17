@@ -78,16 +78,18 @@ list_node_t *list_find_fn(list_t *l, void *value, equal_fn equal) {
 static list_node_t* list_find_helper(list_node_t *list, void *value,
 				     equal_fn equal)
 {
-  if (list == NULL) return NULL;
-  if (list->next == NULL) {
-    if ( equal(list->value, value)) {
+  if ( list == NULL ) {
+    return NULL;
+  }
+  if ( list->next == NULL) {
+    if ( equal(list->value, value) ) {
       return list;
     }
     else {
       return NULL;
     }
   }
-  else if ( equal(list->value, value)) {
+  else if ( equal(list->value, value) ) {
     return list;
   }
   else return list_find_helper(list->next, value, equal);
@@ -297,7 +299,9 @@ int dict_member(dict_t *d, void *value)
 int dict_member_fn(dict_t *d, void *value,
 		   key_fn hash_fn, void *args, equal_fn equal)
 {
+  assert( d );
   unsigned long key = hash_fn(value, d->size, args);
+  assert( d->elements );
   list_node_t *l = list_find_fn(d->elements[key], value, equal);
   int ismember = l ? equal(l->value, value) : 0;
   return ismember;
@@ -340,18 +344,24 @@ unsigned long make_key(void *value, int right, void *args)
     "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
     "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
     "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
     "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 
   sprintf(str, "%p", value);
   unsigned long hash = 5381;
   int c;
   char *tmp = str;
-  while ( (c = *tmp++) )
+  while ( (c = *tmp++) ) {
     hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-
-  if (right)
+  }
+  if (right) {
     return (unsigned long)(hash % right);
-  else
+  }
+  else {
     return 0;
+  }
 }
 

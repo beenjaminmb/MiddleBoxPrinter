@@ -42,8 +42,11 @@
  #define SRC_IP "64.106.82.6" //Spoofed but on same subnet as tonys.
  #define REAL_SRC_IP "64.106.82.5" 
 #else
- #define SRC_IP "192.168.0.18"//vboxnet0 interface 64.106.82.5 my comp.
- #define REAL_SRC_IP "192.168.0.5" 
+ #define SRC_IP "64.106.82.6" //Spoofed but on same subnet as tonys.
+ #define REAL_SRC_IP "64.106.82.5" 
+
+ /* #define SRC_IP "192.168.0.18"//vboxnet0 interface 64.106.82.5 my comp. */
+ /* #define REAL_SRC_IP "192.168.0.5"  */
 #endif
 
 typedef struct iphdr iphdr;

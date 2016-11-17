@@ -5,7 +5,7 @@
 
 #include "scanner.h"
 #include "dtable.h"
-
+#include "packet.h"
 #include <assert.h>
 #include <pcap.h>
 
@@ -76,6 +76,8 @@ void stringify_node( char **str, void *vnode)
   memcpy((void*)dst_addr, (void*)addr, len);
 
   struct tcphdr *tcp;
+  struct udphdr *udp;
+  struct icmphdr *icmp;
   unsigned short sport = 0;
   unsigned short dport = 0;
 
@@ -89,8 +91,12 @@ void stringify_node( char **str, void *vnode)
 
     break;
   case IPPROTO_UDP:
+    udp = (struct udphdr*)(packet + IP_header_len);
+    sport = ntohs(udp->uh_sport);
+    dport = ntohs(udp->uh_dport);
     break;
   case IPPROTO_ICMP:
+    icmp = (struct icmphdr*)(packet + IP_header_len);
     break;
   default:
     break ;
@@ -106,22 +112,61 @@ void print_qr_dict(dict_t *d)
   int size = d->size;
   list_t *element_list = NULL;
   list_node_t *node = NULL;
-  
+  int avgsize = 0;
   char *str = malloc(MTU * sizeof(char));
+  int nzeros = 0;
+  int nones = 0;
+  int ngolt = 0;
+  int ngtlh = 0;
+  int nghlt = 0;
+  int other = 0;
   for (int i = 0; i < size; i++) {
     element_list = d->elements[i];
     node = element_list->list;
+    avgsize += element_list->size;
+    if ( element_list->size == 0 ) {
+      nzeros += 1;
+    }
+    if (element_list->size == 1) {
+      nones += 1;
+    }
+    if (element_list->size > 1 && element_list->size <= 10) {
+      ngolt += 1;
+    }
+
+    if (element_list->size > 10 && element_list->size <= 100) {
+      ngtlh += 1;
+    }
+
+    if (element_list->size > 100 && element_list->size <= 100) {
+      nghlt += 1; 
+    }
+    else if (element_list->size > 1000){
+      printf("\tsize!!! %d\n", element_list->size);
+      other += 1;
+    }
+#ifdef DEBUG_STRINGIFY
     while ( element_list->size && node ) {
       list_node_t *tmp = node->next;
       
       list_t *l = node->value;
-
+      
       stringify_node(&str, l->list->value);
       printf("%s %d %s\n", __func__, __LINE__, str);
-
-      node = tmp;
+      node = tmp;      
     }
+#endif
   }
+  free(str);
+  printf("dict size:                                        %d\n", d->size);
+  printf("dict elements:                                    %d\n", d->N);
+  printf("avg size:                                         %f\n", ((float)avgsize / ((float) d->N)));
+  printf("number zeros:                                     %d\n", nzeros); 
+  printf("number ones:                                      %d\n", nones);
+  printf("number greater than 1 less than 10:               %d\n", ngolt);
+  printf("number greater than 10 less than 100:             %d\n", ngtlh);
+  printf("number greater than 100 less than 1000:           %d\n", nghlt);
+  printf("Major problems!!!!!:                              %d\n", other);
 }
 
 unsigned long free_list(void *list)
@@ -144,7 +189,7 @@ int test_split_qr()
   dict_t *qr = split_query_response(PCAP_FILE_NAME);
 
   print_qr_dict(qr);
-
+  
   dict_destroy_fn(qr, (free_fn)free_list);
   printf("%s %d: Test Ending\n",__func__, __LINE__);
   return 0;
