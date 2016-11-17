@@ -56,11 +56,14 @@ int test_parse_pcap()
 void stringify_node( char **str, void *vnode)
 {
   char *s = *str;
+  unsigned char *packet = (unsigned char*)vnode;
   unsigned char src_addr[32];
   unsigned char dst_addr[32];
+  
+  struct ether_header *eth = (struct ether_header*)packet;
+  packet += sizeof(struct ether_header);
+  struct ip *ip = (struct ip*)packet;
 
-  struct ether_header *eth = vnode;
-  struct ip *ip = (struct ip*)(eth + sizeof(struct ether_header));
   char *addr = inet_ntoa(ip->ip_src);
 
   int len = strlen(addr);
@@ -73,19 +76,19 @@ void stringify_node( char **str, void *vnode)
   memcpy((void*)dst_addr, (void*)addr, len);
 
   struct tcphdr *tcp;
-  int sport = 0;
-  int dport = 0;
+  unsigned short sport = 0;
+  unsigned short dport = 0;
 
   int IP_header_len = ip->ip_hl * 4;
 
   switch( ip->ip_p ) {
   case IPPROTO_TCP:
     tcp = (struct tcphdr*)(ip + IP_header_len);
-    sport = ntohl(tcp->th_sport);
-    dport = ntohl(tcp->th_dport);
+    sport = tcp->th_sport;
+    dport = tcp->th_dport;
 
-    printf("TCP %s %d %s %s\n", __func__, __LINE__,
-	   (char *)src_addr, (char *)dst_addr);
+    printf("TCP %s %d %s %s %d %d\n", __func__, __LINE__,
+	   (char *)src_addr, (char *)dst_addr, sport, dport);
     break;
   case IPPROTO_UDP:
     printf("UDP %s %d %s %s\n", __func__, __LINE__,

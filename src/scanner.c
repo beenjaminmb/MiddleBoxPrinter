@@ -78,8 +78,8 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   memcpy((void*)dst_addr, (void*)addr, len);
 
   struct tcphdr *tcp;
-  int sport = 0;
-  int dport = 0;
+  unsigned short sport = 0;
+  unsigned short dport = 0;
 
   capture_len -= sizeof(struct ether_header);
   int IP_header_len = ip->ip_hl * 4;
@@ -87,30 +87,30 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   switch( ip->ip_p ) {
   case IPPROTO_TCP:
     tcp = (struct tcphdr*)(packet + IP_header_len);
-    sport = ntohl(tcp->th_sport);
-    dport = ntohl(tcp->th_dport);
-#ifdef UNITTEST
-    printf("TCP %s %d %s %s\n", __func__, __LINE__,
-	   (char *)src_addr, (char *)dst_addr);
-#endif
+    sport = ntohs(tcp->th_sport);
+    dport = ntohs(tcp->th_dport);
+    //#ifdef UNITTEST
+    printf("TCP %s %d %s %s %d %d\n", __func__, __LINE__,
+	   (char *)src_addr, (char *)dst_addr, sport, dport);
+    //#endif
     break;
   case IPPROTO_UDP:
-#ifdef UNITTEST
+    //#ifdef UNITTEST
     printf("UDP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
-#endif
+    //#endif
     break;
   case IPPROTO_ICMP:
-#ifdef UNITTEST
+    //#ifdef UNITTEST
     printf("ICMP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
-#endif
+    //#endif
     break;
   default:
-#ifdef UNITTEST
+    //#ifdef UNITTEST
     printf("Other %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
-#endif
+    //#endif
     break ;
   }
 
@@ -211,14 +211,14 @@ dict_t * split_query_response(const char* pcap_fname)
 #endif
   
 
-  /* int i = 0; */
-  /* while ( (i++ < 1) && (packet = pcap_next(pcap, &header)) != NULL ) { */
-  /*   process_packet(&q_r, packet, header.ts, header.caplen); */
-  /* } */
-
-  while ( (packet = pcap_next(pcap, &header)) != NULL ) {
+  int i = 0;
+  while ( (i++ < 2) && (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, header.ts, header.caplen);
   }
+
+  /* while ( (packet = pcap_next(pcap, &header)) != NULL ) { */
+  /*   process_packet(&q_r, packet, header.ts, header.caplen); */
+  /* } */
 
   free((void*)pcap);
   pcap = NULL;

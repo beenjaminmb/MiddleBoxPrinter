@@ -177,7 +177,8 @@ static inline unsigned char *make_junk_header(unsigned char *buffer,
   int result;
   unsigned char *junk_header = (buffer + sizeof(struct ip));
   for (int i = 0; i < (datalen - sizeof(struct ip)) /sizeof(long); i++) {
-    junk_header[i] = range_random(RAND_MAX, worker->random_data, &result);
+    junk_header[i] = range_random(RAND_MAX, worker->random_data,
+				  &result);
   }
   return junk_header;
 }
@@ -231,7 +232,7 @@ static inline unsigned short random_dport(scanner_worker_t *restrict
       sport = 53;
     }
   }
-  return sport;
+  return htons(sport);
 }
 
 static inline udphdr *make_udpheader(unsigned char *buffer,
@@ -319,7 +320,7 @@ static inline iphdr
   iph->tos = 0;
   iph->id = htonl(1);
   iph->frag_off = 0;
-  iph->ttl = START_TTL;
+  iph->ttl = htons(START_TTL);
   iph->check = 0;
   iph->saddr = inet_addr( SRC_IP );
   iph->daddr = sin->sin_addr.s_addr;
