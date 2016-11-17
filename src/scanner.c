@@ -149,7 +149,8 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
   if ( is_probe ) {
     if ( !dict_member_fn(*dictp, (void*)value, fourtuple_hash,
-			 ((void*)&args)) ) {
+			 ((void*)&args),
+			 logical_equal) ) {
       list_t *l = new_list();
       dict_insert_fn(dictp, (void*)l, fourtuple_hash,
 		     ((void*)&args), NULL);
@@ -158,9 +159,11 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   }
   else  if ( is_response ) {
     if ( dict_member_fn(*dictp, fourtuple_hash,
-			((void*)&args), NULL) ) {
+			((void*)&args), NULL,
+			logical_equal) ) {
       list_t *l = dict_get_value_fn(*dictp, (void*)value,
-				    fourtuple_hash, ((void*)&args));
+				    fourtuple_hash, ((void*)&args),
+				    logical_equal);
       list_insert(l, value);
       goto DONE;
     }
@@ -203,6 +206,12 @@ dict_t * split_query_response(const char* pcap_fname)
 #ifdef UNITTEST
   printf("%s %d\n", __func__, __LINE__);
 #endif
+  
+
+  /* int i = 0; */
+  /* while ( (i++ < 1) && (packet = pcap_next(pcap, &header)) != NULL ) { */
+  /*   process_packet(&q_r, packet, header.ts, header.caplen); */
+  /* } */
 
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, header.ts, header.caplen);

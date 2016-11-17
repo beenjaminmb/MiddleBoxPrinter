@@ -32,7 +32,9 @@ typedef unsigned long (*key_fn)(void *, int, void*);
 /* User defined freeing function. */
 typedef unsigned long (*free_fn)(void *);
 
+/* User defined equality function. */
 typedef int (*equal_fn)(void *v1, void *v2);
+
 /**
  * Malloc's and returns a new dynamic hash table. 
  * @return: a pointer to the dynamic hash table.
@@ -106,7 +108,7 @@ int dict_insert(dict_t **dp, void *value);
  */
 int dict_insert_fn(dict_t **dp, void *value,
 		   key_fn hash_fn, void *args,
-		   free_fn fre);
+		   free_fn ufree);
 
 /**
  *
@@ -130,21 +132,16 @@ int dict_member(dict_t *d, void *value);
 int dict_member_fn(dict_t *d, void *value, key_fn hash_fn,
 		   void *args, equal_fn equal);
 
-
-
 /**
  * 
  */
 void* dict_get_value(dict_t *d, void *value);
-
-
 
 /**
  * 
  */
 void* dict_get_value_fn(dict_t *d, void *value, key_fn hash_fn,
 			void *args, equal_fn equal);
-
 
 /**
  * Will delete the dictionary and all of the lists it 

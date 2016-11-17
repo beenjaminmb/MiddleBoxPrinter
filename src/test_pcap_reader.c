@@ -8,6 +8,11 @@
 
 #include <assert.h>
 #include <pcap.h>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <net/if.h>
 #include <netinet/ether.h>
 #include <netinet/if_ether.h>
@@ -48,9 +53,57 @@ int test_parse_pcap()
   return 0;
 }
 
-char *stringify_node(void *vnode)
+void stringify_node( char **str, void *vnode)
 {
-  
+  char *s = *str;
+  unsigned char src_addr[32];
+  unsigned char dst_addr[32];
+
+  struct ether_header *eth = vnode;
+  struct ip *ip = (struct ip*)(eth + sizeof(struct ip));
+  char *addr = inet_ntoa(ip->ip_src);
+
+  int len = strlen(addr);
+  memset((void*)src_addr, 0, sizeof(src_addr));
+  memcpy((void*)src_addr, (void*)addr, len);
+
+  addr = inet_ntoa(ip->ip_dst);
+  len = strlen(addr);
+  memset((void*)dst_addr, 0, sizeof(dst_addr));
+  memcpy((void*)dst_addr, (void*)addr, len);
+
+  struct tcphdr *tcp;
+  int sport = 0;
+  int dport = 0;
+
+  int IP_header_len = ip->ip_hl * 4;
+
+  switch( ip->ip_p ) {
+  case IPPROTO_TCP:
+    tcp = (struct tcphdr*)(ip + IP_header_len);
+    sport = ntohl(tcp->th_sport);
+    dport = ntohl(tcp->th_dport);
+
+    printf("TCP %s %d %s %s\n", __func__, __LINE__,
+	   (char *)src_addr, (char *)dst_addr);
+    break;
+  case IPPROTO_UDP:
+    printf("UDP %s %d %s %s\n", __func__, __LINE__,
+	   (char *)src_addr, (char *)dst_addr);
+    break;
+  case IPPROTO_ICMP:
+    printf("ICMP %s %d %s %s\n", __func__, __LINE__,
+	   (char *)src_addr, (char *)dst_addr);
+    break;
+  default:
+    printf("Other %s %d %s %s\n", __func__, __LINE__,
+	   (char *)src_addr, (char *)dst_addr);
+    break ;
+  }
+
+  sprintf((char*)s, "%s %s %d %d", (char*)src_addr,
+	  (char*)dst_addr, sport, dport);
+  return ;
 }
 
 void print_qr_dict(dict_t *d)
@@ -58,13 +111,19 @@ void print_qr_dict(dict_t *d)
   int size = d->size;
   list_t *element_list = NULL;
   list_node_t *node = NULL;
+  
+  char *str = malloc(MTU * sizeof(char));
   for (int i = 0; i < size; i++) {
     element_list = d->elements[i];
     node = element_list->list;
-    while ( node ) {
+    while ( element_list->size && node ) {
       list_node_t *tmp = node->next;
-      char *str = stringify_packet(tmp->value);
-      printf("%d %s %s\n", __func__, __LINE__);
+      
+      list_t *l = node->value;
+	
+      stringify_node(&str, l->list->value);
+      printf("%s %d %s\n", __func__, __LINE__, str);
+
       node = tmp;
     }
   }
@@ -88,6 +147,9 @@ int test_split_qr()
 {
   printf("%s %d: Test Starting\n",__func__, __LINE__);
   dict_t *qr = split_query_response(PCAP_FILE_NAME);
+
+  print_qr_dict(qr);
+
   dict_destroy_fn(qr, (free_fn)free_list);
   printf("%s %d: Test Ending\n",__func__, __LINE__);
   return 0;

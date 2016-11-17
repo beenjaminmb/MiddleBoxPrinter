@@ -9,12 +9,11 @@
 #include "dtable.h"
 
 static int list_append_helper(list_t *l, void *value);
+
 static list_node_t* list_find_helper(list_node_t *list, void *value,
 				     equal_fn equal);
+
 static list_node_t* list_remove_helper(list_node_t *l, void *value);
-
-unsigned long make_key(void *value, int right, void * args);
-
 
 list_node_t *list_merge(list_t *l1, list_t *l2)
 {
@@ -25,7 +24,7 @@ list_node_t *list_merge(list_t *l1, list_t *l2)
 
 int list_empty(list_t *l)
 {
-  return (l->size == 0); 
+  return (l->size == 0);
 }
 
 list_t * new_list(){
@@ -107,7 +106,6 @@ list_node_t* list_remove_fn(list_t *l, void *value, equal_fn equal){
   element = list_remove_helper(element, value);
   return element;
 }
-
 
 static list_node_t* list_remove_helper(list_node_t *l, void *value){
   if (l == NULL) return NULL; // The list didn't contain the element.
