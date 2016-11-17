@@ -48,6 +48,12 @@ int test_parse_pcap()
   return 0;
 }
 
+
+void print_qr_dict() 
+{
+
+}
+
 unsigned long free_list(void *list)
 {
   list_t *l = list;
