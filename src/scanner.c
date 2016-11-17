@@ -289,31 +289,30 @@ void response_replay(dict_t **dp)
   list_node_t *node = NULL;
   int size = d->size;
 
-  printf("%s %d size = %d, N = %d\n", __func__, __LINE__, 
-	 d->size, d->N);
 
   char *str = malloc(MTU * sizeof(char));
   for (int i = 0; i < size; i++) {
     element_list = d->elements[i];
-    node = element_list->list;
-    if ( element_list->size == 1 ) { /*Cull the empty ones*/
-      list_node_t *tmp = node->next;
-      list_t *l = node->value;
-      dict_delete_fn(dp, l, (key_fn)make_key,
-		     NULL, NULL, (equal_fn)logical_equal);
-      free_list(l);
-    }
-    else {
-      while ( element_list->size && node ) {
+    if ( element_list != NULL) {
+      printf("i = %d\n", i);
+      node = element_list->list;
+      if ( element_list->size == 1 ) { /*Cull the empty ones*/
 	list_node_t *tmp = node->next;
-	list_t *l = node->value;      
-	//stringify_node(&str, l->list->value);
-	node = tmp;
+	list_t *l = node->value;
+	dict_delete_fn(dp, l, (key_fn)make_key,
+		       NULL, NULL, (equal_fn)logical_equal);
+	free_list(l);
+      }
+      else {
+	while ( element_list->size && node ) {
+	  list_node_t *tmp = node->next;
+	  list_t *l = node->value;      
+	  //stringify_node(&str, l->list->value);
+	  node = tmp;
+	}
       }
     }
   }
-  printf("%s %d size = %d, N = %d\n", __func__, __LINE__, 
-	 d->size, d->N);
   free(str);
   return ;
 }

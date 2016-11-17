@@ -192,7 +192,7 @@ int dict_insert_fn(dict_t **dp, void *value, key_fn hash_fn,
   d->N = N;
   unsigned long key = hash_fn(value, size, args);
   if (((float)N/(float)d->size) <= 3/4.0) {
-    return list_insert( d->elements[key], value);
+    return list_insert(d->elements[key], value);
   }
   else {
     dict_t *dd = malloc(sizeof(dict_t));
@@ -216,7 +216,8 @@ int dict_insert_fn(dict_t **dp, void *value, key_fn hash_fn,
     dict_destroy_fn(d, ufree);
     d = NULL;
     *dp = dd;
-    return dict_insert_fn(dp, value, hash_fn, args, ufree);
+    key = hash_fn(value, size * 2, args);
+    return list_insert(dd->elements[key], value);
   }
 }
 
@@ -233,6 +234,7 @@ int dict_delete_fn(dict_t **dp, void *value,
   dict_t *d = *dp;
   int N = d->N - 1;
   int size = d->size;
+  d->N = N;
   unsigned long key = hash_fn(value, size, args);
   if (((float) N)/((float) size) >= 1/4.0) {
     // We haven't reached the desired load factor.
@@ -241,8 +243,8 @@ int dict_delete_fn(dict_t **dp, void *value,
     return 0;
   }
   else { // We are lower than the desired load factor.
-    int new_size = ((size / 2) >= INIT_DICT_SIZE) ? 
-      (size / 2) : INIT_DICT_SIZE;
+    int new_size = ((size / 2.0) >= INIT_DICT_SIZE) ? 
+      (size / 2.0) : INIT_DICT_SIZE;
     dict_t *dd = malloc(sizeof(dict_t));
     dd->elements = malloc( new_size * sizeof(list_t) ); 
     dd->N = N;
@@ -264,7 +266,10 @@ int dict_delete_fn(dict_t **dp, void *value,
     dict_destroy_fn(d, ufree);
     d = NULL;
     *dp = dd;
-    return dict_delete_fn(dp, value, hash_fn, args, ufree, equal);
+    key = hash_fn(value, new_size, args);
+    list_node_t *l = list_remove_fn(dd->elements[key], value, equal);
+    free(l);
+    return 0;
   }
 }
 

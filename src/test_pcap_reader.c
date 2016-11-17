@@ -130,7 +130,12 @@ int test_response_reply()
 {
   printf("%s %d: Test starting\n", __func__, __LINE__);
   dict_t *qr = split_query_response(PCAP_FILE_NAME);
+  printf("%s %d size = %d, N = %d\n", __func__, __LINE__, 
+	 qr->size, qr->N);
   response_replay(&qr);
+  printf("%s %d size = %d, N = %d\n", __func__, __LINE__, 
+	 qr->size, qr->N);
+
   dict_destroy_fn(qr, (free_fn)free_list);
   printf("%s %d: Test Ending\n",__func__, __LINE__);
   return 0;
