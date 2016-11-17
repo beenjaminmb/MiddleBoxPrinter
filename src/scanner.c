@@ -42,7 +42,7 @@ unsigned long free_list(void *list)
   return 0;
 }
 
-void stringify_node( char **str, void *vnode)
+void stringify_node( char **str, void *vnode, int direction)
 {
   char *s = *str;
   struct packet_value *pv = vnode;
@@ -57,9 +57,9 @@ void stringify_node( char **str, void *vnode)
   char *addr = inet_ntoa(ip->ip_src);
 
   int len = strlen(addr);
+
   memset((void*)src_addr, 0, sizeof(src_addr));
   memcpy((void*)src_addr, (void*)addr, len);
-
   addr = inet_ntoa(ip->ip_dst);
   len = strlen(addr);
   memset((void*)dst_addr, 0, sizeof(dst_addr));
@@ -88,17 +88,63 @@ void stringify_node( char **str, void *vnode)
     break ;
   }
 
-  sprintf((char*)s, "%s %s %d %d", (char*)src_addr,
-	  (char*)dst_addr, sport, dport);
+  if ( direction == 0 ) {
+    sprintf((char*)s, "%s %s %d %d", (char*)src_addr,
+	    (char*)dst_addr, sport, dport);
+  }
+  else {
+    sprintf((char*)s, "%s %s %d %d", (char*)dst_addr,
+	    (char*)src_addr, dport, sport);    
+  }
   return ;
 }
 
+unsigned long str_key(void *value, int right, void *args)
+{
+  char *str = (char*)value;
+  unsigned long hash = 5381;
+  int c;
+  char *tmp = str;
+  while ( (c = *tmp++) ) {
+    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+  }
+  if (right) {
+    return (unsigned long)(hash % right);
+  }
+  else {
+    return 0;
+  }
+
+}
 
 unsigned long fourtuple_hash(void *v, int right, void *args)
 {
   unsigned long key = make_key(v, right, args);
   return key;
 }
+
+
+
+unsigned long hash_qr(void *v, int right, void *args)
+{
+  char *str = malloc(sizeof(char) * 128);
+  memset(str, 0, (sizeof(char)*128));
+  stringify_node(&str, v, 0);
+  unsigned long key = str_key(str, right, args);
+  free(str);
+  return key;
+}
+
+unsigned long hash_rq(void *v, int right, void *args)
+{
+  char str[128];
+  memset(str, 0, 128);
+  stringify_node((char **)&str, v, 1);
+  unsigned long key = str_key((char*)str, right, args);
+  return key;
+}
+
+
 
 void process_packet(dict_t **dictp, const unsigned char *packet,
 		    struct timeval ts, unsigned int capture_len)
@@ -193,11 +239,21 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 			    (const char*)SRC_IP) == 0);
 
   if ( is_probe ) {
-    if ( !dict_member_fn(*dictp, (void*)pv, fourtuple_hash,
+    
+    
+    /**
+     * Elements aren't getting added as expected.
+     */
+    if ( !dict_member_fn((*dictp), (void*)pv, hash_qr,
 			 ((void*)&args),
 			 logical_equal) ) {
+
+      struct hash_arg *entry = malloc(sizeof(struct hash_arg));
       list_t *l = new_list();
-      dict_insert_fn(dictp, (void*)l, fourtuple_hash,
+
+      entry->value = new_list();
+
+      dict_insert_fn(dictp, (void*)l, hash_qr,
 		     ((void*)&args), NULL);
 
       list_insert(l, pv);
@@ -206,10 +262,10 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 		 however in this case I need to for testing.*/
   }
   else  if ( is_response ) {
-    if ( dict_member_fn(*dictp, (void*)pv, fourtuple_hash,
+    if ( dict_member_fn(*dictp, (void*)pv, hash_rq,
 			((void*)&args), logical_equal) ) {
       list_t *l = dict_get_value_fn(*dictp, (void*)pv,
-				    fourtuple_hash, ((void*)&args),
+				    hash_rq, ((void*)&args),
 				    logical_equal);
       list_insert(l, pv);
       goto DONE;
@@ -256,15 +312,15 @@ dict_t * split_query_response(const char* pcap_fname)
 #endif
   
 
-  /* int i = 0; */
-  /* while (  (packet = pcap_next(pcap, &header)) != NULL ) { */
-  /*   i++; */
-  /*   printf("i = %d\n", i); */
-  /*   process_packet(&q_r, packet, header.ts, header.caplen); */
-  /* } */
-  while ( (packet = pcap_next(pcap, &header)) != NULL ) {
+  int i = 0;
+  while (  (packet = pcap_next(pcap, &header)) != NULL ) {
+    i++;
+    printf("i = %d\n", i);
     process_packet(&q_r, packet, header.ts, header.caplen);
   }
+  /* while ( (packet = pcap_next(pcap, &header)) != NULL ) { */
+  /*   process_packet(&q_r, packet, header.ts, header.caplen); */
+  /* } */
 
   free((void*)pcap);
   pcap = NULL;
@@ -292,27 +348,21 @@ void *copy_packet(void *v)
 
 void response_replay(dict_t **dp)
 {
-  /* d is the query response dictionary */
-  unsigned char *packet = NULL;
   dict_t *d = *dp;
-  packet += sizeof(struct ether_header);
   list_t *element_list = NULL;
   list_node_t *node = NULL;
   int size = d->size;
 
   dict_t *q_r = new_dict_size(QR_DICT_SIZE);
 
-  char *str = malloc(MTU * sizeof(char));
   for (int i = 0; i < size; i++) {
     element_list = d->elements[i];
-    node = element_list->list;
-    if ( element_list->size <= 1 ) { /*Cull the empty ones*/
-      continue;
-    }
-    else {
-      while ( node ) {
+    if ( element_list->size >=  1) { /*Cull the empty ones*/
+      node = element_list->list;
+      list_t *l = node->value;
+      list_node_t *cur = l->list;
+      while ( l->size > 1 && cur ) {
 	list_node_t *tmp = node->next;
-	list_t *l = node->value;
 	list_t *l2 = clone_list_fn(l, (void*)copy_packet);
 	dict_insert_fn(&q_r, l2, make_key, NULL, NULL);
 	node = tmp;
@@ -321,7 +371,6 @@ void response_replay(dict_t **dp)
   }
   dict_destroy(d);
   *dp = q_r;
-  free(str);
   return ;
 }
 

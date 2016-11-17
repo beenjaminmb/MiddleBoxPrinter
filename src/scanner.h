@@ -59,7 +59,6 @@ struct packet_value {
   int capture_len;
 };
 
-
 unsigned long free_list(void *list);
 
 void send_scan_packet(unsigned char *restrict packet_buffer, 
@@ -112,6 +111,6 @@ void response_replay(dict_t **dp);
 
 dict_t * split_query_response(const char* pcap_fname);
 
-void stringify_node( char **str, void *vnode);
+void stringify_node( char **str, void *vnode, int direction);
 
 #endif

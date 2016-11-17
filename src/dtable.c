@@ -23,8 +23,8 @@ list_t *clone_list_fn(list_t *l1, copy_fn copy)
   list_node_t *cur = l1->list;
   while ( cur ) {
     list_node_t *tmp = cur->next;
-    void *cp = copy(cur->value);
-    list_insert(nlist, cp);
+    void *cpy = copy(cur->value);
+    list_insert(nlist, cpy);
     cur = tmp;
   }
   return nlist;

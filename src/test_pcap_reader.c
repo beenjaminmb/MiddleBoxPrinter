@@ -93,7 +93,7 @@ void print_qr_dict(dict_t *d)
     while (  node ) {
       list_node_t *tmp = node->next;
       list_t *l = node->value;
-      stringify_node(&str, l->list->value);
+      stringify_node(&str, l->list->value, 0);
       printf("%s %d %s\n", __func__, __LINE__, str);
       node = tmp;
     }
