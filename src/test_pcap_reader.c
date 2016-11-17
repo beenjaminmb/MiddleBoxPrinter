@@ -83,24 +83,16 @@ void stringify_node( char **str, void *vnode)
 
   switch( ip->ip_p ) {
   case IPPROTO_TCP:
-    tcp = (struct tcphdr*)(ip + IP_header_len);
-    sport = tcp->th_sport;
-    dport = tcp->th_dport;
+    tcp = (struct tcphdr*)(packet + IP_header_len);
+    sport = ntohs(tcp->th_sport);
+    dport = ntohs(tcp->th_dport);
 
-    printf("TCP %s %d %s %s %d %d\n", __func__, __LINE__,
-	   (char *)src_addr, (char *)dst_addr, sport, dport);
     break;
   case IPPROTO_UDP:
-    printf("UDP %s %d %s %s\n", __func__, __LINE__,
-	   (char *)src_addr, (char *)dst_addr);
     break;
   case IPPROTO_ICMP:
-    printf("ICMP %s %d %s %s\n", __func__, __LINE__,
-	   (char *)src_addr, (char *)dst_addr);
     break;
   default:
-    printf("Other %s %d %s %s\n", __func__, __LINE__,
-	   (char *)src_addr, (char *)dst_addr);
     break ;
   }
 

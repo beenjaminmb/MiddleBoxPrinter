@@ -232,7 +232,7 @@ static inline unsigned short random_dport(scanner_worker_t *restrict
       sport = 53;
     }
   }
-  return htons(sport);
+  return sport;
 }
 
 static inline udphdr *make_udpheader(unsigned char *buffer,
@@ -248,7 +248,7 @@ static inline udphdr *make_udpheader(unsigned char *buffer,
 
   udph->source = htons (source);
   udph->dest = htons (dest);
-  udph->len = htons(8 + datalen);
+  udph->len = htons (8 + datalen);
   udph->check = 0;
   return udph;
 }
@@ -268,11 +268,11 @@ static inline tcphdr *make_tcpheader(unsigned char *restrict buffer,
   tcph->source = htons(source);
   tcph->dest = htons(dest);
 
-  worker->probe_list[probe_idx].sin->sin_port = htons(80);
+  worker->probe_list[probe_idx].sin->sin_port = htons(dest);
 
-  tcph->seq = range_random(RAND_MAX, worker->random_data, &result);
-  tcph->ack_seq = range_random(RAND_MAX, worker->random_data,
-			       &result);
+  tcph->seq = htonl(range_random(RAND_MAX, worker->random_data, &result));
+  tcph->ack_seq = htonl(range_random(RAND_MAX, worker->random_data,
+				     &result));
   tcph->doff = 5;
   /*
      #define TH_FIN 0x01
@@ -320,7 +320,7 @@ static inline iphdr
   iph->tos = 0;
   iph->id = htonl(1);
   iph->frag_off = 0;
-  iph->ttl = htons(START_TTL);
+  iph->ttl = START_TTL;
   iph->check = 0;
   iph->saddr = inet_addr( SRC_IP );
   iph->daddr = sin->sin_addr.s_addr;
@@ -397,7 +397,7 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
   psh->placeholder = 0;
   if ( DO_TCP(prand) ) { /* Make a TCP packet */
     worker->probe_list[packet_idx].proto = IPPROTO_TCP; 
-    ip->tot_len = sizeof(iphdr) + sizeof(tcphdr) + data_len;
+    ip->tot_len = htons(sizeof(iphdr) + sizeof(tcphdr) + data_len);
     ip->protocol = IPPROTO_TCP;
     tcphdr *tcph = make_tcpheader(packet_buffer, worker, packet_idx);
     psh->protocol = IPPROTO_TCP;
@@ -422,20 +422,20 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), udph,
 	   sizeof(udphdr) + data_len);
-    udph->check = csum((unsigned short*) pseudogram, psize);
+    udph->check = htons(csum((unsigned short*) pseudogram, psize));
     goto DONE;
   }
   else if ( DO_ICMP(prand) ) { /* Make ICMP packet */
-    ip->tot_len = sizeof(iphdr) + sizeof(icmphdr) + data_len;
+    ip->tot_len = sizeof (iphdr) + sizeof (icmphdr) + data_len;
     ip->protocol = IPPROTO_ICMP;
     worker->probe_list[packet_idx].proto = IPPROTO_ICMP;
-    icmphdr *icmph = make_icmpheader(packet_buffer, worker, 0);
-    icmph->checksum = csum((unsigned short*) icmph, sizeof(icmphdr));
+    icmphdr *icmph = make_icmpheader (packet_buffer, worker, 0);
+    icmph->checksum = htons (csum((unsigned short*) icmph, sizeof(icmphdr)));
     goto RETURN;
   }
   else {/* random junk */
     worker->probe_list[packet_idx].proto = 0xff;
-    make_junk_header(packet_buffer, worker, data_len);
+    make_junk_header (packet_buffer, worker, data_len);
   } 
  DONE:
   free(pseudogram);

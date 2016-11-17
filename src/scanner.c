@@ -89,28 +89,28 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
     tcp = (struct tcphdr*)(packet + IP_header_len);
     sport = ntohs(tcp->th_sport);
     dport = ntohs(tcp->th_dport);
-    //#ifdef UNITTEST
+#ifdef UNITTEST
     printf("TCP %s %d %s %s %d %d\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr, sport, dport);
-    //#endif
+#endif
     break;
   case IPPROTO_UDP:
-    //#ifdef UNITTEST
+#ifdef UNITTEST
     printf("UDP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
-    //#endif
+#endif
     break;
   case IPPROTO_ICMP:
-    //#ifdef UNITTEST
+#ifdef UNITTEST
     printf("ICMP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
-    //#endif
+#endif
     break;
   default:
-    //#ifdef UNITTEST
+#ifdef UNITTEST
     printf("Other %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
-    //#endif
+#endif
     break ;
   }
 
@@ -211,14 +211,14 @@ dict_t * split_query_response(const char* pcap_fname)
 #endif
   
 
-  int i = 0;
-  while ( (i++ < 2) && (packet = pcap_next(pcap, &header)) != NULL ) {
-    process_packet(&q_r, packet, header.ts, header.caplen);
-  }
-
-  /* while ( (packet = pcap_next(pcap, &header)) != NULL ) { */
+  /* int i = 0; */
+  /* while ( (i++ < 2) && (packet = pcap_next(pcap, &header)) != NULL ) { */
   /*   process_packet(&q_r, packet, header.ts, header.caplen); */
   /* } */
+
+  while ( (packet = pcap_next(pcap, &header)) != NULL ) {
+    process_packet(&q_r, packet, header.ts, header.caplen);
+  }
 
   free((void*)pcap);
   pcap = NULL;
