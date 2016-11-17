@@ -48,10 +48,26 @@ int test_parse_pcap()
   return 0;
 }
 
-
-void print_qr_dict() 
+char *stringify_node(void *vnode)
 {
+  
+}
 
+void print_qr_dict(dict_t *d)
+{
+  int size = d->size;
+  list_t *element_list = NULL;
+  list_node_t *node = NULL;
+  for (int i = 0; i < size; i++) {
+    element_list = d->elements[i];
+    node = element_list->list;
+    while ( node ) {
+      list_node_t *tmp = node->next;
+      char *str = stringify_packet(tmp->value);
+      printf("%d %s %s\n", __func__, __LINE__);
+      node = tmp;
+    }
+  }
 }
 
 unsigned long free_list(void *list)

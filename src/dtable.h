@@ -32,6 +32,7 @@ typedef unsigned long (*key_fn)(void *, int, void*);
 /* User defined freeing function. */
 typedef unsigned long (*free_fn)(void *);
 
+typedef int (*equal_fn)(void *v1, void *v2);
 /**
  * Malloc's and returns a new dynamic hash table. 
  * @return: a pointer to the dynamic hash table.
@@ -42,8 +43,10 @@ list_t * new_list();
  * @return: 1 if the list is empty and 0 otherwise.
  */
 int list_empty(list_t *l);
+
 /**
- *
+ * This function mallocs a new list_node_t, sets its value
+ * field equal to value, appends this node to the head of l.
  */
 int list_insert(list_t *l, void *value);
 
@@ -55,7 +58,17 @@ list_node_t* list_find(list_t *l, void *value);
 /**
  *
  */
+list_node_t *list_find_fn(list_t *l, void *value, equal_fn equal);
+
+/**
+ *
+ */
 list_node_t* list_remove(list_t *l, void *value);
+
+/**
+ *
+ */
+list_node_t* list_remove_fn(list_t *l, void *value, equal_fn equal);
 
 /**
  * @warning: FUNCTION NOT YET IMPLEMENTED. IT WILL DUMP CORE.
@@ -63,9 +76,15 @@ list_node_t* list_remove(list_t *l, void *value);
 list_node_t *list_merge(list_t *l1, list_t *l2);
 
 /**
- *
+ * Default key generating algorithm. 
  */
 unsigned long make_key(void *value, int right, void *args);
+
+/**
+ * Default equality function using logical equals of two
+ * pointer addresses.
+ */
+int logical_equal(void *v1, void *v2);
 
 /**
  *
@@ -98,18 +117,18 @@ int dict_delete(dict_t **dp, void *value);
  *
  */
 int dict_delete_fn(dict_t **dp, void *value, key_fn hash_fn, 
-		   void *args, free_fn fre);
+		   void *args, free_fn ufree, equal_fn equal);
 
 /**
  *
  */
-int  dict_member(dict_t *d, void *value);
+int dict_member(dict_t *d, void *value);
 
 /**
  * 
  */
 int dict_member_fn(dict_t *d, void *value, key_fn hash_fn,
-		   void *args);
+		   void *args, equal_fn equal);
 
 
 
@@ -124,7 +143,7 @@ void* dict_get_value(dict_t *d, void *value);
  * 
  */
 void* dict_get_value_fn(dict_t *d, void *value, key_fn hash_fn,
-			void *args);
+			void *args, equal_fn equal);
 
 
 /**

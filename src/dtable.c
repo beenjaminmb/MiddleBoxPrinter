@@ -9,7 +9,8 @@
 #include "dtable.h"
 
 static int list_append_helper(list_t *l, void *value);
-static list_node_t* list_find_helper(list_node_t *list, void *value);
+static list_node_t* list_find_helper(list_node_t *list, void *value,
+				     equal_fn equal);
 static list_node_t* list_remove_helper(list_node_t *l, void *value);
 
 unsigned long make_key(void *value, int right, void * args);
@@ -61,31 +62,52 @@ static int list_append_helper(list_t *l, void *value)
   return 0;
 }
 
+int logical_equal(void *v1, void *v2)
+{
+  return (v1 == v2);
+}
+
 list_node_t* list_find(list_t *l, void *value) {
-  list_node_t *element = list_find_helper(l->list, value);
+  list_node_t *element = list_find_fn(l, value, logical_equal);
   return element;
 }
 
-static list_node_t* list_find_helper(list_node_t *list, void *value)
+list_node_t *list_find_fn(list_t *l, void *value, equal_fn equal) {
+  return list_find_helper(l->list, value, equal);
+}
+
+static list_node_t* list_find_helper(list_node_t *list, void *value,
+				     equal_fn equal)
 {
   if (list == NULL) return NULL;
   if (list->next == NULL) {
-    if (list->value == value) return list;
-    else return NULL;
+    if ( equal(list->value, value)) {
+      return list;
+    }
+    else {
+      return NULL;
+    }
   }
-  else if ( list->value == value) return list;
-  else return list_find_helper(list->next, value);
+  else if ( equal(list->value, value)) {
+    return list;
+  }
+  else return list_find_helper(list->next, value, equal);
 }
 
 list_node_t* list_remove(list_t *l, void *value){
+  return list_remove_fn(l, value, logical_equal);
+}
+
+list_node_t* list_remove_fn(list_t *l, void *value, equal_fn equal){
   l->size -= 1;
-  list_node_t *element = list_find(l, value);
-  if (l->list == element) {
+  list_node_t *element = list_find_fn(l, value, equal);
+  if ( l->list == element ) {
     l->list = element->next;
   }
-  element = list_remove_helper(element, value);  
+  element = list_remove_helper(element, value);
   return element;
 }
+
 
 static list_node_t* list_remove_helper(list_node_t *l, void *value){
   if (l == NULL) return NULL; // The list didn't contain the element.
@@ -184,12 +206,13 @@ int dict_insert_fn(dict_t **dp, void *value, key_fn hash_fn,
 
 int dict_delete(dict_t **dp, void *value)
 {
-  return dict_delete_fn(dp, value, ((key_fn)make_key), NULL, NULL);
+  return dict_delete_fn(dp, value, ((key_fn)make_key), NULL, NULL,
+			logical_equal);
 }
 
 int dict_delete_fn(dict_t **dp, void *value,
 		   key_fn hash_fn, void *args,
-		   free_fn ufree)
+		   free_fn ufree, equal_fn equal)
 {
   dict_t *d = *dp;
   int N = d->N - 1;
@@ -197,7 +220,7 @@ int dict_delete_fn(dict_t **dp, void *value,
   unsigned long key = hash_fn(value, size, args);
   if (((float) N)/((float) size) >= 1/4.0) {
     // We haven't reached the desired load factor.
-    list_node_t *l = list_remove(d->elements[key], value);
+    list_node_t *l = list_remove_fn(d->elements[key], value, equal);
     free(l);
     return 0;
   }
@@ -225,7 +248,7 @@ int dict_delete_fn(dict_t **dp, void *value,
     dict_destroy_fn(d, ufree);
     d = NULL;
     *dp = dd;
-    return dict_delete_fn(dp, value, hash_fn, args, ufree);
+    return dict_delete_fn(dp, value, hash_fn, args, ufree, equal);
   }
 }
 
@@ -269,15 +292,16 @@ int dict_destroy_fn(dict_t  *d, free_fn ufree)
 
 int dict_member(dict_t *d, void *value)
 {
-  return dict_member_fn(d, value, ((key_fn)make_key), NULL);
+  return dict_member_fn(d, value, ((key_fn)make_key), 
+			NULL, logical_equal);
 }
 
 int dict_member_fn(dict_t *d, void *value,
-		   key_fn hash_fn, void *args)
+		   key_fn hash_fn, void *args, equal_fn equal)
 {
   unsigned long key = hash_fn(value, d->size, args);
-  list_node_t *l = list_find(d->elements[key], value);
-  int ismember = l ? (l->value == value) : 0;
+  list_node_t *l = list_find_fn(d->elements[key], value, equal);
+  int ismember = l ? equal(l->value, value) : 0;
   return ismember;
 }
 
@@ -287,17 +311,17 @@ int dict_member_fn(dict_t *d, void *value,
  */
 void* dict_get_value(dict_t *d, void *value)
 {
-  return dict_get_value_fn(d, value, make_key, NULL);
+  return dict_get_value_fn(d, value, make_key, NULL, logical_equal);
 }
 
 /**
  * 
  */
 void* dict_get_value_fn(dict_t *d, void *value, key_fn hash_fn,
-			void *args)
+			void *args, equal_fn equal)
 {
   unsigned long key = hash_fn(value, d->size, args);
-  list_node_t *l = list_find(d->elements[key], value);
+  list_node_t *l = list_find_fn(d->elements[key], value, equal);
   assert(l);
   return l->value;
 }
@@ -311,16 +335,22 @@ void* dict_get_value_fn(dict_t *d, void *value, key_fn hash_fn,
  */
 unsigned long make_key(void *value, int right, void *args)
 {
-  if (value == NULL)
+  if (value == NULL) {
     return 0;
-  char *str = malloc(sizeof("0xffffffffffffffff\0") + 1);
-  sscanf(value, "%s", str);
+  }
+  char str[] = 
+    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+
+  sprintf(str, "%p", value);
   unsigned long hash = 5381;
   int c;
   char *tmp = str;
   while ( (c = *tmp++) )
     hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-  free(str);
+
   if (right)
     return (unsigned long)(hash % right);
   else
