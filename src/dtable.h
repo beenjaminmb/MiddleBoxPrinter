@@ -36,7 +36,9 @@ typedef unsigned long (*free_fn)(void *);
 /* User defined equality function. */
 typedef int (*equal_fn)(void *v1, void *v2);
 
+typedef void* (copy_fn)(void *value);
 
+list_t *clone_list_fn(list_t *l1, copy_fn copy);
 
 /**
  * Malloc's and returns a new dynamic hash table. 

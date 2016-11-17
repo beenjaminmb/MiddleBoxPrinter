@@ -24,19 +24,29 @@
 #include <netinet/in.h>
 #define PCAP_TEST_FILE "./capnext.pcap"
 
-struct hash_args {
-  unsigned char *keystr;
-  unsigned char *value;
-};
-
-
-
 static struct scanner_t *scanner = NULL;
+
+unsigned long free_list(void *list)
+{
+  list_t *l = list;
+  list_node_t *current = l->list;  
+  while( current ) {
+    list_node_t *tmp = current->next; 
+    struct packet_value *pv = current->value;
+    free(pv->packet);
+    free(current->value);
+    free(current);
+    current = tmp;
+  }
+  free(list);
+  return 0;
+}
 
 void stringify_node( char **str, void *vnode)
 {
   char *s = *str;
-  unsigned char *packet = (unsigned char*)vnode;
+  struct packet_value *pv = vnode;
+  unsigned char *packet = (unsigned char *)pv->packet;
   unsigned char src_addr[32];
   unsigned char dst_addr[32];
   
@@ -161,58 +171,47 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
   char keystr[128];
 
+  struct packet_value *pv = malloc(sizeof(struct packet_value));
   char *value = (char *)malloc(caplen + 1);
+
+  pv->packet = (unsigned char *)value;
+  pv->capture_len = caplen;
+
   memset(value, 0, caplen + 1);
   memcpy(value, (void*)tmppacket, caplen);
   memset(keystr, 0, 128);
 
   sprintf((char*)keystr, "%s %s %d %d", (char*)src_addr,
   	  (char*)dst_addr, sport, dport);
-  
+
   struct hash_args args = {.keystr = (unsigned char *)keystr,
 			   .value = (unsigned char *)value};
 
-  /**
-   * 1. If the p.src == DILLINGER_SPOOF:
-   *        we are looking at a probe going out.
-   *    if p in dict:
-   *      
-   *    else:
-   * 
-   * 2. else if p.dst == DILLINGER_SPOOF:
-   *        we are looking at a probe  response coming back.
-   *     if p in dict:
-   *        append it to the list.
-   *     else:
-   *        create a new entry and added it to the head of the list.
-   * 3. else:
-   *        do nothing.
-   */
   int is_probe = (strcmp((const char*)src_addr, SRC_IP) == 0);
-  //printf("FUCK SRC_IP = %s, src_addr %s, dst_addr %s, is_probe = %d\n", SRC_IP, src_addr, dst_addr, is_probe);
+
   int is_response = (strcmp((const char*)dst_addr,
 			    (const char*)SRC_IP) == 0);
 
   if ( is_probe ) {
-    if ( !dict_member_fn(*dictp, (void*)value, fourtuple_hash,
+    if ( !dict_member_fn(*dictp, (void*)pv, fourtuple_hash,
 			 ((void*)&args),
 			 logical_equal) ) {
       list_t *l = new_list();
       dict_insert_fn(dictp, (void*)l, fourtuple_hash,
 		     ((void*)&args), NULL);
 
-      list_insert(l, value);
+      list_insert(l, pv);
     }
     goto DONE; /*ATTENTION: normally I wouldn't insert query node
 		 however in this case I need to for testing.*/
   }
   else  if ( is_response ) {
-    if ( dict_member_fn(*dictp, (void*)value, fourtuple_hash,
+    if ( dict_member_fn(*dictp, (void*)pv, fourtuple_hash,
 			((void*)&args), logical_equal) ) {
-      list_t *l = dict_get_value_fn(*dictp, (void*)value,
+      list_t *l = dict_get_value_fn(*dictp, (void*)pv,
 				    fourtuple_hash, ((void*)&args),
 				    logical_equal);
-      list_insert(l, value);
+      list_insert(l, pv);
       goto DONE;
     }
     else {
@@ -221,8 +220,9 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   }
  FREE_VALUE:
   free(value);
+  free(pv);
  DONE:
-  return ;      
+  return ;
 }
 
 dict_t * split_query_response(const char* pcap_fname)
@@ -279,6 +279,17 @@ dict_t * split_query_response(const char* pcap_fname)
  return q_r;    
 }
 
+void *copy_packet(void *v)
+{
+  struct packet_value *pv = v;
+  struct packet_value *newpv = malloc(sizeof(struct packet_value));
+  newpv->packet = malloc(pv->capture_len + 1);  
+  memset(newpv->packet, 0, pv->capture_len + 1 );
+  memcpy(newpv->packet, pv->packet, pv->capture_len);
+  newpv->capture_len = pv->capture_len;
+  return (void *) newpv;
+}
+
 void response_replay(dict_t **dp)
 {
   /* d is the query response dictionary */
@@ -289,30 +300,27 @@ void response_replay(dict_t **dp)
   list_node_t *node = NULL;
   int size = d->size;
 
+  dict_t *q_r = new_dict_size(QR_DICT_SIZE);
 
   char *str = malloc(MTU * sizeof(char));
   for (int i = 0; i < size; i++) {
     element_list = d->elements[i];
-    if ( element_list != NULL) {
-      printf("i = %d\n", i);
-      node = element_list->list;
-      if ( element_list->size == 1 ) { /*Cull the empty ones*/
+    node = element_list->list;
+    if ( element_list->size <= 1 ) { /*Cull the empty ones*/
+      continue;
+    }
+    else {
+      while ( node ) {
 	list_node_t *tmp = node->next;
 	list_t *l = node->value;
-	dict_delete_fn(dp, l, (key_fn)make_key,
-		       NULL, NULL, (equal_fn)logical_equal);
-	free_list(l);
-      }
-      else {
-	while ( element_list->size && node ) {
-	  list_node_t *tmp = node->next;
-	  list_t *l = node->value;      
-	  //stringify_node(&str, l->list->value);
-	  node = tmp;
-	}
+	list_t *l2 = clone_list_fn(l, (void*)copy_packet);
+	dict_insert_fn(&q_r, l2, make_key, NULL, NULL);
+	node = tmp;
       }
     }
   }
+  dict_destroy(d);
+  *dp = q_r;
   free(str);
   return ;
 }

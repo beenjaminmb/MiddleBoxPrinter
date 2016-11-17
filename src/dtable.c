@@ -16,19 +16,20 @@ static list_node_t* list_find_helper(list_node_t *list, void *value,
 static list_node_t* list_remove_helper(list_node_t *l, void *value);
 
 
-unsigned long free_list(void *list)
+
+list_t *clone_list_fn(list_t *l1, copy_fn copy)
 {
-  list_t *l = list;
-  list_node_t *current = l->list;  
-  while( current ) {
-    list_node_t *tmp = current->next; 
-    free(current->value);
-    free(current);
-    current = tmp;
+  list_t *nlist = new_list();
+  list_node_t *cur = l1->list;
+  while ( cur ) {
+    list_node_t *tmp = cur->next;
+    void *cp = copy(cur->value);
+    list_insert(nlist, cp);
+    cur = tmp;
   }
-  free(list);
-  return 0;
+  return nlist;
 }
+
 
 
 list_node_t *list_merge(list_t *l1, list_t *l2)

@@ -48,6 +48,20 @@ typedef struct scanner_t {
   int phase2_wait;
 } scanner_t;
 
+struct hash_args {
+  unsigned char *keystr;
+  unsigned char *value;
+};
+
+
+struct packet_value {
+  unsigned char *packet;
+  int capture_len;
+};
+
+
+unsigned long free_list(void *list);
+
 void send_scan_packet(unsigned char *restrict packet_buffer, 
 		      int sockfd, 
 		      scanner_worker_t *restrict worker,
