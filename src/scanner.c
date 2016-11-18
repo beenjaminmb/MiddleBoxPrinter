@@ -101,7 +101,6 @@ void stringify_node( char **str, void *vnode, int direction)
 
 unsigned long str_key(void *value, int right, void *args)
 {
-  char *str = (char*)value;
   unsigned long hash = 5381;
   int c;
   char *tmp = str;
@@ -109,12 +108,29 @@ unsigned long str_key(void *value, int right, void *args)
     hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
   }
   if (right) {
-    return (unsigned long)(hash % right);
+      return (unsigned long)(hash % right);
   }
   else {
     return 0;
   }
 
+}
+
+
+int packet_equal(void *vpack1, void *vpack2)
+{
+  char *str1[128];
+  char *str2[128];
+  char *str3[128];
+
+  stringify_node(str1, vpack1, 0);
+  stringify_node(str2, vpack2, 0);
+  stringify_node(str3, vpack1, 1);
+  
+  int ret = strcmp(str1, str2) == 0 ? 1 : 0;
+  ret &= strcmp(st2, str3) == 0 ? 1: 0;
+  
+  return ret;
 }
 
 unsigned long fourtuple_hash(void *v, int right, void *args)
@@ -246,15 +262,17 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
      */
     if ( !dict_member_fn((*dictp), (void*)pv, hash_qr,
 			 ((void*)&args),
-			 logical_equal) ) {
+			 packet_equal ) ) {
 
-      struct hash_arg *entry = malloc(sizeof(struct hash_arg));
+
       list_t *l = new_list();
 
-      entry->value = new_list();
+      /* struct hash_arg *entry = malloc(sizeof(struct hash_arg)); */
+      /* entry->value = (unsigned char *)l;  */
+      /* entry->ketstr = (unsigned char *)value; */
 
       dict_insert_fn(dictp, (void*)l, hash_qr,
-		     ((void*)&args), NULL);
+		     ((void*)&args), entry);
 
       list_insert(l, pv);
     }
