@@ -50,6 +50,7 @@ void stringify_node(char **str, void *vnode, int direction)
   char *s = *str;
   struct packet_value *pv = vnode;
   unsigned char *packet = (unsigned char *)pv->packet;
+
   unsigned char src_addr[32];
   unsigned char dst_addr[32];
   
@@ -147,27 +148,6 @@ int packet_equal(void *vpack1, void *vpack2)
   return ret;
 }
 
-int packet_requal(void *vpack1, void *vpack2)
-{
-  struct hash_args *harg1 = vpack1;
-  struct hash_args *harg2 = vpack2;
-
-  char str1[256];
-  char str2[256];
-
-  memset(str1, 0, 256);
-  memset(str2, 0, 256);
-
-  stringify_node((char **)&str1, harg1->value, 0);
-  stringify_node((char **)&str2, harg2->value, 1);
-
-  int ret = strcmp((char *)str1, (char *)str2) == 0 ? 1 : 0;
-  return ret;
-}
-
-
-
-
 unsigned long fourtuple_hash(void *v, int right, void *args)
 {
   unsigned long key = make_key(v, right, args);
@@ -237,37 +217,6 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
   capture_len -= sizeof(struct ether_header);
 
-#ifdef UNITTEST
-
-  struct tcphdr *tcp;
-  struct udphdr *udp;
-  unsigned short sport = 0;
-  unsigned short dport = 0;
-  int IP_header_len = ip->ip_hl * 4;
-
-  switch( ip->ip_p ) {
-  case IPPROTO_TCP:
-    tcp = (struct tcphdr*)(packet + IP_header_len);
-    sport = ntohs(tcp->th_sport);
-    dport = ntohs(tcp->th_dport);
-    printf("TCP %s %d %s %s %d %d\n", __func__, __LINE__,
-	   (char *)src_addr, (char *)dst_addr, sport, dport);
-    break;
-  case IPPROTO_UDP:
-    udp = (struct udphdr*)(packet + IP_header_len);
-    sport = ntohs(udp->uh_sport);
-    dport = ntohs(udp->uh_dport);
-    printf("UDP %s %d %s %s\n", __func__, __LINE__,
-	   (char *)src_addr, (char *)dst_addr);
-    break;
-  default:
-    printf("Other %s %d %s %s\n", __func__, __LINE__,
-	   (char *)src_addr, (char *)dst_addr);
-    break ;
-  }
-
-#endif
-
   struct packet_value *pv = malloc(sizeof(struct packet_value));
   char *value = (char *)malloc(caplen + 1);
 
@@ -323,9 +272,11 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 					      packet_equal);
       list_t *l = (list_t *)h->value;
       list_insert(l, pv);
+      free(keystr);
       goto DONE;
     }
     else {
+      free(keystr);
       goto FREE_VALUE;
     }
   }
