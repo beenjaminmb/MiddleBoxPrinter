@@ -140,7 +140,7 @@ int test_response_reply()
 #ifdef UNITTEST
   print_qr_dict(qr);
 #endif /* UNITTEST */
-  printf("%s %d %p size = %d, N = %d\n", __func__, __LINE__, 
+  printf("%s %d %p size = %d, N = %d\n", __func__, __LINE__,
 	 qr, qr->size, qr->N);
   
   dict_destroy_fn(qr, (free_fn)free_list);

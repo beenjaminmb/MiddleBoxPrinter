@@ -40,6 +40,7 @@ unsigned long free_list(void *list)
     free(current);
     current = tmp;
   }
+  free(l);
   free(list);
   return 0;
 }
