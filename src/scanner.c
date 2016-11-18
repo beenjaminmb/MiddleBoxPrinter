@@ -403,9 +403,10 @@ void response_replay(dict_t **dp)
       struct hash_args *hargs = (struct hash_args *)node->value;
       list_t *l = (list_t *)hargs->value;
       if ( l->size > 1 ) {
+#ifdef UNITTEST
 	printf("%s %d %s\n", __func__, __LINE__, hargs->keystr);
 	printf("size = %d\n", l->size );
-	      
+#endif
 	struct hash_args *va = malloc(sizeof(struct hash_args));
 	int len = strlen((char*)hargs->keystr);
 	va->keystr = malloc( len + 1);

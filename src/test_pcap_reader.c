@@ -68,35 +68,41 @@ void print_qr_dict(dict_t *d)
   for (int i = 0; i < size; i++) {
     element_list = d->elements[i];
     list_node_t *node = element_list->list;
-    avgsize += element_list->size;
-    if ( element_list->size == 0 ) {
-      nzeros += 1;
-    }
-    if (element_list->size == 1) {
-      nones += 1;
-    }
-    if (element_list->size > 1 && element_list->size <= 10) {
-      ngolt += 1;
-    }
-
-    if (element_list->size > 10 && element_list->size <= 100) {
-      ngtlh += 1;
-    }
-
-    if (element_list->size > 100 && element_list->size <= 100) {
-      nghlt += 1;
-    }
-    else if (element_list->size > 1000){
-      printf("\tsize!!! %d\n", element_list->size);
-      other += 1;
-    }
-    while (  node ) {
+    while ( node ) {
       list_node_t *tmp = node->next;
-      list_t *l = node->value;
-      stringify_node(&str, l->list->value, 0);
-      printf("%s %d %s\n", __func__, __LINE__, str);
+      struct hash_args *harg = node->value;
+      list_t *l = (list_t*)harg->value;
+      avgsize += l->size;
+      if ( l->size == 0 ) {
+	nzeros += 1;
+      }
+      if (l->size == 1) {
+	nones += 1;
+      }
+      if (l->size > 1 && l->size <= 10) {
+	ngolt += 1;
+      }
+      
+      if (l->size > 10 && l->size <= 100) {
+	ngtlh += 1;
+      }
+      
+      if (l->size > 100 && l->size <= 100) {
+	nghlt += 1;
+      }
+      else if (l->size > 1000){
+	printf("\tsize!!! %d\n", l->size);
+	other += 1;
+      }
+      list_node_t *pkt_node = l->list;
+      while ( pkt_node ) {
+	list_node_t *pkt_tmp = pkt_node->next;
+	stringify_node(&str, pkt_node->value, 0);
+	printf("%s %d %s\n", __func__, __LINE__, str);
+	pkt_node = pkt_tmp;
+      }
       node = tmp;
-    }
+    } 
   }
   free(str);
   printf("dict size:                                        %d\n", d->size);
@@ -118,7 +124,7 @@ int test_split_qr()
 
   printf("%s %d %p: Test Ending\n",__func__, __LINE__, qr);  
   print_qr_dict(qr);
-  dict_destroy_fn(qr, (free_fn)free_list);
+  dict_destroy(qr);
 
   return 0;
 }
@@ -136,7 +142,8 @@ int test_response_reply()
   printf("%s %d %p size = %d, N = %d\n", __func__, __LINE__, 
 	 qr, qr->size, qr->N);
   
-  dict_destroy_fn(qr, (free_fn)free_list);
+  //dict_destroy_fn(qr, (free_fn)free_list);
+  dict_destroy(qr);
   printf("%s %d: Test Ending\n",__func__, __LINE__);
   return 0;
 }
