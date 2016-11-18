@@ -33,8 +33,10 @@
   #define STOP_TIMER(seconds) (seconds += wall_time())
 #else
   #define END_TTL 64
-  #define START_TIMER(seconds) (seconds = -1)
-  #define STOP_TIMER(seconds) (seconds = -1)
+  /* #define START_TIMER(seconds) (seconds = -1) */
+  /* #define STOP_TIMER(seconds) (seconds = -1) */
+  #define START_TIMER(seconds) (seconds = -wall_time())
+  #define STOP_TIMER(seconds) (seconds += wall_time())
 #endif
 #define TTL_MODULATION_COUNT 3
 

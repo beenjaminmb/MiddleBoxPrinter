@@ -358,7 +358,7 @@ void response_replay(dict_t **dp)
 #endif /* UNITTEST */
 	struct hash_args *va = malloc(sizeof(struct hash_args));
 	int len = strlen((char*)hargs->keystr);
-	va->keystr = malloc( len + 1);
+	va->keystr = malloc( len + 1 );
 	memcpy(va->keystr, hargs->keystr, len);
 	va->keystr[len] = '\0';
 	list_t *l2 = clone_list_fn(l, (void*)copy_packet);
@@ -635,13 +635,13 @@ int scanner_main_loop()
   while(scanner->phase1 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase1_cond, scanner->phase1_lock);
   }
-  /** 
+  /**
    * By this point, all of the workers should have 
    * finished sending all of their phase 1 probes.
    */
   pthread_mutex_unlock(scanner->phase1_lock);
   
-  /* 
+  /**
    * We should wait 1 minute before signalling the 
    * sniffer to pause sniffing.
    */
@@ -650,7 +650,6 @@ int scanner_main_loop()
   stop_sniffer(scanner->sniffer);
 
   generate_phase2_packets();
-
   
   scanner->phase2_wait = 0;
   pthread_cond_signal(scanner->phase2_wait_cond);

@@ -118,39 +118,43 @@ void print_qr_dict(dict_t *d)
 
 int test_split_qr()
 {
+  printf("%s %d: Test Starting\n",__func__, __LINE__);
+  double time;
+  START_TIMER(time);
   dict_t *qr = split_query_response(PCAP_FILE_NAME);
-  printf("%s %d %p: Test Starting\n",__func__, __LINE__, qr);
-  
-
-  printf("%s %d %p: Test Ending\n",__func__, __LINE__, qr);  
-  print_qr_dict(qr);
+  STOP_TIMER(time);
+  printf("%s %d %f: Test Ending\n",__func__, __LINE__, time);
+  //print_qr_dict(qr);
   dict_destroy_fn(qr, (free_fn)free_list);
+
 
   return 0;
 }
 
 int test_response_reply()
 {
-  printf("%s %d: Test starting\n", __func__, __LINE__);
   dict_t *qr = split_query_response(PCAP_FILE_NAME);
   printf("%s %d %p size = %d, N = %d\n", __func__, __LINE__, 
 	 qr, qr->size, qr->N);
 
+  double time;
+  START_TIMER(time);
   response_replay(&qr);
+  STOP_TIMER(time);
+  printf("%s %d running time %f: Test Ending\n",
+	 __func__, __LINE__, time);
+
 #ifdef UNITTEST
   print_qr_dict(qr);
-#endif /* UNITTEST */
-  printf("%s %d %p size = %d, N = %d\n", __func__, __LINE__,
-	 qr, qr->size, qr->N);
-  
+#endif /* UNITTEST */  
+
   dict_destroy_fn(qr, (free_fn)free_list);
-  printf("%s %d: Test Ending\n",__func__, __LINE__);
   return 0;
 }
 int main(void)
 {
   // assert( (test_parse_pcap() == 0) );
-  // assert( (test_split_qr() == 0) );
-  assert( (test_response_reply() == 0) );
+  assert( (test_split_qr() == 0) );
+  //assert( (test_response_reply() == 0) );
   return 0;
 }
