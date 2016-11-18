@@ -92,6 +92,7 @@ void print_qr_dict(dict_t *d)
 	printf("\tsize!!! %d\n", l->size);
 	other += 1;
       }
+
       list_node_t *pkt_node = l->list;
       while ( pkt_node ) {
 	list_node_t *pkt_tmp = pkt_node->next;
@@ -141,18 +142,14 @@ int test_response_reply()
   STOP_TIMER(time);
   printf("%s %d running time %f: Test Ending\n",
 	 __func__, __LINE__, time);
-
-#ifdef UNITTEST
   print_qr_dict(qr);
-#endif /* UNITTEST */  
-
   dict_destroy_fn(qr, (free_fn)free_list);
   return 0;
 }
 int main(void)
 {
   // assert( (test_parse_pcap() == 0) );
-  assert( (test_split_qr() == 0) );
-  //assert( (test_response_reply() == 0) );
+  // assert( (test_split_qr() == 0) );
+  assert( (test_response_reply() == 0) );
   return 0;
 }

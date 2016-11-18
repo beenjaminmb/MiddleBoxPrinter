@@ -26,6 +26,29 @@
 // #define QR_DICT_SIZE 2
 #define QR_DICT_SIZE 3072
 
+
+typedef struct phase_stats_t {
+  int total_probes_sent;
+  int total_responses;
+  int total_responses_with_retransmissions;
+} phase_stats_t;
+
+
+typedef struct scan_statistics_t {
+  /* Probe space, proper is U_i=k^15002^i. Probes are generated randomly from this space. */
+  phase_stats_t phase1;
+  /* Responses from phase1 are used as the probes from which this statistics are derived */
+  phase_stats_t phase2;
+  /**
+   * If I'm feeling saucy, phase3 will be to query one hosts,
+   * then spoof packets to another host,
+   * then require the specified host.
+   * 
+   * This scanning logic for this will be challanging.
+   */
+  phase_stats_t phase3;
+} scan_statistics_t;
+
 typedef struct scanner_t {
   scanner_worker_t *workers;
   pthread_mutex_t *continue_lock;
