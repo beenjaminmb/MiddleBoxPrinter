@@ -124,7 +124,7 @@ int test_split_qr()
 
   printf("%s %d %p: Test Ending\n",__func__, __LINE__, qr);  
   print_qr_dict(qr);
-  dict_destroy(qr);
+  dict_destroy_fn(qr, (free_fn)free_list);
 
   return 0;
 }
@@ -137,13 +137,13 @@ int test_response_reply()
 	 qr, qr->size, qr->N);
 
   response_replay(&qr);
+#ifdef UNITTEST
   print_qr_dict(qr);
-
+#endif /* UNITTEST */
   printf("%s %d %p size = %d, N = %d\n", __func__, __LINE__, 
 	 qr, qr->size, qr->N);
   
-  //dict_destroy_fn(qr, (free_fn)free_list);
-  dict_destroy(qr);
+  dict_destroy_fn(qr, (free_fn)free_list);
   printf("%s %d: Test Ending\n",__func__, __LINE__);
   return 0;
 }

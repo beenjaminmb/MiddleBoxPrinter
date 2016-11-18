@@ -28,10 +28,12 @@ static struct scanner_t *scanner = NULL;
 
 unsigned long free_list(void *list)
 {
-  list_t *l = list;
-  list_node_t *current = l->list;  
+  struct hash_args *hargs = list;
+  free(hargs->keystr);
+  list_t *l = (list_t *)hargs->value;
+  list_node_t *current = l->list;
   while( current ) {
-    list_node_t *tmp = current->next; 
+    list_node_t *tmp = current->next;
     struct packet_value *pv = current->value;
     free(pv->packet);
     free(current->value);
@@ -352,15 +354,9 @@ dict_t * split_query_response(const char* pcap_fname)
 #endif
   
 
-  int i = 0;
   while (  (packet = pcap_next(pcap, &header)) != NULL ) {
-    /* i++; */
-    /* printf("i = %d\n", i); */
     process_packet(&q_r, packet, header.ts, header.caplen);
   }
-  /* while ( (packet = pcap_next(pcap, &header)) != NULL ) { */
-  /*   process_packet(&q_r, packet, header.ts, header.caplen); */
-  /* } */
 
   free((void*)pcap);
   pcap = NULL;
@@ -398,15 +394,16 @@ void response_replay(dict_t **dp)
 
   for (int i = 0; i < size; i++) {
     element_list = d->elements[i];
-    if ( element_list->size >=  1) { /*Cull the empty ones*/
+    if ( element_list->size >=  1) { 
       node = element_list->list;
       struct hash_args *hargs = (struct hash_args *)node->value;
       list_t *l = (list_t *)hargs->value;
-      if ( l->size > 1 ) {
+      if ( l->size > 1 ) { /*Cull the probes w/o responses */
+
 #ifdef UNITTEST
 	printf("%s %d %s\n", __func__, __LINE__, hargs->keystr);
 	printf("size = %d\n", l->size );
-#endif
+#endif /* UNITTEST */
 	struct hash_args *va = malloc(sizeof(struct hash_args));
 	int len = strlen((char*)hargs->keystr);
 	va->keystr = malloc( len + 1);
@@ -418,7 +415,7 @@ void response_replay(dict_t **dp)
       }
     }
   }
-  dict_destroy(d);
+  dict_destroy_fn(d, (free_fn)free_list);
   *dp = q_r;
   return ;
 }
@@ -438,9 +435,10 @@ void generate_phase2_packets()
    * 3.   for response in query[response]
    * 4.      
    */
-
   dict_t *query_response = split_query_response(PCAP_TEST_FILE);
-  dict_destroy(query_response);
+  response_replay(&query_response);
+
+  dict_destroy_fn(query_response, (free_fn)free_list);
   return;
 }
 

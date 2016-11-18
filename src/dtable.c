@@ -296,7 +296,6 @@ int dict_destroy_fn(dict_t  *d, free_fn ufree)
 	while ( current ) {
 	  list_node_t *tmp = current->next;
 	  if ( ufree != NULL) {
-	  /* User defined free function */
 	    ufree(current->value);
 	  }
 	  free(current);
