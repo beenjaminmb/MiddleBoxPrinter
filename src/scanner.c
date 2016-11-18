@@ -26,9 +26,9 @@
 
 static struct scanner_t *scanner = NULL;
 
-unsigned long free_list(void *list)
+unsigned long free_list(void *args)
 {
-  struct hash_args *hargs = list;
+  struct hash_args *hargs = args;
   free(hargs->keystr);
   list_t *l = (list_t *)hargs->value;
   list_node_t *current = l->list;
@@ -41,7 +41,7 @@ unsigned long free_list(void *list)
     current = tmp;
   }
   free(l);
-  free(list);
+  free(args);
   return 0;
 }
 
@@ -253,6 +253,10 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 		     NULL,  NULL);
       list_insert(l, pv);
     }
+    else {
+      free(keystr);
+      goto FREE_VALUE;
+    }
     free(keystr);
     goto DONE; /*ATTENTION: normally I wouldn't insert query node
 		 however in this case I need to for testing.*/
@@ -305,8 +309,8 @@ dict_t * split_query_response(const char* pcap_fname)
   printf("%s %d\n", __func__, __LINE__);
 #endif
   
-
-  while (  (packet = pcap_next(pcap, &header)) != NULL ) {
+  int i = 0;
+  while ( (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, header.ts, header.caplen);
   }
 
@@ -372,6 +376,32 @@ void response_replay(dict_t **dp)
   return ;
 }
 
+void copy_query_response_to_scanner(dict_t *qr)
+{
+  int n = qr->N; /*Number of requests that ellicited at least 1
+		   response*/
+  int probes_per_worker = n / MAX_WORKERS;
+  int remainder = n % MAX_WORKERS;
+  
+  assert((remainder + probes_per_worker) == n);
+
+  scanner_worker_t *worker = &scanner->workers[0];
+  
+  
+  for (int i = 0; i < MAX_WORKERS; i++) {
+    worker = &scanner->workers[i];
+    for (int j = 0; j < probes_per_worker; j++) {
+      deepcopy_packet(worker, NULL, j);
+    }
+  }
+
+  for (int i = 0; i < remainder; i++) {
+    deepcopy_packet(worker, NULL, (probes_per_worker + i));
+  }
+
+  return;
+}
+
 void generate_phase2_packets()
 {
   /**
@@ -389,9 +419,24 @@ void generate_phase2_packets()
    */
   dict_t *query_response = split_query_response(PCAP_TEST_FILE);
   response_replay(&query_response);
-
+  /**
+   query_response[i] = list_t {
+                         list_node_t { 
+			   .next, .prev, 
+                           .value = struct hash_arg {
+                                      .keystr = src, dst, sport, dport
+		                      .value = list_t* {
+				             { .next, .prev
+				               .value = 
+				             },... 
+                                          }
+                                       }
+                                    }
+                        }
+  */
+  copy_query_response_to_scanner(query_response);
   dict_destroy_fn(query_response, (free_fn)free_list);
-  return;
+  return ;
 }
 
 void send_scan_packet(unsigned char *restrict packet_buffer, 
@@ -476,7 +521,6 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
 
 void phase1(scanner_worker_t *self)
 {
-  
   for (int i = 0; i < ADDRS_PER_WORKER; i++) {
     make_phase1_packet((unsigned char *)
 		       &self->probe_list[i].probe_buff,

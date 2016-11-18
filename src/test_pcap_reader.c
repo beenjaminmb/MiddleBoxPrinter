@@ -29,16 +29,14 @@
 
 int test_parse_pcap()
 {
-
   dict_t *q_r = new_dict_size(QR_DICT_SIZEp);
   const unsigned char *packet;
   char errbuf[PCAP_ERRBUF_SIZE];
   struct pcap_pkthdr header;  
   pcap_t *pcap = pcap_open_offline(PCAP_FILE_NAME, errbuf);
   assert( pcap );
-
   
-  printf("%s %d\n", __func__, __LINE__);
+  printf("%s %d\n", __func__, __LINE__);  
 
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, header.ts, header.caplen);    

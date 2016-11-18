@@ -548,4 +548,12 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
   return 0;
 }
 
+static void deepcopy_packet(scanner_worker_t *worker, /*The worker*/
+			    char *response, /*The packet to be copied*/
+			    int probe_idx /*The specific probe*/)
+{
+  assert(0); /* WARNING: NOT IMPLEMENTED */
+  return ;
+}
+
 #endif /* _PACKET_ */
