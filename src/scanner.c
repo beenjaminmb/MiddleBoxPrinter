@@ -42,7 +42,7 @@ unsigned long free_list(void *list)
   return 0;
 }
 
-void stringify_node( char **str, void *vnode, int direction)
+void stringify_node(char **str, void *vnode, int direction)
 {
   char *s = *str;
   struct packet_value *pv = vnode;
@@ -101,6 +101,8 @@ void stringify_node( char **str, void *vnode, int direction)
 
 unsigned long str_key(void *value, int right, void *args)
 {
+  struct hash_args *hargs = value;
+  char *str = (char*)hargs->keystr;
   unsigned long hash = 5381;
   int c;
   char *tmp = str;
@@ -108,30 +110,60 @@ unsigned long str_key(void *value, int right, void *args)
     hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
   }
   if (right) {
-      return (unsigned long)(hash % right);
+    return (unsigned long)(hash % right);
   }
   else {
     return 0;
   }
-
 }
-
 
 int packet_equal(void *vpack1, void *vpack2)
 {
-  char *str1[128];
-  char *str2[128];
-  char *str3[128];
+  struct hash_args *harg1 = vpack1;
+  struct hash_args *harg2 = vpack2;
+  
+  int len1 = strlen((char*)(harg1->keystr));
+  int len2 = strlen((char*)(harg2->keystr));
 
-  stringify_node(str1, vpack1, 0);
-  stringify_node(str2, vpack2, 0);
-  stringify_node(str3, vpack1, 1);
-  
-  int ret = strcmp(str1, str2) == 0 ? 1 : 0;
-  ret &= strcmp(st2, str3) == 0 ? 1: 0;
-  
+  char *str1 = (char*)malloc(len1+1);
+  char *str2 = (char*)malloc(len2+1);
+
+  memset((void*)str1, 0, len1 + 1);
+  memset((void*)str2, 0, len2 + 1);
+
+  memcpy((void*)str1, (void*)harg1->keystr, len1);
+  memcpy((void*)str2, (void*)harg2->keystr, len2);
+
+  str1[len1] = '\0';
+  str1[len2] = '\0';
+
+  int ret = strcmp((char *)str1, (char *)str2) == 0 ? 1 : 0;
+
+  free((void*)str1);
+  free((void*)str2);
   return ret;
 }
+
+int packet_requal(void *vpack1, void *vpack2)
+{
+  struct hash_args *harg1 = vpack1;
+  struct hash_args *harg2 = vpack2;
+
+  char str1[256];
+  char str2[256];
+
+  memset(str1, 0, 256);
+  memset(str2, 0, 256);
+
+  stringify_node((char **)&str1, harg1->value, 0);
+  stringify_node((char **)&str2, harg2->value, 1);
+
+  int ret = strcmp((char *)str1, (char *)str2) == 0 ? 1 : 0;
+  return ret;
+}
+
+
+
 
 unsigned long fourtuple_hash(void *v, int right, void *args)
 {
@@ -143,21 +175,25 @@ unsigned long fourtuple_hash(void *v, int right, void *args)
 
 unsigned long hash_qr(void *v, int right, void *args)
 {
-  char *str = malloc(sizeof(char) * 128);
-  memset(str, 0, (sizeof(char)*128));
-  stringify_node(&str, v, 0);
-  unsigned long key = str_key(str, right, args);
-  free(str);
+  unsigned long key = str_key(v, right, args);
   return key;
 }
 
 unsigned long hash_rq(void *v, int right, void *args)
 {
-  char str[128];
-  memset(str, 0, 128);
-  stringify_node((char **)&str, v, 1);
-  unsigned long key = str_key((char*)str, right, args);
-  return key;
+  struct hash_args *hargs = v;
+  if ( hargs->value ) {
+    char *str = malloc(256 * sizeof(char));
+    memset(str, 0, (sizeof(char)*256));
+    stringify_node((char **)&str, hargs->value, 1);
+    unsigned long key = str_key((char*)v, right, str);
+    free(str);
+    return key;
+  } 
+  else {
+    unsigned long key = str_key((char*)v, right, NULL);
+    return key;
+  }
 }
 
 
@@ -196,12 +232,14 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   memset((void*)dst_addr, 0, sizeof(dst_addr));
   memcpy((void*)dst_addr, (void*)addr, len);
 
+  capture_len -= sizeof(struct ether_header);
+
+#ifdef UNITTEST
+
   struct tcphdr *tcp;
   struct udphdr *udp;
   unsigned short sport = 0;
   unsigned short dport = 0;
-
-  capture_len -= sizeof(struct ether_header);
   int IP_header_len = ip->ip_hl * 4;
 
   switch( ip->ip_p ) {
@@ -209,29 +247,23 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
     tcp = (struct tcphdr*)(packet + IP_header_len);
     sport = ntohs(tcp->th_sport);
     dport = ntohs(tcp->th_dport);
-#ifdef UNITTEST
     printf("TCP %s %d %s %s %d %d\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr, sport, dport);
-#endif
     break;
   case IPPROTO_UDP:
     udp = (struct udphdr*)(packet + IP_header_len);
     sport = ntohs(udp->uh_sport);
     dport = ntohs(udp->uh_dport);
-#ifdef UNITTEST
     printf("UDP %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
-#endif
     break;
   default:
-#ifdef UNITTEST
     printf("Other %s %d %s %s\n", __func__, __LINE__,
 	   (char *)src_addr, (char *)dst_addr);
-#endif
     break ;
   }
 
-  char keystr[128];
+#endif
 
   struct packet_value *pv = malloc(sizeof(struct packet_value));
   char *value = (char *)malloc(caplen + 1);
@@ -241,50 +273,52 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
   memset(value, 0, caplen + 1);
   memcpy(value, (void*)tmppacket, caplen);
-  memset(keystr, 0, 128);
-
-  sprintf((char*)keystr, "%s %s %d %d", (char*)src_addr,
-  	  (char*)dst_addr, sport, dport);
-
-  struct hash_args args = {.keystr = (unsigned char *)keystr,
-			   .value = (unsigned char *)value};
 
   int is_probe = (strcmp((const char*)src_addr, SRC_IP) == 0);
 
   int is_response = (strcmp((const char*)dst_addr,
 			    (const char*)SRC_IP) == 0);
 
+
   if ( is_probe ) {
-    
-    
-    /**
-     * Elements aren't getting added as expected.
-     */
-    if ( !dict_member_fn((*dictp), (void*)pv, hash_qr,
-			 ((void*)&args),
-			 packet_equal ) ) {
+    char *keystr = malloc(256 * sizeof(char));
+    memset(keystr, 0, 256);
+    stringify_node((char**)&keystr, (void *)pv, 0);
+    struct hash_args hargs = {.keystr = (unsigned char *)keystr, 
+			      .value = NULL};
 
-
+    if ( !dict_member_fn((*dictp), (void*)&hargs, hash_qr,
+			 NULL,  packet_equal ) ) {
+      
       list_t *l = new_list();
 
-      /* struct hash_arg *entry = malloc(sizeof(struct hash_arg)); */
-      /* entry->value = (unsigned char *)l;  */
-      /* entry->ketstr = (unsigned char *)value; */
-
-      dict_insert_fn(dictp, (void*)l, hash_qr,
-		     ((void*)&args), entry);
-
+      struct hash_args *hargsp = malloc(sizeof(struct hash_args));
+      hargsp->keystr = malloc(strlen(keystr) + 1);
+      memset(hargsp->keystr, 0, strlen(keystr) + 1);
+      memcpy(hargsp->keystr, keystr, strlen(keystr));
+      hargsp->value = (unsigned char *)l;
+      dict_insert_fn(dictp, (void*)hargsp, hash_qr,
+		     NULL,  NULL);
       list_insert(l, pv);
     }
+    free(keystr);
     goto DONE; /*ATTENTION: normally I wouldn't insert query node
 		 however in this case I need to for testing.*/
   }
   else  if ( is_response ) {
-    if ( dict_member_fn(*dictp, (void*)pv, hash_rq,
-			((void*)&args), logical_equal) ) {
-      list_t *l = dict_get_value_fn(*dictp, (void*)pv,
-				    hash_rq, ((void*)&args),
-				    logical_equal);
+    char *keystr = malloc(256 * sizeof(char));
+    memset(keystr, 0, 256);
+    stringify_node((char **)&keystr, (void *)pv, 1);
+    struct hash_args hargs = {.keystr=(unsigned char*)keystr,
+			      .value=NULL};
+
+    if ( dict_member_fn(*dictp, (void*)&hargs, hash_qr,
+			NULL, packet_equal ) ) {
+
+      struct hash_args *h = dict_get_value_fn(*dictp, (void*)&hargs,
+					      hash_rq, NULL,
+					      packet_equal);
+      list_t *l = (list_t *)h->value;
       list_insert(l, pv);
       goto DONE;
     }
@@ -301,19 +335,7 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
 dict_t * split_query_response(const char* pcap_fname)
 {
-  /**
-   * 1. R = pcap file sniffer just saved. 
-   * 2. for p in pcap_file
-   * 4.    if p.src == 64.106.82.6: 
-   * 5.       handle_query(p)
-   * 6.    else if p.dst == 64.106.82.6:
-   * 7.       handle_qresponse(p)
-   * 8.    else :
-   * 9.       continue
-   *
-   */
   dict_t *q_r = new_dict_size(QR_DICT_SIZE);
- 
   pcap_t *pcap;
   const unsigned char *packet;
   char errbuf[PCAP_ERRBUF_SIZE];
@@ -332,8 +354,8 @@ dict_t * split_query_response(const char* pcap_fname)
 
   int i = 0;
   while (  (packet = pcap_next(pcap, &header)) != NULL ) {
-    i++;
-    printf("i = %d\n", i);
+    /* i++; */
+    /* printf("i = %d\n", i); */
     process_packet(&q_r, packet, header.ts, header.caplen);
   }
   /* while ( (packet = pcap_next(pcap, &header)) != NULL ) { */
@@ -355,6 +377,7 @@ dict_t * split_query_response(const char* pcap_fname)
 
 void *copy_packet(void *v)
 {
+  //struct hash_args *harg = v;
   struct packet_value *pv = v;
   struct packet_value *newpv = malloc(sizeof(struct packet_value));
   newpv->packet = malloc(pv->capture_len + 1);  
@@ -377,13 +400,20 @@ void response_replay(dict_t **dp)
     element_list = d->elements[i];
     if ( element_list->size >=  1) { /*Cull the empty ones*/
       node = element_list->list;
-      list_t *l = node->value;
-      list_node_t *cur = l->list;
-      while ( l->size > 1 && cur ) {
-	list_node_t *tmp = node->next;
+      struct hash_args *hargs = (struct hash_args *)node->value;
+      list_t *l = (list_t *)hargs->value;
+      if ( l->size > 1 ) {
+	printf("%s %d %s\n", __func__, __LINE__, hargs->keystr);
+	printf("size = %d\n", l->size );
+	      
+	struct hash_args *va = malloc(sizeof(struct hash_args));
+	int len = strlen((char*)hargs->keystr);
+	va->keystr = malloc( len + 1);
+	memcpy(va->keystr, hargs->keystr, len);
+	va->keystr[len] = '\0';
 	list_t *l2 = clone_list_fn(l, (void*)copy_packet);
-	dict_insert_fn(&q_r, l2, make_key, NULL, NULL);
-	node = tmp;
+	va->value = (unsigned char*)l2;
+	dict_insert_fn(&q_r, va, hash_qr, NULL, NULL);
       }
     }
   }

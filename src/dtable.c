@@ -314,7 +314,7 @@ int dict_destroy_fn(dict_t  *d, free_fn ufree)
 
 int dict_member(dict_t *d, void *value)
 {
-  return dict_member_fn(d, value, ((key_fn)make_key), 
+  return dict_member_fn(d, value, ((key_fn)make_key),
 			NULL, logical_equal);
 }
 

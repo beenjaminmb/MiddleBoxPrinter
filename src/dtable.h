@@ -36,6 +36,7 @@ typedef unsigned long (*free_fn)(void *);
 /* User defined equality function. */
 typedef int (*equal_fn)(void *v1, void *v2);
 
+/* User defined deep copy function. */
 typedef void* (copy_fn)(void *value);
 
 list_t *clone_list_fn(list_t *l1, copy_fn copy);
