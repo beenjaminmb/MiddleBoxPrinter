@@ -449,7 +449,7 @@ void copy_query_response_to_scanner(dict_t *qr)
 	    sscanf(response_args->keystr, "%s %s %d %d",
 		   psrc_addr, pdst_addr, &psport, &pdport);
 
-	    if ( prev_src_addr ) {
+	    if ( prev_src_addr == NULL ) {
 	      deepcopy_packet(worker, response_args->keystr,
 			      probe_idx);
 	      probe_idx++;
