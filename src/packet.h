@@ -596,6 +596,10 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
   };
   
   stringify_node(&str2, &pv, 0);
+
+  sfree(str1);
+  sfree(str2);
+
   return ;
 }
 
