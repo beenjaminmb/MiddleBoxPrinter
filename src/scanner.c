@@ -426,7 +426,7 @@ void copy_query_response_to_scanner(dict_t *qr)
 	next_element = current_element->next;
 	struct hash_args *hargs = current_element->value;
 	char *keystr = (char*)hargs->keystr;
-	sscanf(keystr, "%s %s %d %d", wsrc_addr, wsrc_addr,
+	sscanf(keystr, "%s %s %d %d", wsrc_addr, wdst_addr,
 	       &wsport, &wdport);
 	
 	int good = !strcmp(wsrc_addr, SRC_IP);
@@ -447,7 +447,7 @@ void copy_query_response_to_scanner(dict_t *qr)
 	      current_response->value;
 	    list_node_t *next_response = current_response->next;
 	    sscanf(response_args->keystr, "%s %s %d %d",
-		   psrc_addr, psrc_addr, &psport, &pdport);
+		   psrc_addr, pdst_addr, &psport, &pdport);
 
 	    if ( prev_src_addr ) {
 	      deepcopy_packet(worker, response_args->keystr,
