@@ -397,21 +397,19 @@ void copy_query_response_to_scanner(dict_t *qr)
   int n = qr->N;
   int probes_per_worker = n / MAX_WORKERS;
   int remainder = n % MAX_WORKERS;
-  
+
   assert((remainder + (probes_per_worker * MAX_WORKERS)) == n);
-  
+
   scanner_worker_t *worker = &scanner->workers[0];
   char *wsrc_addr = smalloc(256);
   char *wdst_addr = smalloc(256);
   short wsport = 0;
   short wdport = 0;
 
-
   char *psrc_addr = smalloc(256);
   char *pdst_addr = smalloc(256);
   short psport = 0;
-  short pdport = 0;
-  
+  short pdport = 0;  
 
   for (int i = 0; i < MAX_WORKERS; i++) {
     worker = &scanner->workers[i];
@@ -421,17 +419,14 @@ void copy_query_response_to_scanner(dict_t *qr)
       list_t *element_list = qr->elements[j];
       list_node_t* current_element = element_list->list;
       list_node_t *next_element = NULL;
-      
       while ( current_element ) {
 	next_element = current_element->next;
 	struct hash_args *hargs = current_element->value;
 	char *keystr = (char*)hargs->keystr;
 	sscanf(keystr, "%s %s %d %d", wsrc_addr, wdst_addr,
 	       &wsport, &wdport);
-	
 	int good = !strcmp(wsrc_addr, SRC_IP);
 	assert( good );
-
 	/**
 	 * No we make a copy of every probe the
 	 * ellicited a response for this one
@@ -440,32 +435,45 @@ void copy_query_response_to_scanner(dict_t *qr)
 	for(int k = 0; k < n; k++) {
 	  list_t *response_list = qr->elements[k];
 	  list_node_t* current_response = element_list->list;
-	  char *prev_src_addr = NULL;
-	  short prev_sport = 0; 
+
 	  while ( current_response ) {
 	    struct hash_args *response_args =
 	      current_response->value;
 	    list_node_t *next_response = current_response->next;
-	    sscanf(response_args->keystr, "%s %s %d %d",
-		   psrc_addr, pdst_addr, &psport, &pdport);
+	    // This needs to be a check on the string of the hashargs value, not the keystring.
+	    list_t *pkt_list_to_copy = response_args->value;
+	    
+	    list_node_t *current_packet = pkt_list_to_copy->list;
+	    char *prev_src_addr = NULL;
+	    short prev_sport = 0; 
+	    while( current_packet ) {
+	      list_node_t *next_packet = current_packet->next;
+	      char *foo = smalloc(256);
 
-	    if ( prev_src_addr == NULL ) {
-	      deepcopy_packet(worker, response_args->keystr,
-			      probe_idx);
-	      probe_idx++;
-	    }
-	    else {
-	      int not_seen = 
-		(strcmp(prev_src_addr, psrc_addr)) & 
-		(prev_sport != psport) ? 1 : 0;
+	      stringify_node(foo, current_packet->value, 0);
 
-	      if ( not_seen ) {
+	      sscanf(foo, "%s %s %d %d",
+		     psrc_addr, pdst_addr, &psport, &pdport);
+
+	      if ( prev_src_addr == NULL ) {
 		deepcopy_packet(worker, response_args->keystr,
 				probe_idx);
 		probe_idx++;
 	      }
+	      else {
+		int not_seen = 
+		  (strcmp(prev_src_addr, psrc_addr)) & 
+		  (prev_sport != psport) ? 1 : 0;
+		
+		if ( not_seen ) {
+		  deepcopy_packet(worker, response_args->keystr,
+				  probe_idx);
+		  probe_idx++;
+		}
+	      }
+	      current_packet = next_packet;
+	      prev_src_addr = psrc_addr;
 	    }
-	    prev_src_addr = psrc_addr;
 	    current_response = next_response;
 	  }
 	}
