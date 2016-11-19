@@ -394,7 +394,7 @@ void response_replay(dict_t **dp, phase_stats_t *phase_stats)
  */
 void copy_query_response_to_scanner(dict_t *qr)
 {
-
+#error copy_query_response_to_scanner no implemented
   /**
    * NOT IMPLEMENTED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    * NOT IMPLEMENTED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
