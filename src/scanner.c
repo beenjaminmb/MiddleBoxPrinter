@@ -22,6 +22,7 @@
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/in.h>
+
 #define PCAP_TEST_FILE "./capnext.pcap"
 
 static struct scanner_t *scanner = NULL;
@@ -467,8 +468,9 @@ void generate_phase2_packets()
    * 3.   for response in query[response]
    * 4.
    */
-  dict_t *query_response = split_query_response(PCAP_TEST_FILE,
-						&scan_stats.phase1);
+  dict_t *query_response =
+    split_query_response(scanner->current_pcap_file_name,
+			 &scan_stats.phase1);
 
   response_replay(&query_response, &scan_stats.phase1);
   /**
@@ -766,67 +768,56 @@ int new_worker(scanner_worker_t *worker, int id)
   printf("%d %s \n", __LINE__, __func__);
 #endif
 
-  worker->ssocket = malloc(sizeof(scanner_socket_t));
-  if ((long)worker->ssocket == -1) {
-    printf("Couldn't allocate scanner_socket_t for worker[%d]\n", id);
-    return -1;
-  }
+  worker->ssocket = smalloc(sizeof(scanner_socket_t),
+			   "Couldn't allocate scanner_socket_t for "
+			   "worker[%d]\n", id);
 
   worker->ssocket->sockfd = socket(AF_INET, SOCK_RAW,
 				   IPPROTO_RAW);
+
   if (worker->ssocket->sockfd < 0) {
     printf("Couldn't open socket fd for worker[%d]\n", id);
     return -1;
   };
 
-  if (setsockopt(worker->ssocket->sockfd, SOL_SOCKET, SO_BINDTODEVICE,
-		 CAPTURE_INTERFACE, strlen(CAPTURE_INTERFACE)) ) {
+  if (setsockopt(worker->ssocket->sockfd, SOL_SOCKET,
+		 SO_BINDTODEVICE, CAPTURE_INTERFACE,
+		 strlen(CAPTURE_INTERFACE)) ) {
     printf("getsockopt() for worker[%d]\n", id);
     return -1;
   }
   
-  worker->thread = malloc(sizeof(pthread_t));
-  if ((long)worker->thread == -1) {
-    printf("Couldn't allocate thread for worker[%d]\n", id);
-    return -1;
-  }
+  worker->thread = smalloc(sizeof(pthread_t),
+			   "Couldn't allocate thread for"
+			   " worker[%d]\n", id);
 
-  worker->random_data = malloc(sizeof(struct random_data));
-  if ((long)worker->random_data == -1) {
-    printf("Couldn't allocate random_data storage for worker[%d]\n", 
-	   id);
-    return -1;
-  }
+  worker->random_data = smalloc(sizeof(struct random_data),
+				"Couldn't allocate random_data "
+				"storage for worker[%d]\n", 
+				id);
 
   worker->state_size = STATE_SIZE;
-  worker->random_state = malloc(STATE_SIZE);
-  if ((long)worker->random_state == -1) {
-    printf("Couldn't allocate random_state storage for worker[%d]\n",
-	   id);
-    return -1;
-  }  
+  worker->random_state = smalloc(STATE_SIZE, "Couldn't allocate "
+				 "random_state storage for "
+				 "worker[%d]\n",
+				 id);
 
   if (initstate_r(TEST_SEED, worker->random_state, STATE_SIZE,
 		  worker->random_data) < 0) {
     printf("Couldn't initialize random_state for worker[%d]'s.\n",
 	   id);
-    return -1;
+    assert(0);
   }
   
-  worker->probe_list = malloc(sizeof(probe_t) * ADDRS_PER_WORKER);
-  if (worker->probe_list == NULL) {
-    printf("Couldn't allocate space for "
-	   "address list for worker[%d]\n", id);
-    return -1;
-  }
+  worker->probe_list = smalloc(sizeof(probe_t) * ADDRS_PER_WORKER,
+			       "Couldn't allocate space for "
+			       "address list for worker[%d]\n", id);
 
   for (int i = 0; i < ADDRS_PER_WORKER; i++) {
-    worker->probe_list[i].sin = malloc(sizeof(struct sockaddr_in));
-    if (worker->probe_list[i].sin == NULL) {
-      printf("Cannot allocate space for probe sockaddr_in for "
-	     "worker[%d]\n", id);
-      return -1;
-    }
+    worker->probe_list[i].sin = smalloc(sizeof(struct sockaddr_in),
+					"Cannot allocate space for "
+					"probe sockaddr_in for "
+					"worker[%d]\n", id);
   }
 
   double time = wall_time() + id;
@@ -841,61 +832,19 @@ int new_worker(scanner_worker_t *worker, int id)
 
 void init_conds()
 {
-
-  scanner->continue_cond = malloc(sizeof(pthread_cond_t));
-  if ((long)scanner->continue_cond == -1) {
-    exit(-1);
-  }
-  pthread_cond_init(scanner->continue_cond, NULL);
-
-  scanner->phase1_cond = malloc(sizeof(pthread_cond_t));
-  if ((long)scanner->phase1_cond == -1) {
-    exit(-1);
-  }
-  pthread_cond_init(scanner->phase1_cond, NULL);
-
-  scanner->phase2_cond = malloc(sizeof(pthread_cond_t));
-  if ((long)scanner->phase2_cond == -1) {
-    exit(-1);
-  }
-  pthread_cond_init(scanner->phase2_cond, NULL);
-
-
-  scanner->phase2_wait_cond = malloc(sizeof(pthread_cond_t));
-  if ((long)scanner->phase2_wait_cond == -1) {
-    exit(-1);
-  }
-  pthread_cond_init(scanner->phase2_wait_cond, NULL);
-
+  scanner->continue_cond = new_cond();
+  scanner->phase1_cond = new_cond();
+  scanner->phase2_cond = new_cond();
+  scanner->phase2_wait_cond = new_cond();
   return;
 }
 
 void init_locks()
 {
-  scanner->continue_lock = malloc(sizeof(pthread_mutex_t));
-  if ((long)scanner->continue_lock == -1) {
-    exit(-1);
-  }
-  pthread_mutex_init(scanner->continue_lock, NULL);
-
-  scanner->phase1_lock = malloc(sizeof(pthread_mutex_t));
-  if ((long)scanner->phase1_lock == -1) {
-    exit(-1);
-  }
-  pthread_mutex_init(scanner->phase1_lock, NULL);
-
-  scanner->phase2_lock = malloc(sizeof(pthread_mutex_t));
-  if ((long)scanner->phase2_lock == -1) {
-    exit(-1);
-  }
-  pthread_mutex_init(scanner->phase2_lock, NULL);
-
-  scanner->phase2_wait_lock = malloc(sizeof(pthread_mutex_t));
-  if ((long)scanner->phase2_wait_lock == -1) {
-    exit(-1);
-  }
-  pthread_mutex_init(scanner->phase2_wait_lock, NULL);
-
+  scanner->continue_lock = new_mutex();
+  scanner->phase1_lock = new_mutex();
+  scanner->phase2_lock = new_mutex();
+  scanner->phase2_wait_lock = new_mutex();
   return;
 }
 
@@ -934,7 +883,14 @@ scanner_t *new_scanner_singleton()
   scanner->phase2 = 0;
   scanner->phase2_wait = 1;
   scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
+  assert( scanner->workers );
+  scanner->current_pcap_file_name = NULL;
+  scanner->random_state = NULL;
 
+  scanner->random_data = smalloc(sizeof(struct random_data),
+				 "Couldn't allocate random_data "
+				 "storage for scanner %d\n", 0);
+ 
   for (int i = 0 ; i < MAX_WORKERS; i++) {
     if (new_worker(&scanner->workers[i], i) != i) {
       exit(-1);

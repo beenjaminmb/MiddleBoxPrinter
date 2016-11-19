@@ -172,14 +172,12 @@ generate_destination_ip(char *restrict dst_ip,
     if ( blacklist_is_allowed( addr ) ) {
       break;
     }
-    printf("FUCK %s %d\n", __func__, __LINE__);
   }
   unsigned char r1 = ((unsigned char*)&addr)[0];
   unsigned char r2 = ((unsigned char*)&addr)[1];
   unsigned char r3 = ((unsigned char*)&addr)[2];
   unsigned char r4 = ((unsigned char*)&addr)[3];
   sprintf(dst_ip, "%d.%d.%d.%d", r1, r2, r3, r4);
-  printf("%s\n", dst_ip);
 #endif
   return ;
 }

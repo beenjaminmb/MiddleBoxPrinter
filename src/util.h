@@ -13,6 +13,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <pthread.h>
 #include "dtable.h"
 /*https://stackoverflow.com/questions/2509679/how-to-generate-a-random-number-from-within-a-range */
 
@@ -57,6 +58,12 @@ static inline double wall_time()
 
 
 int init_blacklist(char *blacklist);
+
+void *smalloc(int size, char *s, int id);
+
+pthread_cond_t *new_cond();
+
+pthread_mutex_t *new_mutex();
 
 #ifdef EXPERIMENTAL
 

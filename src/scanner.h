@@ -72,7 +72,10 @@ typedef struct scanner_t {
   pthread_cond_t *phase2_wait_cond;
 
   sniffer_t *sniffer;
-  
+  char *current_pcap_file_name;
+  struct random_data *random_data;
+  char *random_state;
+
   int keep_scanning;
   int phase1;
   int phase2;
