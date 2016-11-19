@@ -457,17 +457,17 @@ void copy_query_response_to_scanner(dict_t *qr)
 		     psrc_addr, pdst_addr, &psport, &pdport);
 
 	      if ( prev_src_addr == NULL ) {
-		deepcopy_packet(worker, response_args->keystr,
+		deepcopy_packet(worker, current_packet->value,
 				probe_idx);
 		probe_idx++;
 	      }
 	      else {
 		int not_seen = 
-		  (strcmp(prev_src_addr, psrc_addr)) & 
+		  (strcmp(prev_src_addr, pdst_addr)) & 
 		  (prev_sport != psport) ? 1 : 0;
 		
 		if ( not_seen ) {
-		  deepcopy_packet(worker, response_args->keystr,
+		  deepcopy_packet(worker, current_packet->value,
 				  probe_idx);
 		  probe_idx++;
 		}
