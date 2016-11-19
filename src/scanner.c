@@ -474,6 +474,7 @@ void copy_query_response_to_scanner(dict_t *qr)
 	      }
 	      current_packet = next_packet;
 	      prev_src_addr = psrc_addr;
+	      prev_sport = psport;
 	    }
 	    current_response = next_response;
 	  }
