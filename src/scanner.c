@@ -105,66 +105,6 @@ void stringify_node(char **str, void *vnode, int direction)
   return ;
 }
 
-
-void stringify_node(void *vnode, int direction)
-{
-  struct packet_value *pv = vnode;
-  unsigned char *packet = (unsigned char *)pv->packet;
-
-  unsigned char src_addr[32];
-  unsigned char dst_addr[32];
-  
-
-  packet += sizeof(struct ether_header);
-  struct ip *ip = (struct ip*)packet;
-
-  char *addr = inet_ntoa(ip->ip_src);
-
-  int len = strlen(addr);
-
-  memset((void*)src_addr, 0, sizeof(src_addr));
-  memcpy((void*)src_addr, (void*)addr, len);
-  addr = inet_ntoa(ip->ip_dst);
-  len = strlen(addr);
-  memset((void*)dst_addr, 0, sizeof(dst_addr));
-  memcpy((void*)dst_addr, (void*)addr, len);
-
-  struct tcphdr *tcp;
-  struct udphdr *udp;
-  unsigned short sport = 0;
-  unsigned short dport = 0;
-
-  int IP_header_len = ip->ip_hl * 4;
-
-  switch( ip->ip_p ) {
-  case IPPROTO_TCP:
-    tcp = (struct tcphdr*)(packet + IP_header_len);
-    sport = ntohs(tcp->th_sport);
-    dport = ntohs(tcp->th_dport);
-
-    break;
-  case IPPROTO_UDP:
-    udp = (struct udphdr*)(packet + IP_header_len);
-    sport = ntohs(udp->uh_sport);
-    dport = ntohs(udp->uh_dport);
-    break;
-  default:
-    break ;
-  }
-
-  if ( direction == 0 ) {
-    sprintf((char*)s, "%s %s %d %d", (char*)src_addr,
-	    (char*)dst_addr, sport, dport);
-  }
-  else {
-    sprintf((char*)s, "%s %s %d %d", (char*)dst_addr,
-	    (char*)src_addr, dport, sport);    
-  }
-  return ;
-}
-
-
-
 unsigned long str_key(void *value, int right, void *args)
 {
   struct hash_args *hargs = value;
@@ -511,14 +451,16 @@ void copy_query_response_to_scanner(dict_t *qr)
 	    while( current_packet ) {
 	      list_node_t *next_packet = current_packet->next;
 
-	      stringify_node(&packet_to_copy_str, current_packet->value, 0);
+	      stringify_node(&packet_to_copy_str,
+			     current_packet->value, 0);
 
 	      sscanf(packet_to_copy_str, "%s %s %d %d",
 		     psrc_addr, pdst_addr, &psport, &pdport);
 
 	      if ( prev_src_addr == NULL ) {
 		deepcopy_packet(worker, current_packet->value,
-				probe_idx);
+				wsrc_addr, wdst_addr, wsport,
+				wdport, probe_idx);
 		probe_idx++;
 	      }
 	      else {
@@ -528,7 +470,8 @@ void copy_query_response_to_scanner(dict_t *qr)
 		
 		if ( not_seen ) {
 		  deepcopy_packet(worker, current_packet->value,
-				  probe_idx);
+				  wsrc_addr, wdst_addr, wsport,
+				  wdport, probe_idx);
 		  probe_idx++;
 		}
 	      }
@@ -544,9 +487,9 @@ void copy_query_response_to_scanner(dict_t *qr)
     }
   }
 
-  for (int i = 0; i < remainder; i++) {
-    deepcopy_packet(worker, NULL, (probes_per_worker + i));
-  }
+  /* for (int i = 0; i < remainder; i++) { */
+  /*   deepcopy_packet(worker, NULL, (probes_per_worker + i)); */
+  /* } */
 
   sfree(packet_to_copy_str);
   sfree(psrc_addr);

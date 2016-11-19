@@ -561,22 +561,41 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
 }
 
 static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
-			    packet_value_t *response, 
+			    packet_value_t *response,
+			    char *wsrc_addr, char* wdst_addr,
+			    short wsport, short wdport,
 			    int probe_idx /* The specific probe */)
 {
 
-  /* This is the bytes for the packet */
-  char *src_addr = smalloc(256);
-  char *dst_addr = smalloc(256);
-  int sport = 0;
-  int dport = 0;
 
+  
 
-
-  unsigned char *packet_to_copy = response->value;
+  int len = response->capture_len;
+  /* Don't overwrite response->value. It is used by all other
+     packets to make custom copies.
+     
+     Needs to change, src_addr == SRC_ADDR,
+                      dst_addr == ADDR_ki == address k for worker i.
+		      
+		      sport == srcport. 
+		      dport == dst_port of 
+  */
+  unsigned char *packet_to_copy = response->packet; 
   probe_t *prev_probe = &worker->probe_list[probe_idx];
 
+  memcpy(&worker->probe_list[probe_idx].probe_buff,
+	 packet_to_copy, len);
 
+  char *str1 = smalloc(256);
+  char *str2 = smalloc(256);
+
+  stringify_node(&str1, response, 0);
+  packet_value_t pv  = {
+    .packet = &worker->probe_list[probe_idx].probe_buff,
+    .capture_len = len
+  };
+  
+  stringify_node(&str2, &pv, 0);
   return ;
 }
 
