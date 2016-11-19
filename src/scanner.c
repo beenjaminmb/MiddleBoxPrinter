@@ -31,19 +31,19 @@ static scan_statistics_t scan_stats;
 unsigned long free_list(void *args)
 {
   struct hash_args *hargs = args;
-  free(hargs->keystr);
+  sfree(hargs->keystr);
   list_t *l = (list_t *)hargs->value;
   list_node_t *current = l->list;
   while( current ) {
     list_node_t *tmp = current->next;
     struct packet_value *pv = current->value;
-    free(pv->packet);
-    free(current->value);
-    free(current);
+    sfree(pv->packet);
+    sfree(current->value);
+    sfree(current);
     current = tmp;
   }
-  free(l);
-  free(args);
+  sfree(l);
+  sfree(args);
   return 0;
 }
 
@@ -145,8 +145,8 @@ int packet_equal(void *vpack1, void *vpack2)
 
   int ret = strcmp((char *)str1, (char *)str2) == 0 ? 1 : 0;
 
-  free((void*)str1);
-  free((void*)str2);
+  sfree((void*)str1);
+  sfree((void*)str2);
   return ret;
 }
 
@@ -172,7 +172,7 @@ unsigned long hash_rq(void *v, int right, void *args)
     memset(str, 0, (sizeof(char)*256));
     stringify_node((char **)&str, hargs->value, 1);
     unsigned long key = str_key((char*)v, right, str);
-    free(str);
+    sfree(str);
     return key;
   } 
   else {
@@ -258,10 +258,10 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
       list_insert(l, pv);
     }
     else {
-      free(keystr);
+      sfree(keystr);
       goto FREE_VALUE;
     }
-    free(keystr);
+    sfree(keystr);
     goto DONE; /*ATTENTION: normally I wouldn't insert query node
 		 however in this case I need to for testing.*/
   }
@@ -282,17 +282,17 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 					      packet_equal);
       list_t *l = (list_t *)h->value;
       list_insert(l, pv);
-      free(keystr);
+      sfree(keystr);
       goto DONE;
     }
     else {
-      free(keystr);
+      sfree(keystr);
       goto FREE_VALUE;
     }
   }
  FREE_VALUE:
-  free(value);
-  free(pv);
+  sfree(value);
+  sfree(pv);
  DONE:
   return ;
 }
@@ -322,9 +322,9 @@ dict_t * split_query_response(const char* pcap_fname,
 		   header.ts, header.caplen);
   }
 
-  free((void*)pcap);
+  sfree((void*)pcap);
   pcap = NULL;
-  free((void*)packet);
+  sfree((void*)packet);
   packet = NULL;
 
 #ifdef UNITTEST
@@ -749,7 +749,7 @@ int scanner_main_loop(scan_args_t *scan_args)
   pthread_mutex_unlock(scanner->phase2_lock);
 
   delete_scanner(scanner);
-  free(scanner);
+  sfree(scanner);
   scanner = NULL;
   return 0;
 }
