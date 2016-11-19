@@ -394,22 +394,11 @@ void response_replay(dict_t **dp, phase_stats_t *phase_stats)
  */
 void copy_query_response_to_scanner(dict_t *qr)
 {
-#error copy_query_response_to_scanner no implemented
-  /**
-   * NOT IMPLEMENTED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   * NOT IMPLEMENTED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   * NOT IMPLEMENTED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   * NOT IMPLEMENTED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   */
-  
-  assert( 0 );
-  
-  int n = qr->N; /*Number of requests that ellicited at least 1
-		   response*/
+  int n = qr->N;
   int probes_per_worker = n / MAX_WORKERS;
   int remainder = n % MAX_WORKERS;
   
-  assert((remainder + probes_per_worker) == n);
+  assert((remainder + (probes_per_worker * MAX_WORKERS)) == n);
   
   scanner_worker_t *worker = &scanner->workers[0];
   

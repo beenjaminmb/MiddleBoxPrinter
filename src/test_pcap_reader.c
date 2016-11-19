@@ -45,15 +45,15 @@ int test_parse_pcap()
   dict_t *q_r = new_dict_size(QR_DICT_SIZEp);
   const unsigned char *packet;
   char errbuf[PCAP_ERRBUF_SIZE];
-  struct pcap_pkthdr header;  
+  struct pcap_pkthdr header;
   pcap_t *pcap = pcap_open_offline(PCAP_FILE_NAME, errbuf);
   assert( pcap );
   
-  printf("%s %d\n", __func__, __LINE__);  
+  printf("%s %d\n", __func__, __LINE__);
 
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, &phase_stats,
-		   header.ts, header.caplen);    
+		   header.ts, header.caplen);
   }
 
   dict_destroy_fn(q_r, (free_fn)free);
@@ -119,15 +119,24 @@ void print_qr_dict(dict_t *d)
     } 
   }
   free(str);
-  printf("dict size:                                        %d\n", d->size);
-  printf("dict elements:                                    %d\n", d->N);
-  printf("avg size:                                         %f\n", ((float)avgsize / ((float) d->N)));
-  printf("number zeros:                                     %d\n", nzeros); 
-  printf("number ones:                                      %d\n", nones);
-  printf("number greater than 1 less than 10:               %d\n", ngolt);
-  printf("number greater than 10 less than 100:             %d\n", ngtlh);
-  printf("number greater than 100 less than 1000:           %d\n", nghlt);
-  printf("Major problems!!!!!:                              %d\n", other);
+  printf("dict size:                                        %d\n", 
+	 d->size);
+  printf("dict elements:                                    %d\n", 
+	 d->N);
+  printf("avg size:                                         %f\n", 
+	 ((float)avgsize / ((float) d->N)));
+  printf("number zeros:                                     %d\n",
+	 nzeros); 
+  printf("number ones:                                      %d\n",
+	 nones);
+  printf("number greater than 1 less than 10:               %d\n",
+	 ngolt);
+  printf("number greater than 10 less than 100:             %d\n",
+	 ngtlh);
+  printf("number greater than 100 less than 1000:           %d\n",
+	 nghlt);
+  printf("Major problems!!!!!:                              %d\n",
+	 other);
 }
 
 int test_split_qr()
@@ -173,9 +182,9 @@ int test_response_reply()
   printf("%s %d running time %f: Test Ending\n",
 	 __func__, __LINE__, time);
 
-  print_qr_dict(qr);
-  dict_destroy_fn(qr, (free_fn)free_list);  
-
+  //print_qr_dict(qr);
+  copy_query_response_to_scanner(qr);
+  dict_destroy_fn(qr, (free_fn)free_list);
   print_phase_statistics(&phase_stats);
   return 0;
 }
@@ -188,7 +197,8 @@ void split_addr(char *s)
 
 int main(void)
 {
-  //init_blacklist(BLACKLIST_FILE);
+  new_scanner_singleton();
+  init_blacklist(BLACKLIST_FILE);
   //int nallowed = blacklist_count_not_allowed();
   //printf("not allowed %d\n", nallowed);
   // assert( (test_parse_pcap() == 0) );
