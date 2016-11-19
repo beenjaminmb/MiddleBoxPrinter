@@ -47,8 +47,10 @@ int test_parse_pcap()
   printf("%s %d\n", __func__, __LINE__);  
 
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
-    process_packet(&q_r, packet, &phase_stats,header.ts, header.caplen);    
+    process_packet(&q_r, packet, &phase_stats,
+		   header.ts, header.caplen);    
   }
+
   dict_destroy_fn(q_r, (free_fn)free);
   free((void*)pcap);
   free((void*)packet);
