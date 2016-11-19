@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/ip.h>
+#include <netinet/ether.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
@@ -129,6 +130,22 @@ static inline iphdr *make_ipheader(unsigned char *restrict buffer,
 				   int datalen)
   __attribute__((always_inline));
 
+
+static inline iphdr *set_ip(unsigned char *restrict buffer, 
+			    struct sockaddr_in *restrict sin,
+			    short ihl, short version, short tos,
+			    short id, short frag_off, short ttl,
+			    short proto, short check, char *saddr, 
+			    int datalen)
+
+  __attribute__((always_inline));
+
+
+
+static inline void set_layer_four(unsigned char *restrict buffer, 
+				  short proto)
+  
+  __attribute__((always_inline));
 
 static inline unsigned short csum(unsigned short *ptr, int nbytes)
 {
@@ -326,22 +343,43 @@ static inline tcphdr *make_tcpheader(unsigned char *restrict buffer,
   return tcph;
 }
 
+
+static inline void set_layer_four(unsigned char *restrict buffer, 
+				  short proto)
+{
+  return ;
+}
+
+
 static inline iphdr 
 *make_ipheader(unsigned char *restrict buffer, 
 	       struct sockaddr_in *restrict sin, 
 	       int datalen)
 {
+  return set_ip(buffer, sin, 5, 4, 0, 1, 0, START_TTL, 0, 0, 
+		SRC_IP, datalen);
+}
+
+static inline iphdr *set_ip(unsigned char *restrict buffer, 
+			    struct sockaddr_in *restrict sin,
+			    short ihl, short version, short tos,
+			    short id, short frag_off, short ttl,
+			    short p, short check, char *saddr,
+			    int datalen)
+{
   iphdr *iph = (iphdr *)buffer;
-  iph->ihl = 5;
-  iph->version = 4;
-  iph->tos = 0;
-  iph->id = htonl(1);
-  iph->frag_off = 0;
-  iph->ttl = START_TTL;
-  iph->check = 0;
-  iph->saddr = inet_addr( SRC_IP );
+  iph->ihl = ihl;
+  iph->version = version;
+  iph->tos = tos;
+  iph->id = htonl(id);
+  iph->frag_off = frag_off;
+  iph->ttl = ttl;
+  iph->check = check;
+  iph->protocol = p;
+  iph->saddr = inet_addr( saddr );
   iph->daddr = sin->sin_addr.s_addr;
-  iph->check = 0;
+  iph->check = check;
+  iph->tot_len = htons(datalen);
   return iph;
 }
 
@@ -481,7 +519,7 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
   worker->probe_list[packet_idx].sin->sin_addr.s_addr = 
     inet_addr(dst_ip);
   worker->probe_list[packet_idx].sin->sin_family = AF_INET;
-  iphdr *ip = make_ipheader(packet_buffer, 
+  iphdr *ip = make_ipheader(packet_buffer,
 			    worker->probe_list[packet_idx].sin, 
 			    data_len);
   
@@ -588,20 +626,33 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
   probe_t *prev_probe = &worker->probe_list[probe_idx];
 
   memcpy(&worker->probe_list[probe_idx].probe_buff,
-	 packet_to_copy, len);
-
-  char *str1 = smalloc(256);
-  char *str2 = smalloc(256);
-
-  stringify_node(&str1, response, 0);
-  packet_value_t pv  = {
-    .packet = (unsigned char*)&worker->probe_list[probe_idx].probe_buff,
-    .capture_len = len
-  };
+	 (packet_to_copy+sizeof(struct ether_header)),
+	 len);
   
-  stringify_node(&str2, &pv, 0);
-  sfree(str1);
-  sfree(str2);
+  worker->probe_list[probe_idx].sin->sin_addr.s_addr = 
+    inet_addr(wdst_addr);
+
+  struct ip *ip = (struct ip*)
+    &worker->probe_list[probe_idx].probe_buff;
+
+  
+  short ihl = ip->ip_hl;
+  short version = ip->ip_v;
+  short tos = ip->ip_tos;
+  short id = ip->ip_id;
+  short frag_off = ip->ip_off;
+  short ttl = ip->ip_ttl;
+  short protocol = ip->ip_p;
+  short tot_len = ip->ip_len;
+  short chk_sum = ip->ip_sum;
+  
+  set_ip((unsigned char *)worker->probe_list[probe_idx].probe_buff, 
+	 worker->probe_list[probe_idx].sin,
+	 ihl, version, tos, id, frag_off,
+	 ttl, protocol, chk_sum, wsrc_addr, tot_len);
+
+  set_layer_four((unsigned char *)worker->probe_list[probe_idx].probe_buff,
+		 protocol);
 
   return ;
 }
