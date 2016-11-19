@@ -55,6 +55,9 @@ static inline double wall_time()
   return 1. * t.tv_sec + 1.e-6 * t.tv_usec;
 }
 
+
+int init_blacklist();
+
 #ifdef EXPERIMENTAL
 
 static char* subnet_prefix(char *ip){
