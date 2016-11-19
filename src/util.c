@@ -2,6 +2,11 @@
 #include "util.h"
 #include "blacklist.h"
 
+void sfree(void *ptr)
+{
+  free (ptr);
+  return ;
+}
 void *smalloc(int size, char* str, int id)
 {
   void *ret = malloc(size);

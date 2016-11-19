@@ -878,6 +878,7 @@ scanner_t *new_scanner_singleton()
   }
   init_stats();
   scanner = malloc(sizeof(scanner_t));
+  assert( scanner );
   scanner->keep_scanning = 1;
   scanner->phase1 = 0;
   scanner->phase2 = 0;
@@ -898,13 +899,9 @@ scanner_t *new_scanner_singleton()
     scanner->workers[i].scanner = scanner;
   }
 
-  scanner->sniffer = malloc(sizeof(sniffer_t));
-
-  if (scanner->sniffer == NULL) {
-    printf("%s %d: scannercouldn't allocate sniffer\n",
-	   __func__, __LINE__);
-    exit(-1);
-  }
+  scanner->sniffer = smalloc(sizeof(sniffer_t),
+			     "scanner couldn't allocate sniffer %d\n",
+			     0);
 
   init_sniffer(scanner->sniffer);
   
@@ -917,19 +914,19 @@ scanner_t *new_scanner_singleton()
 
 void delete_conds()
 {
-  free(scanner->continue_cond);
-  free(scanner->phase1_cond);
-  free(scanner->phase2_cond);
-  free(scanner->phase2_wait_cond);
+  sfree(scanner->continue_cond);
+  sfree(scanner->phase1_cond);
+  sfree(scanner->phase2_cond);
+  sfree(scanner->phase2_wait_cond);
   return;
 }
 
 void  delete_locks()
 { 
-  free(scanner->continue_lock);
-  free(scanner->phase1_lock);
-  free(scanner->phase2_lock);
-  free(scanner->phase2_wait_lock);
+  sfree(scanner->continue_lock);
+  sfree(scanner->phase1_lock);
+  sfree(scanner->phase2_lock);
+  sfree(scanner->phase2_wait_lock);
 
   return;
 }
@@ -939,22 +936,22 @@ void delete_workers(scanner_worker_t *worker)
 {
 
   close(worker->ssocket->sockfd);
-  free(worker->ssocket);
+  sfree(worker->ssocket);
   worker->ssocket = NULL;
 
-  free(worker->thread);
+  sfree(worker->thread);
   worker->thread = NULL;
 
-  free(worker->random_data);
+  sfree(worker->random_data);
   worker->random_data = NULL;  
 
-  free(worker->random_state);
+  sfree(worker->random_state);
   worker->random_state = NULL;
 
   for (int i = 0; i < ADDRS_PER_WORKER; i++) {
-    free(worker->probe_list[i].sin);
+    sfree(worker->probe_list[i].sin);
   }
-  free(worker->probe_list);
+  sfree(worker->probe_list);
   worker->probe_list = NULL;
   return;
 }
@@ -966,7 +963,7 @@ void delete_scanner()
   for(int i = 0; i < MAX_WORKERS; i++) {
     delete_workers(&(scanner->workers[i]));
   }
-  free(scanner->workers);
+  sfree(scanner->workers);
   scanner->workers = NULL;
   return ;
 }

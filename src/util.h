@@ -61,6 +61,8 @@ int init_blacklist(char *blacklist);
 
 void *smalloc(int size, char *s, int id);
 
+void sfree(void *ptr);
+
 pthread_cond_t *new_cond();
 
 pthread_mutex_t *new_mutex();
