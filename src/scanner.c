@@ -410,7 +410,9 @@ void copy_query_response_to_scanner(dict_t *qr)
   char *pdst_addr = smalloc(256);
   short psport = 0;
   short pdport = 0;  
-
+  
+  char packet_to_copy_str = smalloc(256);
+	      
   for (int i = 0; i < MAX_WORKERS; i++) {
     worker = &scanner->workers[i];
     int bound = (i * probes_per_worker);
@@ -448,11 +450,10 @@ void copy_query_response_to_scanner(dict_t *qr)
 	    short prev_sport = 0; 
 	    while( current_packet ) {
 	      list_node_t *next_packet = current_packet->next;
-	      char *foo = smalloc(256);
 
-	      stringify_node(foo, current_packet->value, 0);
+	      stringify_node(&packet_to_copy_str, current_packet->value, 0);
 
-	      sscanf(foo, "%s %s %d %d",
+	      sscanf(packet_to_copy_str, "%s %s %d %d",
 		     psrc_addr, pdst_addr, &psport, &pdport);
 
 	      if ( prev_src_addr == NULL ) {
@@ -486,6 +487,7 @@ void copy_query_response_to_scanner(dict_t *qr)
     deepcopy_packet(worker, NULL, (probes_per_worker + i));
   }
 
+  sfree(packet_to_copy_str);
   sfree(psrc_addr);
   sfree(psrc_addr);
   sfree(wsrc_addr);
