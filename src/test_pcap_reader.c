@@ -24,7 +24,8 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
-#define PCAP_FILE_NAME "capnext.pcap"
+#define PCAP_FILE_NAME "test-launch.pcap"
+//#define PCAP_FILE_NAME "capnext.pcap"
 #define TS_SPOOF_IP "64.106.82.6" /* IP address tonysoprano 
 				     uses to spoof ip addresses. */
 
@@ -172,7 +173,7 @@ int test_response_reply()
   printf("%s %d running time %f: Test Ending\n",
 	 __func__, __LINE__, time);
 
-  //print_qr_dict(qr);
+  print_qr_dict(qr);
   dict_destroy_fn(qr, (free_fn)free_list);  
 
   print_phase_statistics(&phase_stats);
