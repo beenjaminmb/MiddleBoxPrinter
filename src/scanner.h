@@ -87,12 +87,6 @@ struct hash_args {
   unsigned char *value;
 };
 
-
-struct packet_value {
-  unsigned char *packet;
-  int capture_len;
-};
-
 unsigned long free_list(void *list);
 
 void send_scan_packet(unsigned char *restrict packet_buffer, 

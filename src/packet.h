@@ -56,6 +56,13 @@ typedef struct udphdr udphdr;
 typedef struct tcphdr tcphdr;
 typedef struct icmphdr icmphdr;
 
+
+typedef struct packet_value {
+  unsigned char *packet;
+  int capture_len;
+} packet_value_t;
+
+
 typedef struct pseudo_header
 {
   u_int32_t source_address;
@@ -554,12 +561,14 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
 }
 
 static void deepcopy_packet(scanner_worker_t *worker, /*The worker*/
-			    char *response, /*The packet to be copied*/
+			    packet_value_t *response, /*The packet to be copied*/
 			    int probe_idx /*The specific probe*/)
 {
-
+  
+  char *packet_str = smalloc(256);
+  stringify_node(&packet_str, response, 0);  
   probe_t *prev_probe = &worker->probe_list[probe_idx];
-
+  free(packet_str);
   return ;
 }
 
