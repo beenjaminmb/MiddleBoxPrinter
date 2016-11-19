@@ -411,7 +411,7 @@ void copy_query_response_to_scanner(dict_t *qr)
   short psport = 0;
   short pdport = 0;  
   
-  char packet_to_copy_str = smalloc(256);
+  char *packet_to_copy_str = smalloc(256);
 	      
   for (int i = 0; i < MAX_WORKERS; i++) {
     worker = &scanner->workers[i];
