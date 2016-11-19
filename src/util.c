@@ -13,6 +13,7 @@ void *smalloc(int size)
   if (ret == NULL) {
     assert(0);
   }
+  memset(ret, 0, size);
   return ret;
 }
 
@@ -23,6 +24,7 @@ void *smalloc_msg(int size, char* str, int id)
     printf("%s %d", str, id);
     assert(0);
   }
+  memset(ret, 0, size);
   return ret;
 }
 

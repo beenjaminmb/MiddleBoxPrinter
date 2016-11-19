@@ -557,7 +557,9 @@ static void deepcopy_packet(scanner_worker_t *worker, /*The worker*/
 			    char *response, /*The packet to be copied*/
 			    int probe_idx /*The specific probe*/)
 {
-  assert(0); /* WARNING: NOT IMPLEMENTED */
+
+  probe_t *prev_probe = &worker->probe_list[probe_idx];
+
   return ;
 }
 
