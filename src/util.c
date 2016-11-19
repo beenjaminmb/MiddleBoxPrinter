@@ -7,7 +7,16 @@ void sfree(void *ptr)
   free (ptr);
   return ;
 }
-void *smalloc(int size, char* str, int id)
+void *smalloc(int size)
+{
+  void *ret = malloc(size);
+  if (ret == NULL) {
+    assert(0);
+  }
+  return ret;
+}
+
+void *smalloc_msg(int size, char* str, int id)
 {
   void *ret = malloc(size);
   if (ret == NULL) {
@@ -16,6 +25,7 @@ void *smalloc(int size, char* str, int id)
   }
   return ret;
 }
+
 
 int init_blacklist(char *blacklist)
 {

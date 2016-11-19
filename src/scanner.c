@@ -131,8 +131,8 @@ int packet_equal(void *vpack1, void *vpack2)
   int len1 = strlen((char*)(harg1->keystr));
   int len2 = strlen((char*)(harg2->keystr));
 
-  char *str1 = (char*)malloc(len1+1);
-  char *str2 = (char*)malloc(len2+1);
+  char *str1 = (char*)smalloc(len1+1);
+  char *str2 = (char*)smalloc(len2+1);
 
   memset((void*)str1, 0, len1 + 1);
   memset((void*)str2, 0, len2 + 1);
@@ -168,7 +168,7 @@ unsigned long hash_rq(void *v, int right, void *args)
 {
   struct hash_args *hargs = v;
   if ( hargs->value ) {
-    char *str = malloc(256 * sizeof(char));
+    char *str = smalloc(256 * sizeof(char));
     memset(str, 0, (sizeof(char)*256));
     stringify_node((char **)&str, hargs->value, 1);
     unsigned long key = str_key((char*)v, right, str);
@@ -218,8 +218,8 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
   capture_len -= sizeof(struct ether_header);
 
-  struct packet_value *pv = malloc(sizeof(struct packet_value));
-  char *value = (char *)malloc(caplen + 1);
+  struct packet_value *pv = smalloc(sizeof(struct packet_value));
+  char *value = (char *)smalloc(caplen + 1);
 
   pv->packet = (unsigned char *)value;
   pv->capture_len = caplen;
@@ -236,7 +236,7 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   if ( is_probe ) {
 
     phase_stats->total_probes += 1;
-    char *keystr = malloc(256 * sizeof(char));
+    char *keystr = smalloc(256 * sizeof(char));
     memset(keystr, 0, 256);
     stringify_node((char**)&keystr, (void *)pv, 0);
     struct hash_args hargs = {.keystr = (unsigned char *)keystr, 
@@ -248,8 +248,8 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
       phase_stats->total_unique_probes += 1;
 
       list_t *l = new_list();
-      struct hash_args *hargsp = malloc(sizeof(struct hash_args));
-      hargsp->keystr = malloc(strlen(keystr) + 1);
+      struct hash_args *hargsp = smalloc(sizeof(struct hash_args));
+      hargsp->keystr = smalloc(strlen(keystr) + 1);
       memset(hargsp->keystr, 0, strlen(keystr) + 1);
       memcpy(hargsp->keystr, keystr, strlen(keystr));
       hargsp->value = (unsigned char *)l;
@@ -269,7 +269,7 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
     phase_stats->total_responses += 1;
 
-    char *keystr = malloc(256 * sizeof(char));
+    char *keystr = smalloc(256 * sizeof(char));
     memset(keystr, 0, 256);
     stringify_node((char **)&keystr, (void *)pv, 1);
     struct hash_args hargs = {.keystr=(unsigned char*)keystr,
@@ -338,8 +338,8 @@ dict_t * split_query_response(const char* pcap_fname,
 void *copy_packet(void *v)
 {
   struct packet_value *pv = v;
-  struct packet_value *newpv = malloc(sizeof(struct packet_value));
-  newpv->packet = malloc(pv->capture_len + 1);  
+  struct packet_value *newpv = smalloc(sizeof(struct packet_value));
+  newpv->packet = smalloc(pv->capture_len + 1);  
   memset(newpv->packet, 0, pv->capture_len + 1 );
   memcpy(newpv->packet, pv->packet, pv->capture_len);
   newpv->capture_len = pv->capture_len;
@@ -371,9 +371,9 @@ void response_replay(dict_t **dp, phase_stats_t *phase_stats)
 	  phase_stats->total_responses_with_retransmissions += 1;
 	}
 
-	struct hash_args *va = malloc(sizeof(struct hash_args));
+	struct hash_args *va = smalloc(sizeof(struct hash_args));
 	int len = strlen((char*)hargs->keystr);
-	va->keystr = malloc( len + 1 );
+	va->keystr = smalloc( len + 1 );
 	memcpy(va->keystr, hargs->keystr, len);
 	va->keystr[len] = '\0';
 	list_t *l2 = clone_list_fn(l, (void*)copy_packet);
@@ -768,7 +768,7 @@ int new_worker(scanner_worker_t *worker, int id)
   printf("%d %s \n", __LINE__, __func__);
 #endif
 
-  worker->ssocket = smalloc(sizeof(scanner_socket_t),
+  worker->ssocket = smalloc_msg(sizeof(scanner_socket_t),
 			   "Couldn't allocate scanner_socket_t for "
 			   "worker[%d]\n", id);
 
@@ -787,20 +787,20 @@ int new_worker(scanner_worker_t *worker, int id)
     return -1;
   }
   
-  worker->thread = smalloc(sizeof(pthread_t),
-			   "Couldn't allocate thread for"
-			   " worker[%d]\n", id);
+  worker->thread = smalloc_msg(sizeof(pthread_t),
+			       "Couldn't allocate thread for"
+			       " worker[%d]\n", id);
 
-  worker->random_data = smalloc(sizeof(struct random_data),
-				"Couldn't allocate random_data "
-				"storage for worker[%d]\n", 
-				id);
+  worker->random_data = smalloc_msg(sizeof(struct random_data),
+				    "Couldn't allocate random_data "
+				    "storage for worker[%d]\n", 
+				    id);
 
   worker->state_size = STATE_SIZE;
-  worker->random_state = smalloc(STATE_SIZE, "Couldn't allocate "
-				 "random_state storage for "
-				 "worker[%d]\n",
-				 id);
+  worker->random_state = smalloc_msg(STATE_SIZE, "Couldn't allocate "
+				     "random_state storage for "
+				     "worker[%d]\n",
+				     id);
 
   if (initstate_r(TEST_SEED, worker->random_state, STATE_SIZE,
 		  worker->random_data) < 0) {
@@ -809,15 +809,16 @@ int new_worker(scanner_worker_t *worker, int id)
     assert(0);
   }
   
-  worker->probe_list = smalloc(sizeof(probe_t) * ADDRS_PER_WORKER,
+  worker->probe_list = smalloc_msg(sizeof(probe_t) * ADDRS_PER_WORKER,
 			       "Couldn't allocate space for "
 			       "address list for worker[%d]\n", id);
 
   for (int i = 0; i < ADDRS_PER_WORKER; i++) {
-    worker->probe_list[i].sin = smalloc(sizeof(struct sockaddr_in),
-					"Cannot allocate space for "
-					"probe sockaddr_in for "
-					"worker[%d]\n", id);
+    worker->probe_list[i].sin = 
+      smalloc_msg(sizeof(struct sockaddr_in),
+		  "Cannot allocate space for "
+		  "probe sockaddr_in for "
+		  "worker[%d]\n", id);
   }
 
   double time = wall_time() + id;
@@ -888,9 +889,7 @@ scanner_t *new_scanner_singleton()
   scanner->current_pcap_file_name = NULL;
   scanner->random_state = NULL;
 
-  scanner->random_data = smalloc(sizeof(struct random_data),
-				 "Couldn't allocate random_data "
-				 "storage for scanner %d\n", 0);
+  scanner->random_data = smalloc( sizeof(struct random_data) );
  
   for (int i = 0 ; i < MAX_WORKERS; i++) {
     if (new_worker(&scanner->workers[i], i) != i) {
@@ -899,9 +898,7 @@ scanner_t *new_scanner_singleton()
     scanner->workers[i].scanner = scanner;
   }
 
-  scanner->sniffer = smalloc(sizeof(sniffer_t),
-			     "scanner couldn't allocate sniffer %d\n",
-			     0);
+  scanner->sniffer = smalloc( sizeof(sniffer_t) );
 
   init_sniffer(scanner->sniffer);
   

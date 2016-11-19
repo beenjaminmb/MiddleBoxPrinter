@@ -11,12 +11,13 @@ test_scanner = test_scanner.c dtable.c scanner.c sniffer.c blacklist.c constrain
 tablesrc = test_dict.c dtable.c
 testpcap = test_pcap_reader.c dtable.c scanner.c sniffer.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
 
+all : dist_dillinger test_scanner test_pcap_reader test_dict
+
 dist : $(targets)
 	$(CC) $(CFLAGS) -o scanner $(targets) $(LDLIBS)
 
 dist_dillinger : $(targets)
 	$(CC) -DDILLINGER $(DIST_FLAGS) -o scanner $(targets) $(LDLIBS)
-
 
 vmscanner : $(targets)
 	$(CC)  -O0 -std=gnu99 -DUNITTEST=1 -o vmscanner $(targets) $(LDLIBS)

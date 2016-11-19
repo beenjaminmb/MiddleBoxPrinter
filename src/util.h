@@ -59,7 +59,9 @@ static inline double wall_time()
 
 int init_blacklist(char *blacklist);
 
-void *smalloc(int size, char *s, int id);
+void *smalloc(int size);
+
+void *smalloc_msg(int size, char* str, int id);
 
 void sfree(void *ptr);
 
