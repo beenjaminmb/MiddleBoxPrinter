@@ -176,7 +176,6 @@ generate_destination_ip(char *restrict dst_ip,
   unsigned char r4 = (unsigned char)((addr >> 24) & 0x000000ff);
 
   sprintf(dst_ip, "%d.%d.%d.%d", r4, r3, r2, r1);
-  printf("%s\n", dst_ip);
   return;
 }
 
