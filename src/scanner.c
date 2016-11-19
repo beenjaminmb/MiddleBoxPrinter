@@ -105,6 +105,66 @@ void stringify_node(char **str, void *vnode, int direction)
   return ;
 }
 
+
+void stringify_node(void *vnode, int direction)
+{
+  struct packet_value *pv = vnode;
+  unsigned char *packet = (unsigned char *)pv->packet;
+
+  unsigned char src_addr[32];
+  unsigned char dst_addr[32];
+  
+
+  packet += sizeof(struct ether_header);
+  struct ip *ip = (struct ip*)packet;
+
+  char *addr = inet_ntoa(ip->ip_src);
+
+  int len = strlen(addr);
+
+  memset((void*)src_addr, 0, sizeof(src_addr));
+  memcpy((void*)src_addr, (void*)addr, len);
+  addr = inet_ntoa(ip->ip_dst);
+  len = strlen(addr);
+  memset((void*)dst_addr, 0, sizeof(dst_addr));
+  memcpy((void*)dst_addr, (void*)addr, len);
+
+  struct tcphdr *tcp;
+  struct udphdr *udp;
+  unsigned short sport = 0;
+  unsigned short dport = 0;
+
+  int IP_header_len = ip->ip_hl * 4;
+
+  switch( ip->ip_p ) {
+  case IPPROTO_TCP:
+    tcp = (struct tcphdr*)(packet + IP_header_len);
+    sport = ntohs(tcp->th_sport);
+    dport = ntohs(tcp->th_dport);
+
+    break;
+  case IPPROTO_UDP:
+    udp = (struct udphdr*)(packet + IP_header_len);
+    sport = ntohs(udp->uh_sport);
+    dport = ntohs(udp->uh_dport);
+    break;
+  default:
+    break ;
+  }
+
+  if ( direction == 0 ) {
+    sprintf((char*)s, "%s %s %d %d", (char*)src_addr,
+	    (char*)dst_addr, sport, dport);
+  }
+  else {
+    sprintf((char*)s, "%s %s %d %d", (char*)dst_addr,
+	    (char*)src_addr, dport, sport);    
+  }
+  return ;
+}
+
+
+
 unsigned long str_key(void *value, int right, void *args)
 {
   struct hash_args *hargs = value;
