@@ -824,7 +824,7 @@ int new_worker(scanner_worker_t *worker, int id)
   double time = wall_time() + id;
   srandom_r((long)time, worker->random_data);
 
-  worker->seed = time;
+  worker->seed = (long)time;
   worker->worker_id = id;
   worker->probe_idx = 0;
   worker->current_ttl = START_TTL;

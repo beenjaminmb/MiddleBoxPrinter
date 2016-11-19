@@ -159,27 +159,25 @@ static inline void
 generate_destination_ip(char *restrict dst_ip, 
 			scanner_worker_t *restrict worker)
 {
-#ifdef UNITTEST
-  sprintf(dst_ip, "%s", "64.106.81.7"); // We scan ourselves
-#else
-  int error = 0;
-  int addr = 0; 
+  unsigned int addr;
   while ( 1 ) {
-    addr = (unsigned int)range_random(RAND_MAX, 
-				      worker->random_data, 
-				      (int *)&error);
+    addr = (unsigned int)range_random(RAND_MAX,
+				      worker->random_data,
+				      (int *)&addr);
 
     if ( blacklist_is_allowed( addr ) ) {
       break;
     }
   }
-  unsigned char r1 = ((unsigned char*)&addr)[0];
-  unsigned char r2 = ((unsigned char*)&addr)[1];
-  unsigned char r3 = ((unsigned char*)&addr)[2];
-  unsigned char r4 = ((unsigned char*)&addr)[3];
-  sprintf(dst_ip, "%d.%d.%d.%d", r1, r2, r3, r4);
-#endif
-  return ;
+
+  unsigned char r1 = (unsigned char)(addr & 0x000000ff);
+  unsigned char r2 = (unsigned char)((addr >> 8) & 0x000000ff);
+  unsigned char r3 = (unsigned char)((addr >> 16) & 0x000000ff);
+  unsigned char r4 = (unsigned char)((addr >> 24) & 0x000000ff);
+
+  sprintf(dst_ip, "%d.%d.%d.%d", r4, r3, r2, r1);
+  printf("%s\n", dst_ip);
+  return;
 }
 
 static inline unsigned char *make_junk_header(unsigned char *buffer, 
@@ -382,7 +380,7 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
   int data_len = range_random(MTU - 256, worker->random_data, &result);
   char *src_ip = SRC_IP;
   long prand = range_random(100, worker->random_data, &result);
-  pseudo_header *psh = malloc(sizeof(pseudo_header));
+  pseudo_header *psh = smalloc(sizeof(pseudo_header));
   char *pseudogram = NULL, source_ip[32], dst_ip[32];
   generate_destination_ip((char*)dst_ip, worker);
   strcpy(source_ip, src_ip); // This can be optimized at some point.
@@ -416,7 +414,7 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
     psh->protocol = IPPROTO_TCP;
     psh->total_length = htons(sizeof(tcphdr) + data_len);
     int psize = sizeof(pseudo_header) + sizeof(tcphdr) + data_len;
-    pseudogram = malloc(psize);
+    pseudogram = smalloc(psize);
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), tcph,
 	   sizeof(tcphdr) + data_len);
@@ -431,7 +429,7 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
     psh->protocol = IPPROTO_UDP;
     psh->total_length = htons(sizeof(udphdr) + data_len);
     int psize = sizeof(pseudo_header) + sizeof(udphdr) + data_len;
-    pseudogram = malloc(psize);
+    pseudogram = smalloc(psize);
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), udph,
 	   sizeof(udphdr) + data_len);
@@ -469,7 +467,7 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
   int data_len = range_random(MTU - 256, worker->random_data, &result);
   char *src_ip = SRC_IP;
   long prand = range_random(100, worker->random_data, &result);
-  pseudo_header *psh = malloc(sizeof(pseudo_header));
+  pseudo_header *psh = smalloc(sizeof(pseudo_header));
   char *pseudogram = NULL, source_ip[32], dst_ip[32];
   generate_destination_ip((char*)dst_ip, worker);
   strcpy(source_ip, src_ip); // This can be optimized at some point.
@@ -503,7 +501,7 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
     psh->protocol = IPPROTO_TCP;
     psh->total_length = htons(sizeof(tcphdr) + data_len);
     int psize = sizeof(pseudo_header) + sizeof(tcphdr) + data_len;
-    pseudogram = malloc(psize);
+    pseudogram = smalloc(psize);
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), tcph,
 	   sizeof(tcphdr) + data_len);
@@ -518,7 +516,7 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
     psh->protocol = IPPROTO_UDP;
     psh->total_length = htons(sizeof(udphdr) + data_len);
     int psize = sizeof(pseudo_header) + sizeof(udphdr) + data_len;
-    pseudogram = malloc(psize);
+    pseudogram = smalloc(psize);
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), udph,
 	   sizeof(udphdr) + data_len);
