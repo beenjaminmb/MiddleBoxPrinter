@@ -449,7 +449,7 @@ void copy_query_response_to_scanner(dict_t *qr)
     deepcopy_packet(worker, NULL, (probes_per_worker + i));
   }
 
-  return;
+  return ;
 }
 
 void generate_phase2_packets()

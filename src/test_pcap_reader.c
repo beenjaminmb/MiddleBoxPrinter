@@ -6,6 +6,8 @@
 #include "scanner.h"
 #include "dtable.h"
 #include "packet.h"
+#include "blacklist.h"
+
 #include <assert.h>
 #include <pcap.h>
 
@@ -25,8 +27,10 @@
 #define PCAP_FILE_NAME "capnext.pcap"
 #define TS_SPOOF_IP "64.106.82.6" /* IP address tonysoprano 
 				     uses to spoof ip addresses. */
-#define QR_DICT_SIZEp 2
 
+#define BLACKLIST_FILE "blacklist.conf"
+#define QR_DICT_SIZEp 2
+#define MAX_LINE_LENGTH 1024*1024 + 2
 int test_parse_pcap()
 {
   phase_stats_t phase_stats = {
@@ -174,10 +178,67 @@ int test_response_reply()
   print_phase_statistics(&phase_stats);
   return 0;
 }
+
+
+void split_addr(char *s)
+{
+  return;
+}
+
+char **parse_blacklist()
+{
+  FILE *blacklist = fopen(BLACKLIST_FILE, "r");
+  char *line = malloc(MAX_LINE_LENGTH);
+  assert(line);
+  
+  char **bl = malloc(sizeof(char *) * 128);
+  
+  int i=0;
+
+  while (fgets(line, MAX_LINE_LENGTH, blacklist) != NULL) {
+    size_t len = strlen(line);	
+    if (len >= (MAX_LINE_LENGTH-1)) {
+      assert(0);
+    }
+    char *original = malloc(MAX_LINE_LENGTH);
+    assert(original);
+    int prefix_len = 0;
+    sscanf(line,"%s %d\n", original, &prefix_len);    
+    printf("%s %d\n", original, prefix_len);
+
+    struct in_addr addr;
+    if (!inet_aton(original, &addr)) {
+      assert(0); //FAILING HERE
+    }
+    bl[i] = original;
+    i++;
+  }
+  return bl;
+}
+
+int test_blacklisting()
+{
+  printf("%s %d: Test Starting\n",
+	 __func__, __LINE__);
+  blacklist_init(NULL, BLACKLIST_FILE,
+		 NULL,
+		 0,
+		 NULL,
+		 15,
+		 0);
+
+  int not_allowed = blacklist_count_not_allowed();
+  printf("Not allowed %d\n", not_allowed);
+  printf("%s %d: Test Ending\n",
+	 __func__, __LINE__);
+  return 0;
+}
+
 int main(void)
 {
   // assert( (test_parse_pcap() == 0) );
   // assert( (test_split_qr() == 0) );
-  assert( (test_response_reply() == 0) );
+  //assert( (test_response_reply() == 0) );
+  test_blacklisting();
   return 0;
 }
