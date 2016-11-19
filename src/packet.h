@@ -571,15 +571,19 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
   
 
   int len = response->capture_len;
-  /* Don't overwrite response->value. It is used by all other
-     packets to make custom copies.
-     
-     Needs to change, src_addr == SRC_ADDR,
-                      dst_addr == ADDR_ki == address k for worker i.
-		      
-		      sport == srcport. 
-		      dport == dst_port of 
-  */
+  /**
+   * Don't overwrite response->value. It is used by all other
+   * packets to make custom copies.
+   *  
+   * Needs to change, src_addr == SRC_ADDR,
+   *                  dst_addr == ADDR_ki == address k for worker i.
+   *
+   *                  sport == srcport. 
+   *		      dport == dst_port of
+   *
+   * Packet length and checksum also needs to be recalculated.
+   *
+   */
   unsigned char *packet_to_copy = response->packet; 
   probe_t *prev_probe = &worker->probe_list[probe_idx];
 
@@ -596,7 +600,6 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
   };
   
   stringify_node(&str2, &pv, 0);
-
   sfree(str1);
   sfree(str2);
 

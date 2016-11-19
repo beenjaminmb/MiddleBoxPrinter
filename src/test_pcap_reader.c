@@ -224,8 +224,8 @@ void split_addr(char *s)
 
 int main(void)
 {
-  //new_scanner_singleton();
-  //init_blacklist(BLACKLIST_FILE);
+  new_scanner_singleton();
+  init_blacklist(BLACKLIST_FILE);
 
   //int nallowed = blacklist_count_not_allowed();
   //printf("not allowed %d\n", nallowed);
