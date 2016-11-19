@@ -591,7 +591,7 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
 
   stringify_node(&str1, response, 0);
   packet_value_t pv  = {
-    .packet = &worker->probe_list[probe_idx].probe_buff,
+    .packet = (unsigned char*)&worker->probe_list[probe_idx].probe_buff,
     .capture_len = len
   };
   

@@ -3,6 +3,7 @@
   @email: bmixonb1@cs.unm.edu
  */
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <signal.h>
 #include "util.h"
 #include "sniffer.h"

@@ -163,7 +163,34 @@ int test_split_qr()
   return 0;
 }
 
+
 int test_response_reply()
+{
+  phase_stats_t phase_stats = {
+    .total_probes = 0,
+    .total_unique_probes = 0,
+    .total_responses = 0,
+    .total_unique_responses = 0,
+    .total_responses_with_retransmissions = 0
+  };
+
+  dict_t *qr = split_query_response(PCAP_FILE_NAME, &phase_stats);
+
+  double time;
+  START_TIMER(time);
+  response_replay(&qr, &phase_stats);
+  STOP_TIMER(time);
+  printf("%s %d running time %f: Test Ending\n",
+	 __func__, __LINE__, time);
+
+  //print_qr_dict(qr);
+  dict_destroy_fn(qr, (free_fn)free_list);
+  print_phase_statistics(&phase_stats);
+  return 0;
+}
+
+
+int test_copy_query_response_to_scanner()
 {
   phase_stats_t phase_stats = {
     .total_probes = 0,
@@ -197,13 +224,16 @@ void split_addr(char *s)
 
 int main(void)
 {
-  new_scanner_singleton();
-  init_blacklist(BLACKLIST_FILE);
+  //new_scanner_singleton();
+  //init_blacklist(BLACKLIST_FILE);
+
   //int nallowed = blacklist_count_not_allowed();
   //printf("not allowed %d\n", nallowed);
   // assert( (test_parse_pcap() == 0) );
   // assert( (test_split_qr() == 0) );
-  assert( (test_response_reply() == 0) );
+
+  //assert( (test_response_reply() == 0) );
+  assert( (test_copy_query_response_to_scanner()) == 0);
 
   return 0;
 }
