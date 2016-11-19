@@ -22,6 +22,9 @@ dist_dillinger : $(targets)
 vmscanner : $(targets)
 	$(CC)  -O0 -std=gnu99 -DUNITTEST=1 -o vmscanner $(targets) $(LDLIBS)
 
+test_scanner_dil : $(test_scanner)
+	$(CC) -DDILLINGER $(CFLAGS) -o test_scanner $(test_scanner) $(LDLIBS)
+
 test_scanner : $(test_scanner)
 	$(CC) $(CFLAGS) -o test_scanner $(test_scanner) $(LDLIBS)
 

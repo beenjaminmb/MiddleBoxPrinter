@@ -6,6 +6,11 @@
 #include "blacklist.h"
 #include <assert.h>
 
+#ifndef DILLINGER
+ #define BLACKLIST_FILE "blacklist.conf"
+#else
+ #define BLACKLIST_FILE "/vagrant/blacklist.conf"
+#endif
 
 /* void print_iphdr(iphdr *iph) */
 /* { */
