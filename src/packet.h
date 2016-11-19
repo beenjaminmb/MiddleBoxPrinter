@@ -20,7 +20,7 @@
 #include <arpa/inet.h>
 #include "worker.h"
 #include "util.h"
-
+#include "blacklist.h"
 
 //#define PERFORMANCE_DEBUG 1
 
@@ -159,17 +159,27 @@ static inline void
 generate_destination_ip(char *restrict dst_ip, 
 			scanner_worker_t *restrict worker)
 {
-
 #ifdef UNITTEST
   sprintf(dst_ip, "%s", "64.106.81.7"); // We scan ourselves
 #else
+  int error = 0;
+  int addr = 0; 
+  while ( 1 ) {
+    addr = (unsigned int)range_random(RAND_MAX, 
+				      worker->random_data, 
+				      (int *)&error);
 
-  int r1, r2, r3, r4;
-  sprintf(dst_ip, "%d.%d.%d.%d", 
-	  (unsigned int)range_random(255, worker->random_data, &r1), 
-	  (unsigned int)range_random(255, worker->random_data, &r2), 
-	  (unsigned int)range_random(255, worker->random_data, &r3),
-	  (unsigned int)range_random(255, worker->random_data, &r4));
+    if ( blacklist_is_allowed( addr ) ) {
+      break;
+    }
+    printf("FUCK %s %d\n", __func__, __LINE__);
+  }
+  unsigned char r1 = ((unsigned char*)&addr)[0];
+  unsigned char r2 = ((unsigned char*)&addr)[1];
+  unsigned char r3 = ((unsigned char*)&addr)[2];
+  unsigned char r4 = ((unsigned char*)&addr)[3];
+  sprintf(dst_ip, "%d.%d.%d.%d", r1, r2, r3, r4);
+  printf("%s\n", dst_ip);
 #endif
   return ;
 }

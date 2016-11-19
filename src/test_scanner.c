@@ -1,30 +1,34 @@
 #include "scanner.h"
 #include "main.h"
+#include "util.h"
+#include "packet.h"
+#include "worker.h"
+#include "blacklist.h"
 #include <assert.h>
 
 
-void print_iphdr(iphdr *iph)
-{
-  printf("IP HEADER:\n");
-  printf("iph->ihl: %x\n",  iph->ihl);
-  printf("iph->version: %x\n", iph->version);
-  printf("iph->tos: %x\n", iph->tos);
-  printf("iph->tot_len: %x\n", iph->tot_len);
-  printf("iph->id: %x\n", iph->id);
-  printf("iph->frag_off: %x\n", iph->frag_off);
-  printf("iph->ttl: %x\n", iph->ttl);
-  printf("iph->check: %x\n", iph->check);
-  printf("iph->protocol: %x\n", iph->protocol);
-  printf("iph->saddr: %x\n", iph->saddr);
-  printf("iph->daddr: %x\n", iph->daddr);
-}
+/* void print_iphdr(iphdr *iph) */
+/* { */
+/*   printf("IP HEADER:\n"); */
+/*   printf("iph->ihl: %x\n",  iph->ihl); */
+/*   printf("iph->version: %x\n", iph->version); */
+/*   printf("iph->tos: %x\n", iph->tos); */
+/*   printf("iph->tot_len: %x\n", iph->tot_len); */
+/*   printf("iph->id: %x\n", iph->id); */
+/*   printf("iph->frag_off: %x\n", iph->frag_off); */
+/*   printf("iph->ttl: %x\n", iph->ttl); */
+/*   printf("iph->check: %x\n", iph->check); */
+/*   printf("iph->protocol: %x\n", iph->protocol); */
+/*   printf("iph->saddr: %x\n", iph->saddr); */
+/*   printf("iph->daddr: %x\n", iph->daddr); */
+/* } */
 
-void print_probe(iphdr *iph)
-{
+/* void print_probe(iphdr *iph) */
+/* { */
   
-  print_iphdr(iph);
-  return ;
-}
+/*   print_iphdr(iph); */
+/*   return ; */
+/* } */
 
 int test_worker_generate(scanner_worker_t *worker)
 {
@@ -77,10 +81,10 @@ int run_tests() {
   points = new_worker(&worker, 0) == 0 ? 1 : 0;
   seconds += wall_time();
   printf("points: %d, wall time: %f sec \n", points, seconds);
+  init_blacklist("blacklist.conf");
   points += test_worker_generate(&worker);
-  points += test_send_rate(&worker);
+  //points += test_send_rate(&worker);
   printf("points: %d \n", points);
-    
   return 0; 
 }
 
