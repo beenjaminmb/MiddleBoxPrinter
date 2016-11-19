@@ -1,10 +1,10 @@
 RM=rm
 CC=gcc
 CFLAGS=-O0 -g -Wall -std=gnu99
+DIST_FLAGS=-O3 -Wall -std=gnu99
+LDLIBS=-pthread -lpcap -lm
 
-LDLIBS=-pthread -lpcap
-
-targets = main.c dtable.c scanner.c sniffer.c
+targets = main.c dtable.c scanner.c sniffer.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
 
 test_scanner = test_scanner.c dtable.c scanner.c sniffer.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
 
@@ -15,17 +15,17 @@ dist : $(targets)
 	$(CC) $(CFLAGS) -o scanner $(targets) $(LDLIBS)
 
 dist_dillinger : $(targets)
-	$(CC) -DDILLINGER -Wall -std=gnu99 -O3 -o scanner $(targets) $(LDLIBS)
+	$(CC) -DDILLINGER $(DIST_FLAGS) -o scanner $(targets) $(LDLIBS)
 
 
 vmscanner : $(targets)
 	$(CC)  -O0 -std=gnu99 -DUNITTEST=1 -o vmscanner $(targets) $(LDLIBS)
 
 test_scanner : $(test_scanner)
-	$(CC) $(CFLAGS) -o test_scanner $(test_scanner) $(LDLIBS) -lm
+	$(CC) $(CFLAGS) -o test_scanner $(test_scanner) $(LDLIBS)
 
 test_pcap_reader: $(testpcap)
-	$(CC) $(CFLAGS) -o test_pcap_reader $(testpcap) $(LDLIBS) -lm
+	$(CC) $(CFLAGS) -o test_pcap_reader $(testpcap) $(LDLIBS)
 
 test_dict: $(tablesrc)
 	$(CC) $(CFLAGS) -o test_table $(tablesrc)

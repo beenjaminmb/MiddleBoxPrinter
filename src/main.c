@@ -6,7 +6,11 @@
 #include "main.h"
 #include "scanner.h"
 
-#define BLACKLIST_FILE "blacklist.conf"
+#ifndef DILLINGER
+ #define BLACKLIST_FILE "blacklist.conf"
+#else
+ #define BLACKLIST_FILE "/vagrant/blacklist.conf"
+#endif
 
 int main(int argc, char *argv[])
 {
