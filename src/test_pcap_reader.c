@@ -187,12 +187,12 @@ void split_addr(char *s)
 
 int main(void)
 {
-  init_blacklist(BLACKLIST_FILE);
-  int nallowed = blacklist_count_not_allowed();
-  printf("not allowed %d\n", nallowed);
+  //init_blacklist(BLACKLIST_FILE);
+  //int nallowed = blacklist_count_not_allowed();
+  //printf("not allowed %d\n", nallowed);
   // assert( (test_parse_pcap() == 0) );
   // assert( (test_split_qr() == 0) );
-  //assert( (test_response_reply() == 0) );
+  assert( (test_response_reply() == 0) );
 
   return 0;
 }
