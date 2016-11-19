@@ -4,7 +4,7 @@
  */
 #include <sys/types.h>
 #include <signal.h>
-
+#include "util.h"
 #include "sniffer.h"
 #include "scanner.h"
 #include "worker.h"
@@ -13,29 +13,13 @@
 
 void init_sniffer(sniffer_t *sniffer)
 {
-
-  sniffer->thread = malloc(sizeof(pthread_t));
-  if (sniffer->thread == NULL) {
-    printf("%s %d scanner couldn't allocate sniffer thread\n",
-	   __func__, __LINE__);
-    exit(-1);
-  }
-
-  sniffer->lock = malloc(sizeof(pthread_mutex_t));
-  if (sniffer->lock == NULL) {
-    printf("%s %d scanner couldn't allocate sniffer lock\n",
-	   __func__, __LINE__);
-    exit(-1);
-  }
-  pthread_mutex_init(sniffer->lock, NULL);
-
-  sniffer->cond = malloc(sizeof(pthread_cond_t));
-  if (sniffer->cond == NULL) {
-    printf("%s %d scanner couldn't allocate sniffer condition "
-	   "variable\n", __func__, __LINE__);
-    exit(-1);
-  }
-  pthread_cond_init(sniffer->cond, NULL);
+  
+  sniffer->thread = 
+    smalloc_msg(sizeof(pthread_t), 
+		"scanner couldn't allocate sniffer thread %d\n", 0);
+  
+  sniffer->lock = new_mutex();
+  sniffer->cond = new_cond();
 
   sniffer->pid = -1;
   sniffer->sniff = 1;
@@ -63,22 +47,22 @@ void stop_sniffer(sniffer_t *sniffer)
  
 void delete_sniffer(sniffer_t *sniffer)
 {
-  free(sniffer->thread);
+  sfree(sniffer->thread);
   sniffer->thread = NULL;
 
 
 #ifdef USE_PCAP
-  free(sniffer->cap_handle);
+  sfree(sniffer->cap_handle);
   sniffer->cap_handle = NULL;
 #endif
 
-  free(sniffer->lock);
+  sfree(sniffer->lock);
   sniffer->lock = NULL;
   
-  free(sniffer->cond);
+  sfree(sniffer->cond);
   sniffer->cond = NULL;
 
-  free(sniffer);
+  sfree(sniffer);
   
   return;
 }
@@ -188,7 +172,7 @@ void init_libpcap_capture(sniffer_t **snifferp)
   pcap_t *handle = sniffer->cap_handle;
   char errbuf[PCAP_ERRBUF_SIZE];
 
-  Find the properties for the device
+  // Find the properties for the device
   if (pcap_lookupnet(CAPTURE_INTERFACE, &net, &mask, errbuf) == -1) {
     printf(stderr, "Couldn't get netmask for "
   	   "device %s: %s\n",  CAPTURE_INTERFACE, errbuf);
@@ -196,12 +180,10 @@ void init_libpcap_capture(sniffer_t **snifferp)
     mask = 0;
     exit(-1);
   }
-  scanner->sniffer->cap_handle = malloc(sizeof(pcap_t));
-  if (scanner->sniffer->cap_handle == NULL) {
-    printf("%s %d scanner couldn't allocate sniffer capture handle\n",
-  	   __func__, __LINE__);
-    exit(-1);
-  }
+  scanner->sniffer->cap_handle = 
+    smalloc_msg(sizeof(pcap_t), "scanner couldn't allocate sniffer "
+		"capture handle %d\n", 0);
 
 }
+
 #endif
