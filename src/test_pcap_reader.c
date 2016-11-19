@@ -185,42 +185,11 @@ void split_addr(char *s)
   return;
 }
 
-char **parse_blacklist()
-{
-  FILE *blacklist = fopen(BLACKLIST_FILE, "r");
-  char *line = malloc(MAX_LINE_LENGTH);
-  assert(line);
-  
-  char **bl = malloc(sizeof(char *) * 128);
-  
-  int i=0;
-
-  while (fgets(line, MAX_LINE_LENGTH, blacklist) != NULL) {
-    size_t len = strlen(line);	
-    if (len >= (MAX_LINE_LENGTH-1)) {
-      assert(0);
-    }
-    char *original = malloc(MAX_LINE_LENGTH);
-    assert(original);
-    int prefix_len = 0;
-    sscanf(line,"%s %d\n", original, &prefix_len);    
-    printf("%s %d\n", original, prefix_len);
-
-    struct in_addr addr;
-    if (!inet_aton(original, &addr)) {
-      assert(0); //FAILING HERE
-    }
-    bl[i] = original;
-    i++;
-  }
-  return bl;
-}
-
-
-
 int main(void)
 {
-  test_blacklisting();
+  init_blacklist(BLACKLIST_FILE);
+  int nallowed = blacklist_count_not_allowed();
+  printf("not allowed %d\n", nallowed);
   // assert( (test_parse_pcap() == 0) );
   // assert( (test_split_qr() == 0) );
   //assert( (test_response_reply() == 0) );

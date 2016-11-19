@@ -697,9 +697,10 @@ void *worker_routine(void *vself)
 /**
  * Main loop for the scanner code. ''main" calls this function.
  */
-int scanner_main_loop()
+int scanner_main_loop(scan_args_t *scan_args)
 {
   new_scanner_singleton();
+  init_blacklist(scan_args->blacklist);
   pthread_mutex_lock(scanner->continue_lock);
   pthread_mutex_lock(scanner->phase1_lock);
   pthread_mutex_lock(scanner->phase2_lock);

@@ -56,7 +56,7 @@ static inline double wall_time()
 }
 
 
-int init_blacklist();
+int init_blacklist(char *blacklist);
 
 #ifdef EXPERIMENTAL
 
