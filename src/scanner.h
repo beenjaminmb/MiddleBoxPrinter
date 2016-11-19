@@ -24,12 +24,13 @@
 #define SCAN_DURATION 3600.0
 /* Change back to 128 when we fix the memory leak.*/
 // #define QR_DICT_SIZE 2
-#define QR_DICT_SIZE 3072
-
+#define QR_DICT_SIZE 4096
 
 typedef struct phase_stats_t {
-  int total_probes_sent;
+  int total_probes;
+  int total_unique_probes;
   int total_responses;
+  int total_unique_responses;
   int total_responses_with_retransmissions;
 } phase_stats_t;
 
@@ -89,6 +90,23 @@ void send_scan_packet(unsigned char *restrict packet_buffer,
 		      scanner_worker_t *restrict worker,
 		      int probe_idx, int ttl);
 
+
+/**
+ * Used for experiments in this project.
+ */
+void *find_responses(void *vworker);
+
+/**
+ * @warning: NOT CURRENTLY USED
+ * This is the worker routine that generates packets with varying 
+ * fields. Spins up a sniffer thread with with appropriate 
+ * pcap filter and sends the pcap off with modulated TTL.
+ * 
+ * @param: vself. A void pointer to the worker that is actually
+ * sending of packets.
+ *
+ * @return: Always returns NULL.
+ */
 void *worker_routine(void* vself); 
 
 int scanner_main_loop();
@@ -125,14 +143,21 @@ int scanner_main_loop();
 
 scanner_t *new_scanner_singleton();
 
+/**
+ * Work horse routing for packet separation.
+ */
 void process_packet(dict_t **dictp, const unsigned char *packetp,
+		    phase_stats_t *phase_stats, 
 		    struct timeval ts, unsigned int capture_len);
 
 
-void response_replay(dict_t **dp);
+void response_replay(dict_t **dp, phase_stats_t *phase_stats);
 
-dict_t * split_query_response(const char* pcap_fname);
+dict_t * split_query_response(const char* pcap_fname,
+			      phase_stats_t *phase_stats);
 
 void stringify_node( char **str, void *vnode, int direction);
+
+void print_phase_statistics(phase_stats_t *phase_stats);
 
 #endif

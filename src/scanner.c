@@ -25,6 +25,7 @@
 #define PCAP_TEST_FILE "./capnext.pcap"
 
 static struct scanner_t *scanner = NULL;
+static scan_statistics_t scan_stats;
 
 unsigned long free_list(void *args)
 {
@@ -179,9 +180,8 @@ unsigned long hash_rq(void *v, int right, void *args)
   }
 }
 
-
-
 void process_packet(dict_t **dictp, const unsigned char *packet,
+		    phase_stats_t *phase_stats,
 		    struct timeval ts, unsigned int capture_len)
 {
   if ( capture_len < sizeof(struct ether_header) ) {
@@ -233,6 +233,8 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
 
   if ( is_probe ) {
+
+    phase_stats->total_probes += 1;
     char *keystr = malloc(256 * sizeof(char));
     memset(keystr, 0, 256);
     stringify_node((char**)&keystr, (void *)pv, 0);
@@ -241,9 +243,10 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 
     if ( !dict_member_fn((*dictp), (void*)&hargs, hash_qr,
 			 NULL,  packet_equal ) ) {
-      
-      list_t *l = new_list();
 
+      phase_stats->total_unique_probes += 1;
+
+      list_t *l = new_list();
       struct hash_args *hargsp = malloc(sizeof(struct hash_args));
       hargsp->keystr = malloc(strlen(keystr) + 1);
       memset(hargsp->keystr, 0, strlen(keystr) + 1);
@@ -262,12 +265,14 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 		 however in this case I need to for testing.*/
   }
   else  if ( is_response ) {
+
+    phase_stats->total_responses += 1;
+
     char *keystr = malloc(256 * sizeof(char));
     memset(keystr, 0, 256);
     stringify_node((char **)&keystr, (void *)pv, 1);
     struct hash_args hargs = {.keystr=(unsigned char*)keystr,
 			      .value=NULL};
-
     if ( dict_member_fn(*dictp, (void*)&hargs, hash_qr,
 			NULL, packet_equal ) ) {
 
@@ -291,7 +296,8 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   return ;
 }
 
-dict_t * split_query_response(const char* pcap_fname)
+dict_t * split_query_response(const char* pcap_fname, 
+			      phase_stats_t *phase_stats)
 {
   dict_t *q_r = new_dict_size(QR_DICT_SIZE);
   pcap_t *pcap;
@@ -311,17 +317,18 @@ dict_t * split_query_response(const char* pcap_fname)
   
   int i = 0;
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
-    process_packet(&q_r, packet, header.ts, header.caplen);
+    process_packet(&q_r, packet, phase_stats, 
+		   header.ts, header.caplen);
   }
 
   free((void*)pcap);
   pcap = NULL;
   free((void*)packet);
   packet = NULL;
+
 #ifdef UNITTEST
   printf("%s %d: According to valgrind, there are "
 	 "there are two missing free's here\n", __func__, __LINE__);
-
 #endif
 
  return q_r;    
@@ -329,7 +336,6 @@ dict_t * split_query_response(const char* pcap_fname)
 
 void *copy_packet(void *v)
 {
-  //struct hash_args *harg = v;
   struct packet_value *pv = v;
   struct packet_value *newpv = malloc(sizeof(struct packet_value));
   newpv->packet = malloc(pv->capture_len + 1);  
@@ -339,7 +345,7 @@ void *copy_packet(void *v)
   return (void *) newpv;
 }
 
-void response_replay(dict_t **dp)
+void response_replay(dict_t **dp, phase_stats_t *phase_stats)
 {
   dict_t *d = *dp;
   list_t *element_list = NULL;
@@ -355,11 +361,15 @@ void response_replay(dict_t **dp)
       struct hash_args *hargs = (struct hash_args *)node->value;
       list_t *l = (list_t *)hargs->value;
       if ( l->size > 1 ) { /*Cull the probes w/o responses */
-
 #ifdef UNITTEST
 	printf("%s %d %s\n", __func__, __LINE__, hargs->keystr);
 	printf("size = %d\n", l->size );
 #endif /* UNITTEST */
+	phase_stats->total_unique_responses += 1;
+	if (l->size > 2) {
+	  phase_stats->total_responses_with_retransmissions += 1;
+	}
+
 	struct hash_args *va = malloc(sizeof(struct hash_args));
 	int len = strlen((char*)hargs->keystr);
 	va->keystr = malloc( len + 1 );
@@ -376,22 +386,62 @@ void response_replay(dict_t **dp)
   return ;
 }
 
+
+/**
+ * 1. Each worker get's n / MAX_WORKERS, IP address to send each of 
+ *    the n responding hosts.
+ */
 void copy_query_response_to_scanner(dict_t *qr)
 {
+
+  /**
+   * NOT IMPLEMENTED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   * NOT IMPLEMENTED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   * NOT IMPLEMENTED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   * NOT IMPLEMENTED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   */
+  
+  assert( 0 );
+  
   int n = qr->N; /*Number of requests that ellicited at least 1
 		   response*/
   int probes_per_worker = n / MAX_WORKERS;
   int remainder = n % MAX_WORKERS;
   
   assert((remainder + probes_per_worker) == n);
-
-  scanner_worker_t *worker = &scanner->workers[0];
   
+  scanner_worker_t *worker = &scanner->workers[0];
   
   for (int i = 0; i < MAX_WORKERS; i++) {
     worker = &scanner->workers[i];
-    for (int j = 0; j < probes_per_worker; j++) {
-      deepcopy_packet(worker, NULL, j);
+    int bound = (i * probes_per_worker);
+    for (int j = bound; j < (bound + probes_per_worker); j++) {
+      list_t *element_list = qr->elements[j];
+      list_node_t* current_element = element_list->list;
+      list_node_t *next_element = NULL;
+      while ( current_element ) {
+	next_element = current_element->next;
+	struct hash_args *hargs = current_element->value;
+	char *keystr = (char*)hargs->keystr;
+	/**
+	 * No we make a copy of every probe the
+	 * ellicited a response for this one
+	 * host.
+	 */
+	for(int k = 0; k < n; k++) {
+	  list_t *response_list = qr->elements[k];
+	  list_node_t* current_response = element_list->list;
+	  while ( current_response ) {
+	    struct hash_args *response_args = current_response->value;
+	    list_node_t *next_response = current_response->next;
+	    if ( 1 ) {
+	      deepcopy_packet(worker, NULL, j);
+	    }
+	    current_response = next_response;
+	  }
+	}
+	current_element = next_element;
+      }
     }
   }
 
@@ -406,19 +456,21 @@ void generate_phase2_packets()
 {
   /**
    * 1. Split queries and response
-   * 2. Generate response replays.  
-   *    
+   * 2. Generate response replays.
+   *
    *    For each host that responsded, take its response
    *    and reply at back to set how people respond to THESE
-   *    packets. 
-   * 
-   * 3. 
-   * 2. For query in : 
+   *    packets.
+   *
+   * 3.
+   * 2. For query in :
    * 3.   for response in query[response]
-   * 4.      
+   * 4.
    */
-  dict_t *query_response = split_query_response(PCAP_TEST_FILE);
-  response_replay(&query_response);
+  dict_t *query_response = split_query_response(PCAP_TEST_FILE,
+						&scan_stats.phase1);
+
+  response_replay(&query_response, &scan_stats.phase1);
   /**
    query_response[i] = list_t {
                          list_node_t { 
@@ -432,9 +484,10 @@ void generate_phase2_packets()
                                           }
                                        }
                                     }
-                        }
+                       }
   */
   copy_query_response_to_scanner(query_response);
+
   dict_destroy_fn(query_response, (free_fn)free_list);
   return ;
 }
@@ -518,7 +571,6 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
   return ;
 }
 
-
 void phase1(scanner_worker_t *self)
 {
   for (int i = 0; i < ADDRS_PER_WORKER; i++) {
@@ -598,17 +650,6 @@ void *find_responses(void *vworker)
   return NULL;
 }
 
-
-/**
- * This is the worker routine that generates packets with varying 
- * fields. Spins up a sniffer thread with with appropriate 
- * pcap filter and sends the pcap off with modulated TTL.
- * 
- * @param: vself. A void pointer to the worker that is actually
- * sending of packets.
- *
- * @return: Always returns NULL.
- */
 void *worker_routine(void *vself)
 {
   printf("%d %s ",__LINE__, __func__);
@@ -621,7 +662,7 @@ void *worker_routine(void *vself)
   double end_time;
   while ( scanning ) {
     START_TIMER(end_time);
-    if (end_time - start_time > SCAN_DURATION){
+    if (end_time - start_time > SCAN_DURATION) {
       break;
     }
     for (int i = 0; i < ADDRS_PER_WORKER; i++) {
@@ -858,6 +899,21 @@ void init_locks()
 }
 
 
+void init_stats()
+{
+  scan_stats.phase1.total_probes = 0;
+  scan_stats.phase1.total_responses = 0;
+  scan_stats.phase1.total_responses_with_retransmissions = 0;
+
+  scan_stats.phase2.total_probes = 0;
+  scan_stats.phase2.total_responses = 0;
+  scan_stats.phase2.total_responses_with_retransmissions = 0;
+
+  scan_stats.phase3.total_probes = 0;
+  scan_stats.phase3.total_responses = 0;
+  scan_stats.phase3.total_responses_with_retransmissions = 0;
+  return;
+}
 
 /** 
  * Either build a scanner singleton or create a completely new one
@@ -870,6 +926,7 @@ scanner_t *new_scanner_singleton()
   if ( scanner ) {
     return scanner;
   }
+  init_stats();
   scanner = malloc(sizeof(scanner_t));
   scanner->keep_scanning = 1;
   scanner->phase1 = 0;
@@ -955,4 +1012,20 @@ void delete_scanner()
   free(scanner->workers);
   scanner->workers = NULL;
   return ;
+}
+
+void print_phase_statistics(phase_stats_t *phase_stats)
+{
+  printf("Scan statistics: \n");
+  printf("\t  total probes sent:                    %d\n",
+	 phase_stats->total_probes);
+  printf("\t  total probes sent:                    %d\n",
+	 phase_stats->total_unique_probes);
+  printf("\t  total unique responses:               %d\n",
+	 phase_stats->total_unique_responses);
+  printf("\t  total responses:                      %d\n",
+	 phase_stats->total_responses);
+  printf("\t  total responses with retransmissions: %d\n", 
+	 phase_stats->total_responses_with_retransmissions);
+  return;
 }

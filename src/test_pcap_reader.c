@@ -29,6 +29,14 @@
 
 int test_parse_pcap()
 {
+  phase_stats_t phase_stats = {
+    .total_probes = 0,
+    .total_unique_probes = 0,
+    .total_responses = 0,
+    .total_unique_responses = 0,
+    .total_responses_with_retransmissions = 0
+  };
+  
   dict_t *q_r = new_dict_size(QR_DICT_SIZEp);
   const unsigned char *packet;
   char errbuf[PCAP_ERRBUF_SIZE];
@@ -39,7 +47,7 @@ int test_parse_pcap()
   printf("%s %d\n", __func__, __LINE__);  
 
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
-    process_packet(&q_r, packet, header.ts, header.caplen);    
+    process_packet(&q_r, packet, &phase_stats,header.ts, header.caplen);    
   }
   dict_destroy_fn(q_r, (free_fn)free);
   free((void*)pcap);
@@ -117,33 +125,51 @@ void print_qr_dict(dict_t *d)
 
 int test_split_qr()
 {
+  phase_stats_t phase_stats = {
+    .total_probes = 0,
+    .total_unique_probes = 0,
+    .total_responses = 0,
+    .total_unique_responses = 0,
+    .total_responses_with_retransmissions = 0
+  };
+
   printf("%s %d: Test Starting\n",__func__, __LINE__);
   double time;
   START_TIMER(time);
-  dict_t *qr = split_query_response(PCAP_FILE_NAME);
+  dict_t *qr = split_query_response(PCAP_FILE_NAME, &phase_stats);
   STOP_TIMER(time);
   printf("%s %d %f: Test Ending\n",__func__, __LINE__, time);
   //print_qr_dict(qr);
   dict_destroy_fn(qr, (free_fn)free_list);
-
+  
+  print_phase_statistics(&phase_stats);
 
   return 0;
 }
 
 int test_response_reply()
 {
-  dict_t *qr = split_query_response(PCAP_FILE_NAME);
-  printf("%s %d %p size = %d, N = %d\n", __func__, __LINE__, 
-	 qr, qr->size, qr->N);
+  phase_stats_t phase_stats = {
+    .total_probes = 0,
+    .total_unique_probes = 0,
+    .total_responses = 0,
+    .total_unique_responses = 0,
+    .total_responses_with_retransmissions = 0
+  };
+
+  dict_t *qr = split_query_response(PCAP_FILE_NAME, &phase_stats);
 
   double time;
   START_TIMER(time);
-  response_replay(&qr);
+  response_replay(&qr, &phase_stats);
   STOP_TIMER(time);
   printf("%s %d running time %f: Test Ending\n",
 	 __func__, __LINE__, time);
-  print_qr_dict(qr);
-  dict_destroy_fn(qr, (free_fn)free_list);
+
+  //print_qr_dict(qr);
+  dict_destroy_fn(qr, (free_fn)free_list);  
+
+  print_phase_statistics(&phase_stats);
   return 0;
 }
 int main(void)
