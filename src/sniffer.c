@@ -13,9 +13,8 @@
 
 void init_sniffer(sniffer_t *sniffer)
 {
-  
-  sniffer->thread = 
-    smalloc_msg(sizeof(pthread_t), 
+  sniffer->thread =
+    smalloc_msg(sizeof(pthread_t),
 		"scanner couldn't allocate sniffer thread %d\n", 0);
   
   sniffer->lock = new_mutex();
@@ -38,10 +37,11 @@ void stop_sniffer(sniffer_t *sniffer)
 #ifdef USE_PCAP
   assert(0);
 #else
+  int status = 0;
   kill(sniffer->pid, SIGKILL);
+  waitpid(sniffer->pid, &status, 1);
   sniffer->pid = 0;
 #endif
-
   return;
 }
  
