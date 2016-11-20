@@ -788,6 +788,19 @@ void *worker_routine(void *vself)
   return NULL;
 }
 
+static void start_workers()
+{
+  for (int i = 0; i < MAX_WORKERS; i++) {
+    if (pthread_create(scanner->workers[i].thread, NULL,
+		       find_responses,
+		       (void *)&scanner->workers[i]) < 0) {
+      printf("Couldn't initialize thread for worker[%d]\n", i);
+      exit(-1);
+    }
+  }
+  return ;
+}
+
 /**
  * Main loop for the scanner code. ''main" calls this function.
  */
@@ -806,24 +819,11 @@ int scanner_main_loop(scan_args_t *scan_args)
   pthread_mutex_lock(scanner->phase2_wait_lock);
   char filename[MAX_PCAP_NAME_LEN];
   memset(filename, 0, MAX_PCAP_NAME_LEN);
-  time_t t = time(NULL);
-  struct tm tm = *localtime(&t);
 
-  sprintf(filename, "/vagrant/%d-%d-%d %d:%d:%d.pcap", 
-	  tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
-	  tm.tm_hour, tm.tm_min, tm.tm_sec);
-
+  timestamp_filename((char**)&filename);
   start_sniffer(scanner->sniffer, filename);
 
-  for (int i = 0; i < MAX_WORKERS; i++) {
-    if (pthread_create(scanner->workers[i].thread, NULL,
-		       find_responses,
-		       (void *)&scanner->workers[i]) < 0) {
-      printf("Couldn't initialize thread for worker[%d]\n", i);
-      exit(-1);
-    }
-  }
-  
+  start_workers();
 
   while(scanner->phase1 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase1_cond, scanner->phase1_lock);
@@ -837,23 +837,19 @@ int scanner_main_loop(scan_args_t *scan_args)
   generate_phase2_packets();
 
   memset(filename, 0, MAX_PCAP_NAME_LEN);
-
-  t = time(NULL);
-  tm = *localtime(&t);
-
-  sprintf(filename, "/vagrant/%d-%d-%d %d:%d:%d.pcap", 
-	  tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
-	  tm.tm_hour, tm.tm_min, tm.tm_sec);
-
+  timestamp_filename((char**)&filename);
   start_sniffer(scanner->sniffer, filename);
-  // Start sniffer again. 
+
   scanner->phase2_wait = 0;
   pthread_cond_signal(scanner->phase2_wait_cond);
   pthread_mutex_unlock(scanner->phase2_wait_lock);
+
+
   while(scanner->phase2 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase2_cond, scanner->phase2_lock);
   }
   pthread_mutex_unlock(scanner->phase2_lock);
+
   sleep(60);
   stop_sniffer(scanner->sniffer);
   delete_scanner(scanner);
@@ -1056,10 +1052,8 @@ void  delete_locks()
   return;
 }
 
-
 void delete_workers(scanner_worker_t *worker)
 {
-
   close(worker->ssocket->sockfd);
   sfree(worker->ssocket);
   worker->ssocket = NULL;

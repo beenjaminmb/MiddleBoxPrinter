@@ -56,3 +56,15 @@ pthread_cond_t *new_cond()
   pthread_cond_init(cond, NULL);
   return cond;
 }
+
+
+void timestamp_filename(char **fnamep)
+{
+  char *filename = *pnamep;
+  time_t t = time(NULL);
+  struct tm tm = *localtime(&t);
+  sprintf(filename, "/vagrant/%d-%d-%d %d:%d:%d.pcap", 
+	  tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
+	  tm.tm_hour, tm.tm_min, tm.tm_sec);
+  return;
+}
