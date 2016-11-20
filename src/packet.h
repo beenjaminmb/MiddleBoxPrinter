@@ -649,7 +649,7 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
 	 (packet_to_copy+sizeof(struct ether_header)),
 	 len);
   
-  worker->probe_list[probe_idx].sin->sin_addr.s_addr = 
+  worker->probe_list[probe_idx].sin->sin_addr.s_addr =  // Newly allocated probe lists needs to have some fields initialized
     inet_addr(wdst_addr);
 
   struct ip *ip = (struct ip*)

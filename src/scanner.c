@@ -388,8 +388,11 @@ void response_replay(dict_t **dp, phase_stats_t *phase_stats)
   return ;
 }
 
-static void copy_per_worker_phase2_copy(scanner_worker_t *worker, dict_t *qr, int *probe_id, 
-					char *wsrc_addr, char *wdst_addr, int wsport, int wdport)
+static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
+					dict_t *qr, int *probe_id,
+					char *wsrc_addr,
+					char *wdst_addr, int wsport,
+					int wdport)
 {
   char *packet_to_copy_str = smalloc(256);
   char *psrc_addr = smalloc(256);
@@ -424,9 +427,14 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker, dict_t *qr, in
 			  wdport, probe_idx);
 	  probe_idx++;
 	  if (probe_idx >= worker->probe_list_size) {
-	    worker->probe_list_size = worker->probe_list, probe_idx * 2;
-	    worker->probe_list = realloc(worker->probe_list, probe_idx * 2);
+	    worker->probe_list_size = probe_idx * 2;
+	    worker->probe_list =
+	      realloc(worker->probe_list,
+		      sizeof(probe_t) * probe_idx * 2);
 	    assert(worker->probe_list);
+	    for (int i = probe_idx; i < probe_idx * 2; i++){
+	      init_probe_t(&worker->probe_list[probe_idx]);
+	    }
 	  }
 	}
 	else {
@@ -438,10 +446,16 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker, dict_t *qr, in
 			    wsrc_addr, wdst_addr, wsport,
 			    wdport, probe_idx);
 	    probe_idx++;
-	    if (probe_id >= worker->probe_list_size) {
-	      worker->probe_list = realloc(worker->probe_list, probe_idx * 2);
+	    if (probe_idx >= worker->probe_list_size) {
+	      worker->probe_list = 
+		realloc(worker->probe_list, 
+			sizeof(probe_t) * probe_idx * 2);
+
 	      assert(worker->probe_list);
-	      worker->probe_list_size = worker->probe_list, probe_idx * 2;
+	      worker->probe_list_size = probe_idx * 2;
+	      for (int i = probe_idx; i < probe_idx * 2; i++) {
+		init_probe_t(&worker->probe_list[probe_idx]);
+	      }
 	    }
 	  }
 	}

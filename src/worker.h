@@ -10,7 +10,12 @@
 #include <stdlib.h>
 #include <pcap/pcap.h>
 #include "scanner.h"
-
+#include <sys/socket.h>
+#include <netinet/ip.h>
+#include <netinet/ether.h>
+#include <netinet/udp.h>
+#include <netinet/tcp.h>
+#include <netinet/ip_icmp.h>
 
 #ifdef DILLINGER
  #define CAPTURE_INTERFACE "enp0s8"
@@ -54,12 +59,21 @@ typedef struct scanner_worker_t {
   char *random_state;
   probe_t *probe_list;
   long probe_list_size;
-  long probe_idx;
+  long probe_idx; 
   int current_ttl;
   int state_size;
   int worker_id;
   double seed;
-  // list_t *addr_list;
+// list_t *addr_list;
 } scanner_worker_t;
+
+static void init_probe_t(probe_t *probe)
+{
+  probe->sin = smalloc(sizeof(struct sockaddr_in));
+  probe->data_len = 0;
+  probe->good_csum = 1;
+  probe->proto = 0;
+  return ;
+}
 
 #endif
