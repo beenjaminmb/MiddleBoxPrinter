@@ -1093,7 +1093,7 @@ void print_phase_statistics(phase_stats_t *phase_stats)
   printf("Scan statistics: \n");
   printf("\t  total probes sent:                    %d\n",
 	 phase_stats->total_probes);
-  printf("\t  total probes sent:                    %d\n",
+  printf("\t  total unique probes sent:              %d\n",
 	 phase_stats->total_unique_probes);
   printf("\t  total unique responses:               %d\n",
 	 phase_stats->total_unique_responses);

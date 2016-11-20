@@ -1,3 +1,7 @@
+/**
+ * @author: Ben Mixon-Baca
+ * @email: bmixonb1@cs.unm.edu
+ */
 #include <stdlib.h>
 #include "util.h"
 #include "blacklist.h"
@@ -75,8 +79,19 @@ void timestamp_filename(char **fnamep, int phase)
   char *filename = *fnamep;
   time_t t = time(NULL);
   struct tm tm = *localtime(&t);
-  sprintf(filename, "/vagrant/phase%d-%d-%d-%d-%d:%d:%d.pcap", 
+#ifdef DILLINGER
+  const char *fmt = "/vagrant/phase%d-%d-%d-%d-%d:%d:%d.pcap";
+#else
+  const char *fmt = "phase%d-%d-%d-%d-%d:%d:%d.pcap";
+#endif
+  sprintf(filename, fmt,
 	  phase, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
 	  tm.tm_hour, tm.tm_min, tm.tm_sec);
+  return;
+}
+
+
+void parse_args(int argc, char *argv[], struct scan_args_t* scan_args)
+{
   return;
 }

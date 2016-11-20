@@ -70,6 +70,9 @@ pthread_cond_t *new_cond();
 pthread_mutex_t *new_mutex();
 
 void timestamp_filename(char **fnamep, int phase);
+
 void timestamp_str(char **fnamep, char* str);
+
+void parse_args(int argc, char *argv, struct scan_args *scan_args);
 
 #endif /* _UTIL_ */

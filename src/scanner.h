@@ -33,6 +33,7 @@
 
 typedef struct scan_args_t {
   char *blacklist;
+  
 } scan_args_t;
 
 

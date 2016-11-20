@@ -14,9 +14,8 @@
 
 int main(int argc, char *argv[])
 {
-  struct scan_args_t scan_args = {
-    .blacklist = BLACKLIST_FILE
-  };
+  struct scan_args_t scan_args;
+  pasre_args(argc, argv, &scan_args);
   int ret = scanner_main_loop(&scan_args);
   return ret;
 }

@@ -29,7 +29,12 @@
 #define TS_SPOOF_IP "64.106.82.6" /* IP address tonysoprano 
 				     uses to spoof ip addresses. */
 
-#define BLACKLIST_FILE "/vagrant/blacklist.conf"
+#ifdef DILLINGER
+ #define BLACKLIST_FILE "/vagrant/blacklist.conf"
+#else
+ #define BLACKLIST_FILE "./blacklist.conf"
+#endif
+
 #define QR_DICT_SIZEp 1024
 static char filename[1024];
 
@@ -57,7 +62,7 @@ int test_parse_pcap()
 		   header.ts, header.caplen);
   }
 
-  dict_destroy_fn(q_r, (free_fn)free);
+  dict_destroy_fn(q_r, (free_fn)free_list);
   free((void*)pcap);
   free((void*)packet);
 
@@ -156,7 +161,7 @@ int test_split_qr()
   dict_t *qr = split_query_response(filename, &phase_stats);
   STOP_TIMER(time);
   printf("%s %d %f: Test Ending\n",__func__, __LINE__, time);
-  //print_qr_dict(qr);
+  print_qr_dict(qr);
   dict_destroy_fn(qr, (free_fn)free_list);
   
   print_phase_statistics(&phase_stats);
@@ -210,17 +215,11 @@ int test_copy_query_response_to_scanner()
   printf("%s %d running time %f: Test Ending\n",
 	 __func__, __LINE__, time);
 
-  //print_qr_dict(qr);
+  print_qr_dict(qr);
   copy_query_response_to_scanner(qr, &phase_stats);
   dict_destroy_fn(qr, (free_fn)free_list);
   print_phase_statistics(&phase_stats);
   return 0;
-}
-
-
-void split_addr(char *s)
-{
-  return;
 }
 
 int main(int argc, char *argv[])

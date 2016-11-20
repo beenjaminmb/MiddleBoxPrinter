@@ -44,4 +44,4 @@ test_dict: $(tablesrc)
 	$(CC) $(CFLAGS) -o test_table $(tablesrc)
 
 clean:
-	rm -f vmscanner scanner *~ test_table core test_pcap_reader test_scanner
+	rm -f vmscanner scanner *~ test_table core test_pcap_reader test_scanner $(SKYTHE)
