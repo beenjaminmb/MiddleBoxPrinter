@@ -50,9 +50,10 @@ typedef struct scanner_worker_t {
   pthread_t *thread;
   scanner_socket_t *ssocket;
   struct random_data *random_data;
-  struct scanner_t *scanner;  
+  struct scanner_t *scanner;
   char *random_state;
   probe_t *probe_list;
+  long probe_list_size;
   long probe_idx;
   int current_ttl;
   int state_size;

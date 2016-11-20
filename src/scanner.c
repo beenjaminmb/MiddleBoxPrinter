@@ -406,33 +406,43 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker, dict_t *qr, in
 	current_response->value;
       list_node_t *next_response = current_response->next;
       // This needs to be a check on the string of the hashargs value, not the keystring.
-      list_t *pkt_list_to_copy = response_args->value;      
+      list_t *pkt_list_to_copy = response_args->value;
       list_node_t *current_packet = pkt_list_to_copy->list;
       char *prev_src_addr = NULL;
-      short prev_sport = 0; 
+      short prev_sport = 0;
       while( current_packet ) {
 	list_node_t *next_packet = current_packet->next;
 	stringify_node(&packet_to_copy_str,
 		       current_packet->value, 0);
 	sscanf(packet_to_copy_str, "%s %s %d %d",
-	       psrc_addr, pdst_addr, &psport, &pdport);	
+	       psrc_addr, pdst_addr, &psport, &pdport);
 	printf("%s %d: probe_idx =  %d\n", __func__, __LINE__, probe_idx);
 	if ( prev_src_addr == NULL ) {
+	  
 	  deepcopy_packet(worker, current_packet->value,
 			  wsrc_addr, wdst_addr, wsport,
 			  wdport, probe_idx);
 	  probe_idx++;
+	  if (probe_idx >= worker->probe_list_size) {
+	    worker->probe_list_size = worker->probe_list, probe_idx * 2;
+	    worker->probe_list = realloc(worker->probe_list, probe_idx * 2);
+	    assert(worker->probe_list);
+	  }
 	}
 	else {
 	  int not_seen = 
-	    (strcmp(prev_src_addr, pdst_addr)) & 
+	    (strcmp(prev_src_addr, pdst_addr)) &
 	    (prev_sport != psport) ? 1 : 0;
-	  
 	  if ( not_seen ) {
 	    deepcopy_packet(worker, current_packet->value,
 			    wsrc_addr, wdst_addr, wsport,
 			    wdport, probe_idx);
 	    probe_idx++;
+	    if (probe_id >= worker->probe_list_size) {
+	      worker->probe_list = realloc(worker->probe_list, probe_idx * 2);
+	      assert(worker->probe_list);
+	      worker->probe_list_size = worker->probe_list, probe_idx * 2;
+	    }
 	  }
 	}
 	current_packet = next_packet;
@@ -442,8 +452,9 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker, dict_t *qr, in
       current_response = next_response;
     }
   }
-  sfree(packet_to_copy_str);
+  worker->probe_list_size = probe_idx; /* It is actually bigger than that but we only have this many probes. */
   *probe_id = probe_idx;
+  sfree(packet_to_copy_str);
   sfree(psrc_addr);
   sfree(psrc_addr);
   return;
@@ -461,8 +472,8 @@ void copy_query_response_to_scanner(dict_t *qr,
   int probes_per_worker = n / MAX_WORKERS;
   int remainder = n % MAX_WORKERS;
   printf("%s %d: number of entries %d %d %d\n", __func__, __LINE__, 
-	ADDRS_PER_WORKER, phase_stats->total_unique_probes,  
-	phase_stats->total_unique_responses);
+	 ADDRS_PER_WORKER, phase_stats->total_unique_probes,  
+	 phase_stats->total_unique_responses);
   assert((remainder + (probes_per_worker * MAX_WORKERS)) == n);
   scanner_worker_t *worker = &scanner->workers[0];
   char *wsrc_addr = smalloc(256);
@@ -479,7 +490,7 @@ void copy_query_response_to_scanner(dict_t *qr,
       list_node_t *next_element = NULL;
       while ( current_element ) {
 	next_element = current_element->next;
-	struct hash_args *hargs = current_element->value;/* Start new function "per_worker_phase2_copy" */
+	struct hash_args *hargs = current_element->value;
 	char *keystr = (char*)hargs->keystr;
 	sscanf(keystr, "%s %s %d %d", wsrc_addr, wdst_addr,
 	       &wsport, &wdport);
@@ -823,6 +834,7 @@ int new_worker(scanner_worker_t *worker, int id)
     printf("getsockopt() for worker[%d]\n", id);
     return -1;
   }
+
   
   worker->thread = smalloc_msg(sizeof(pthread_t),
 			       "Couldn't allocate thread for"
@@ -847,8 +859,9 @@ int new_worker(scanner_worker_t *worker, int id)
   }
   
   worker->probe_list = smalloc_msg(sizeof(probe_t) * ADDRS_PER_WORKER,
-			       "Couldn't allocate space for "
-			       "address list for worker[%d]\n", id);
+				   "Couldn't allocate space for "
+				   "address list for worker[%d]\n", id);
+  worker->probe_list_size = ADDRS_PER_WORKER;
 
   for (int i = 0; i < ADDRS_PER_WORKER; i++) {
     worker->probe_list[i].sin = 
