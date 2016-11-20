@@ -525,27 +525,24 @@ void copy_query_response_to_scanner(dict_t *qr,
 
   worker = &scanner->workers[0];
   int probe_idx = probes_per_worker;
-  for (int i = bound; i < (bound + remainder); i++) {
-        for (int j = bound; j < (bound + probes_per_worker); j++) {
-      list_t *element_list = qr->elements[j];
-      list_node_t* current_element = element_list->list;
-      list_node_t *next_element = NULL;
-      while ( current_element ) {
-	next_element = current_element->next;
-	struct hash_args *hargs = current_element->value;
-	char *keystr = (char*)hargs->keystr;
-	sscanf(keystr, "%s %s %d %d", wsrc_addr, wdst_addr,
-	       &wsport, &wdport);
-	int good = !strcmp(wsrc_addr, SRC_IP);
-	assert( good );
-	copy_per_worker_phase2_copy(worker, qr, &probe_idx, 
-				    wsrc_addr, wdst_addr, wsport, 
-				    wdport);
-	current_element = next_element;
-      }
+  for (int j = bound; j < (bound + remainder); j++) {
+    list_t *element_list = qr->elements[j];
+    list_node_t* current_element = element_list->list;
+    list_node_t *next_element = NULL;
+    while ( current_element ) {
+      next_element = current_element->next;
+      struct hash_args *hargs = current_element->value;
+      char *keystr = (char*)hargs->keystr;
+      sscanf(keystr, "%s %s %d %d", wsrc_addr, wdst_addr,
+	     &wsport, &wdport);
+      int good = !strcmp(wsrc_addr, SRC_IP);
+      assert( good );
+      copy_per_worker_phase2_copy(worker, qr, &probe_idx, 
+				  wsrc_addr, wdst_addr, wsport, 
+				  wdport);
+      current_element = next_element;
     }
   }
-
   sfree(wsrc_addr);
   sfree(wdst_addr);
   return ;
