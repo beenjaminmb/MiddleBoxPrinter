@@ -3,18 +3,17 @@
  * @email: bmixonb1@cs.unm.edu
  */
 
-
 #ifndef _SCANNER_
 #define _SCANNER_
 
-#include <pthread.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include "util.h"
 #include "blacklist.h"
 #include "worker.h"
 #include "sniffer.h"
 #include "dtable.h"
+#include <pthread.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <pcap.h>
 #include <errno.h>
 #include <string.h>

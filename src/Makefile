@@ -9,6 +9,7 @@ targets = main.c dtable.c scanner.c sniffer.c blacklist.c constraint.c logger.c 
 test_scanner = test_scanner.c dtable.c scanner.c sniffer.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
 
 tablesrc = test_dict.c dtable.c
+
 testpcap = test_pcap_reader.c dtable.c scanner.c sniffer.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
 
 all : dist_dillinger test_scanner test_pcap_reader test_dict

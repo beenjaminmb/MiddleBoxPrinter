@@ -310,34 +310,21 @@ dict_t * split_query_response(const char* pcap_fname,
   const unsigned char *packet;
   char errbuf[PCAP_ERRBUF_SIZE];
   struct pcap_pkthdr header;
-
   pcap = pcap_open_offline(pcap_fname, errbuf);
   if (pcap == NULL) {
     printf("%s %d %s %d %s\n",__func__, __LINE__, pcap_fname, errno,
 	   strerror(errno) );
     assert( pcap );
   }  
-#ifdef UNITTEST
-  printf("%s %d\n", __func__, __LINE__);
-#endif
-  
-  int i = 0;
   while ( (packet = pcap_next(pcap, &header)) != NULL ) {
     process_packet(&q_r, packet, phase_stats, 
 		   header.ts, header.caplen);
   }
-
   sfree((void*)pcap);
   pcap = NULL;
   sfree((void*)packet);
   packet = NULL;
-
-#ifdef UNITTEST
-  printf("%s %d: According to valgrind, there are "
-	 "there are two missing free's here\n", __func__, __LINE__);
-#endif
-
- return q_r;    
+  return q_r;    
 }
 
 void *copy_packet(void *v)
@@ -413,7 +400,7 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
 	current_response->value;
       list_node_t *next_response = current_response->next;
       // This needs to be a check on the string of the hashargs value, not the keystring.
-      list_t *pkt_list_to_copy = response_args->value;
+      list_t *pkt_list_to_copy = (list_t*)response_args->value;
       list_node_t *current_packet = pkt_list_to_copy->list;
       char *prev_src_addr = NULL;
       short prev_sport = 0;
@@ -421,7 +408,7 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
 	list_node_t *next_packet = current_packet->next;
 	stringify_node(&packet_to_copy_str,
 		       current_packet->value, 0);
-	sscanf(packet_to_copy_str, "%s %s %d %d",
+	sscanf(packet_to_copy_str, "%s %s %hd %hd",
 	       psrc_addr, pdst_addr, &psport, &pdport);
 	printf("%s %d: probe_idx =  %d\n", __func__, __LINE__, probe_idx);
 	if ( prev_src_addr == NULL ) {
@@ -489,9 +476,7 @@ void copy_query_response_to_scanner(dict_t *qr,
   int n = qr->N;
   int probes_per_worker = n / MAX_WORKERS;
   int remainder = n % MAX_WORKERS;
-  printf("%s %d: number of entries %d %d %d\n", __func__, __LINE__, 
-	 ADDRS_PER_WORKER, phase_stats->total_unique_probes,  
-	 phase_stats->total_unique_responses);
+  
   assert((remainder + (probes_per_worker * MAX_WORKERS)) == n);
   scanner_worker_t *worker = &scanner->workers[0];
   char *wsrc_addr = smalloc(256);
@@ -511,7 +496,7 @@ void copy_query_response_to_scanner(dict_t *qr,
 	next_element = current_element->next;
 	struct hash_args *hargs = current_element->value;
 	char *keystr = (char*)hargs->keystr;
-	sscanf(keystr, "%s %s %d %d", wsrc_addr, wdst_addr,
+	sscanf(keystr, "%s %s %hd %hd", wsrc_addr, wdst_addr,
 	       &wsport, &wdport);
 	int good = !strcmp(wsrc_addr, SRC_IP);
 	assert( good );
@@ -533,7 +518,7 @@ void copy_query_response_to_scanner(dict_t *qr,
       next_element = current_element->next;
       struct hash_args *hargs = current_element->value;
       char *keystr = (char*)hargs->keystr;
-      sscanf(keystr, "%s %s %d %d", wsrc_addr, wdst_addr,
+      sscanf(keystr, "%s %s %hd %hd", wsrc_addr, wdst_addr,
 	     &wsport, &wdport);
       int good = !strcmp(wsrc_addr, SRC_IP);
       assert( good );

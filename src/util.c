@@ -60,7 +60,7 @@ pthread_cond_t *new_cond()
 
 void timestamp_filename(char **fnamep)
 {
-  char *filename = *pnamep;
+  char *filename = *fnamep;
   time_t t = time(NULL);
   struct tm tm = *localtime(&t);
   sprintf(filename, "/vagrant/%d-%d-%d %d:%d:%d.pcap", 

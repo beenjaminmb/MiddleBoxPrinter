@@ -624,7 +624,6 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
     ip->check = range_random(65536, worker->random_data,
 			     &result);
   }
-
   return 0;
 }
 
@@ -648,7 +647,7 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
    * Packet length and checksum also needs to be recalculated.
    *
    */
-  unsigned char *packet_to_copy = response->packet; 
+  unsigned char *packet_to_copy = (unsigned char *)response->packet; 
   memcpy(&worker->probe_list[probe_idx].probe_buff,
 	 (packet_to_copy+sizeof(struct ether_header)),
 	 len);
