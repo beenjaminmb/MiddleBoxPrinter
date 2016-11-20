@@ -28,7 +28,7 @@
 
 static struct scanner_t *scanner = NULL;
 static scan_statistics_t scan_stats;
-
+static dict_t *global_qr_dict = NULL;
 unsigned long free_list(void *args)
 {
   struct hash_args *hargs = args;
@@ -48,43 +48,48 @@ unsigned long free_list(void *args)
   return 0;
 }
 
+void send_packet(scanner_worker_t *worker)
+{
+  int nprobes = worker->probe_list_size;
+  int sockfd = worker->ssocket->sockfd;
+  for (int probe_idx = 0; probe_idx < nprobes; probe_idx++) {
+    struct sockaddr *dest_addr =
+      (struct sockaddr *)worker->probe_list[probe_idx].sin;
+    iphdr *iph = (iphdr *)worker->probe_list[probe_idx].probe_buff;
+    int len = iph->tot_len;
+    sendto(sockfd, worker->probe_list[probe_idx].probe_buff,
+	   len, 0, dest_addr, sizeof(struct sockaddr));
+  }
+  return ;
+}
+
 void stringify_node(char **str, void *vnode, int direction)
 {
   char *s = *str;
   struct packet_value *pv = vnode;
   unsigned char *packet = (unsigned char *)pv->packet;
-
   unsigned char src_addr[32];
   unsigned char dst_addr[32];
-  
-
   packet += sizeof(struct ether_header);
   struct ip *ip = (struct ip*)packet;
-
   char *addr = inet_ntoa(ip->ip_src);
-
   int len = strlen(addr);
-
   memset((void*)src_addr, 0, sizeof(src_addr));
   memcpy((void*)src_addr, (void*)addr, len);
   addr = inet_ntoa(ip->ip_dst);
   len = strlen(addr);
   memset((void*)dst_addr, 0, sizeof(dst_addr));
   memcpy((void*)dst_addr, (void*)addr, len);
-
   struct tcphdr *tcp;
   struct udphdr *udp;
   unsigned short sport = 0;
   unsigned short dport = 0;
-
   int IP_header_len = ip->ip_hl * 4;
-
   switch( ip->ip_p ) {
   case IPPROTO_TCP:
     tcp = (struct tcphdr*)(packet + IP_header_len);
     sport = ntohs(tcp->th_sport);
     dport = ntohs(tcp->th_dport);
-
     break;
   case IPPROTO_UDP:
     udp = (struct udphdr*)(packet + IP_header_len);
@@ -94,7 +99,6 @@ void stringify_node(char **str, void *vnode, int direction)
   default:
     break ;
   }
-
   if ( direction == 0 ) {
     sprintf((char*)s, "%s %s %d %d", (char*)src_addr,
 	    (char*)dst_addr, sport, dport);
@@ -114,7 +118,7 @@ unsigned long str_key(void *value, int right, void *args)
   int c;
   char *tmp = str;
   while ( (c = *tmp++) ) {
-    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    hash = ((hash << 5) + hash) + c;
   }
   if (right) {
     return (unsigned long)(hash % right);
@@ -544,10 +548,8 @@ void generate_phase2_packets()
 			 &scan_stats.phase1);
 
   response_replay(&query_response, &scan_stats.phase1);
-
   copy_query_response_to_scanner(query_response, &scan_stats.phase1);
-
-  dict_destroy_fn(query_response, (free_fn)free_list);
+  global_qr_dict = query_response;
   return ;
 }
 
@@ -599,7 +601,6 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
   iphdr *iph = (iphdr *)packet_buffer;
 
   int len = iph->tot_len;
-
 
 #ifdef UNITTEST
   int ret = sendto(sockfd, packet_buffer, len, 0, dest_addr,
@@ -653,7 +654,9 @@ void phase1(scanner_worker_t *self)
 }
 
 void phase2(scanner_worker_t *self)
-{
+{  
+  send_packet(self);
+
   pthread_mutex_lock(self->scanner->phase2_lock);
   self->scanner->phase2 += 1;
   pthread_cond_signal(self->scanner->phase2_cond);
@@ -801,6 +804,7 @@ int scanner_main_loop(scan_args_t *scan_args)
 
   generate_phase2_packets();
   
+  // Start sniffer again. 
   scanner->phase2_wait = 0;
   pthread_cond_signal(scanner->phase2_wait_cond);
   pthread_mutex_unlock(scanner->phase2_wait_lock);
