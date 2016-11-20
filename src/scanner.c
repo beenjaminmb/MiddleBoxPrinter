@@ -392,12 +392,17 @@ void response_replay(dict_t **dp, phase_stats_t *phase_stats)
  * 1. Each worker get's n / MAX_WORKERS, IP address to send each of 
  *    the n responding hosts.
  */
-void copy_query_response_to_scanner(dict_t *qr)
+void copy_query_response_to_scanner(dict_t *qr, 
+				    phase_stats_t *phase_stats)
 {
   int n = qr->N;
   int probes_per_worker = n / MAX_WORKERS;
   int remainder = n % MAX_WORKERS;
 
+  printf("%s %d: number of entries %d %d %d\n", __func__, __LINE__, 
+	ADDRS_PER_WORKER,
+	phase_stats->total_unique_probes,  
+	phase_stats->total_unique_responses);
   assert((remainder + (probes_per_worker * MAX_WORKERS)) == n);
 
   scanner_worker_t *worker = &scanner->workers[0];
@@ -456,6 +461,8 @@ void copy_query_response_to_scanner(dict_t *qr)
 
 	      sscanf(packet_to_copy_str, "%s %s %d %d",
 		     psrc_addr, pdst_addr, &psport, &pdport);
+
+	      printf("%s %d: probe_idx =  %d\n", __func__, __LINE__, probe_idx);
 
 	      if ( prev_src_addr == NULL ) {
 		deepcopy_packet(worker, current_packet->value,
@@ -534,7 +541,7 @@ void generate_phase2_packets()
                                     }
                        }
   */
-  copy_query_response_to_scanner(query_response);
+  copy_query_response_to_scanner(query_response, &scan_stats.phase1);
 
   dict_destroy_fn(query_response, (free_fn)free_list);
   return ;
@@ -899,14 +906,20 @@ void init_locks()
 void init_stats()
 {
   scan_stats.phase1.total_probes = 0;
+  scan_stats.phase1.total_unique_probes = 0;
+  scan_stats.phase1.total_unique_responses = 0;
   scan_stats.phase1.total_responses = 0;
   scan_stats.phase1.total_responses_with_retransmissions = 0;
 
   scan_stats.phase2.total_probes = 0;
   scan_stats.phase2.total_responses = 0;
+  scan_stats.phase2.total_unique_responses = 0;
+  scan_stats.phase2.total_responses = 0;
   scan_stats.phase2.total_responses_with_retransmissions = 0;
 
   scan_stats.phase3.total_probes = 0;
+  scan_stats.phase3.total_responses = 0;
+  scan_stats.phase3.total_unique_responses = 0;
   scan_stats.phase3.total_responses = 0;
   scan_stats.phase3.total_responses_with_retransmissions = 0;
   return;

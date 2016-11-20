@@ -210,7 +210,7 @@ int test_copy_query_response_to_scanner()
 	 __func__, __LINE__, time);
 
   //print_qr_dict(qr);
-  copy_query_response_to_scanner(qr);
+  copy_query_response_to_scanner(qr, &phase_stats);
   dict_destroy_fn(qr, (free_fn)free_list);
   print_phase_statistics(&phase_stats);
   return 0;

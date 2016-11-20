@@ -164,5 +164,6 @@ void stringify_node( char **str, void *vnode, int direction);
 
 void print_phase_statistics(phase_stats_t *phase_stats);
 
-void copy_query_response_to_scanner(dict_t *qr);
+void copy_query_response_to_scanner(dict_t *qr, 
+				    phase_stats_t *phase_stats);
 #endif

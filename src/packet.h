@@ -142,8 +142,9 @@ static inline iphdr *set_ip(unsigned char *restrict buffer,
 
 
 
-static inline void set_layer_four(unsigned char *restrict buffer, 
-				  short proto)
+static inline void set_layer_four(unsigned char *restrict packet, 
+				  short proto, short sport, 
+				  short dport)
   
   __attribute__((always_inline));
 
@@ -344,9 +345,32 @@ static inline tcphdr *make_tcpheader(unsigned char *restrict buffer,
 }
 
 
-static inline void set_layer_four(unsigned char *restrict buffer, 
-				  short proto)
+static inline void set_layer_four(unsigned char *restrict packet, 
+				  short proto, short sport, 
+				  short dport)
 {
+  struct ip* ip = (struct ip*)packet;
+  int IP_header_len = ip->ip_hl * 4;
+  struct tcphdr *tcp = NULL;
+  struct udphdr *udp = NULL;
+
+  switch ( proto ) {
+  case IPPROTO_TCP:
+    tcp = (struct tcphdr*)(packet + IP_header_len);
+    tcp->th_sport = htons(sport);
+    tcp->th_dport = htons(dport);
+    break;
+  case IPPROTO_UDP:
+    udp = (struct udphdr*)(packet + IP_header_len);
+    udp->uh_sport = htons(sport);
+    udp->uh_dport = htons(dport);
+    break;
+  case IPPROTO_ICMP:
+    break;
+  default: //Don't change anything.
+    
+    break; 
+  }
   return ;
 }
 
@@ -604,10 +628,6 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
 			    short wsport, short wdport,
 			    int probe_idx /* The specific probe */)
 {
-
-
-  
-
   int len = response->capture_len;
   /**
    * Don't overwrite response->value. It is used by all other
@@ -634,16 +654,15 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
 
   struct ip *ip = (struct ip*)
     &worker->probe_list[probe_idx].probe_buff;
-
   
   short ihl = ip->ip_hl;
   short version = ip->ip_v;
   short tos = ip->ip_tos;
-  short id = ip->ip_id;
+  short id = ntohs(ip->ip_id);
   short frag_off = ip->ip_off;
   short ttl = ip->ip_ttl;
   short protocol = ip->ip_p;
-  short tot_len = ip->ip_len;
+  short tot_len = ntohs(ip->ip_len);
   short chk_sum = ip->ip_sum;
   
   set_ip((unsigned char *)worker->probe_list[probe_idx].probe_buff, 
@@ -651,8 +670,9 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
 	 ihl, version, tos, id, frag_off,
 	 ttl, protocol, chk_sum, wsrc_addr, tot_len);
 
-  set_layer_four((unsigned char *)worker->probe_list[probe_idx].probe_buff,
-		 protocol);
+  set_layer_four
+    ((unsigned char *)worker->probe_list[probe_idx].probe_buff,
+     protocol, wsport, wdport);
 
   return ;
 }
