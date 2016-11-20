@@ -1,7 +1,7 @@
 RM=rm
 CC=gcc
 CFLAGS=-O0 -g -Wall -std=gnu99
-DIST_FLAGS=-O3 -Wall -std=gnu99
+DIST_FLAGS=-O0 -g -Wall -std=gnu99
 LDLIBS=-pthread -lpcap -lm
 
 targets = main.c dtable.c scanner.c sniffer.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
@@ -29,8 +29,14 @@ test_scanner_dil : $(test_scanner)
 test_scanner : $(test_scanner)
 	$(CC) $(CFLAGS) -o test_scanner $(test_scanner) $(LDLIBS)
 
+
+test_pcap_reader_dill : $(testpcap)
+	$(CC) -DDILLINGER $(CFLAGS) -o test_pcap_reader $(testpcap) $(LDLIBS)
+
 test_pcap_reader: $(testpcap)
 	$(CC) $(CFLAGS) -o test_pcap_reader $(testpcap) $(LDLIBS)
+
+
 
 test_dict: $(tablesrc)
 	$(CC) $(CFLAGS) -o test_table $(tablesrc)

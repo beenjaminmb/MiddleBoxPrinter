@@ -58,13 +58,25 @@ pthread_cond_t *new_cond()
 }
 
 
-void timestamp_filename(char **fnamep)
+void timestamp_str(char **fnamep, char* str)
 {
   char *filename = *fnamep;
   time_t t = time(NULL);
   struct tm tm = *localtime(&t);
-  sprintf(filename, "/vagrant/%d-%d-%d %d:%d:%d.pcap", 
-	  tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
+  sprintf(filename, "/vagrant/%s-%d-%d-%d-%d:%d:%d.txt", 
+	  str, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
+	  tm.tm_hour, tm.tm_min, tm.tm_sec);
+  return;
+}
+
+
+void timestamp_filename(char **fnamep, int phase)
+{
+  char *filename = *fnamep;
+  time_t t = time(NULL);
+  struct tm tm = *localtime(&t);
+  sprintf(filename, "/vagrant/phase%d-%d-%d-%d-%d:%d:%d.pcap", 
+	  phase, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
 	  tm.tm_hour, tm.tm_min, tm.tm_sec);
   return;
 }

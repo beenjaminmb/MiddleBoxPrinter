@@ -21,8 +21,8 @@
 
 #define MAX_PCAP_NAME_LEN 1024
 #define LUCKY 13
-#define PHASE1_ITERATIONS 10
-#define PHASE2_ITERATIONS 10
+#define PHASE1_ITERATIONS 1
+#define PHASE2_ITERATIONS 1
 #define DEBUG 0
 #define TEST_SEED 0
 #define STATE_SIZE 8
@@ -170,4 +170,6 @@ void print_phase_statistics(phase_stats_t *phase_stats);
 
 void copy_query_response_to_scanner(dict_t *qr, 
 				    phase_stats_t *phase_stats);
+
+void log_phase_statistics(phase_stats_t *phase_stats);
 #endif

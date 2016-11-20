@@ -24,13 +24,14 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
-#define PCAP_FILE_NAME "test-launch.pcap"
+#define PCAP_FILE_NAME "/vagrant/2016-11-20 5:36:27.pcap"
 //#define PCAP_FILE_NAME "capnext.pcap"
 #define TS_SPOOF_IP "64.106.82.6" /* IP address tonysoprano 
 				     uses to spoof ip addresses. */
 
-#define BLACKLIST_FILE "blacklist.conf"
-#define QR_DICT_SIZEp 2
+#define BLACKLIST_FILE "/vagrant/blacklist.conf"
+#define QR_DICT_SIZEp 1024
+static char filename[1024];
 
 int test_parse_pcap()
 {
@@ -46,7 +47,7 @@ int test_parse_pcap()
   const unsigned char *packet;
   char errbuf[PCAP_ERRBUF_SIZE];
   struct pcap_pkthdr header;
-  pcap_t *pcap = pcap_open_offline(PCAP_FILE_NAME, errbuf);
+  pcap_t *pcap = pcap_open_offline(filename, errbuf);
   assert( pcap );
   
   printf("%s %d\n", __func__, __LINE__);
@@ -152,7 +153,7 @@ int test_split_qr()
   printf("%s %d: Test Starting\n",__func__, __LINE__);
   double time;
   START_TIMER(time);
-  dict_t *qr = split_query_response(PCAP_FILE_NAME, &phase_stats);
+  dict_t *qr = split_query_response(filename, &phase_stats);
   STOP_TIMER(time);
   printf("%s %d %f: Test Ending\n",__func__, __LINE__, time);
   //print_qr_dict(qr);
@@ -174,7 +175,7 @@ int test_response_reply()
     .total_responses_with_retransmissions = 0
   };
 
-  dict_t *qr = split_query_response(PCAP_FILE_NAME, &phase_stats);
+  dict_t *qr = split_query_response(filename, &phase_stats);
 
   double time;
   START_TIMER(time);
@@ -200,7 +201,7 @@ int test_copy_query_response_to_scanner()
     .total_responses_with_retransmissions = 0
   };
 
-  dict_t *qr = split_query_response(PCAP_FILE_NAME, &phase_stats);
+  dict_t *qr = split_query_response(filename, &phase_stats);
 
   double time;
   START_TIMER(time);
@@ -222,8 +223,15 @@ void split_addr(char *s)
   return;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+  if (argc == 1) {
+    memcpy(filename, PCAP_FILE_NAME, strlen(PCAP_FILE_NAME));
+  }
+  else {
+    memcpy(filename, argv[1], strlen(argv[1]));
+    printf("%s %s\n", argv[1], filename);
+  }
   new_scanner_singleton();
   init_blacklist(BLACKLIST_FILE);
 

@@ -69,6 +69,7 @@ pthread_cond_t *new_cond();
 
 pthread_mutex_t *new_mutex();
 
-void timestamp_filename(char **fnamep);
+void timestamp_filename(char **fnamep, int phase);
+void timestamp_str(char **fnamep, char* str);
 
 #endif /* _UTIL_ */

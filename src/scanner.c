@@ -2,6 +2,7 @@
  * @author: Ben Mixon-Baca
  * @email: bmixonb1@cs.unm.edu
  */
+#include <stdlib.h>
 #include <pthread.h>
 #include <signal.h>
 #include <sys/socket.h>
@@ -29,6 +30,7 @@
 static struct scanner_t *scanner = NULL;
 static scan_statistics_t scan_stats;
 static dict_t *global_qr_dict = NULL;
+static FILE *log_file = NULL;
 unsigned long free_list(void *args)
 {
   struct hash_args *hargs = args;
@@ -389,7 +391,7 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
   char *psrc_addr = smalloc(256);
   char *pdst_addr = smalloc(256);
   short psport = 0;
-  short pdport = 0;    
+  short pdport = 0;
   int n = qr->N;
   int probe_idx = *probe_id;
   for(int k = 0; k < n; k++) {
@@ -410,16 +412,7 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
 		       current_packet->value, 0);
 	sscanf(packet_to_copy_str, "%s %s %hd %hd",
 	       psrc_addr, pdst_addr, &psport, &pdport);
-	printf("%s %d: probe_idx =  %d\n", __func__, __LINE__, probe_idx);
 	if ( prev_src_addr == NULL ) {
-	  union addr {
-	    unsigned int addr;
-	    unsigned char o1;
-	    unsigned char o2;
-	    unsigned char o3;
-	    unsigned char o4;
-	  };
-
 	  deepcopy_packet(worker, current_packet->value,
 			  wsrc_addr, wdst_addr, wsport,
 			  wdport, probe_idx);
@@ -437,8 +430,8 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
 	}
 	else {
 	  int not_seen = 
-	    (strcmp(prev_src_addr, pdst_addr)) &
-	    (prev_sport != psport) ? 1 : 0;
+	    (strcmp(prev_src_addr, pdst_addr)) ||
+	    (prev_sport != psport) ? 1 : 0; // Logical error here
 	  if ( not_seen ) {
 	    deepcopy_packet(worker, current_packet->value,
 			    wsrc_addr, wdst_addr, wsport,
@@ -507,6 +500,7 @@ void copy_query_response_to_scanner(dict_t *qr,
 	       &wsport, &wdport);
 	int good = !strcmp(wsrc_addr, SRC_IP);
 	assert( good );
+	fprintf(log_file, "%s,%s\n", wdst_addr, wdport);
 	copy_per_worker_phase2_copy(worker, qr, &probe_idx, 
 				    wsrc_addr, wdst_addr, wsport, 
 				    wdport);
@@ -558,7 +552,6 @@ void generate_phase2_packets()
   dict_t *query_response =
     split_query_response(scanner->current_pcap_file_name,
 			 &scan_stats.phase1);
-
   response_replay(&query_response, &scan_stats.phase1);
   copy_query_response_to_scanner(query_response, &scan_stats.phase1);
   global_qr_dict = query_response;
@@ -731,7 +724,7 @@ void *find_responses(void *vworker)
   }
 
   inc_phase_counter(worker, 2);
-
+  
   printf("DONE\n");
   return NULL;
 }
@@ -809,14 +802,13 @@ int scanner_main_loop(scan_args_t *scan_args)
   pthread_mutex_lock(scanner->phase1_lock);
   pthread_mutex_lock(scanner->phase2_lock);
   pthread_mutex_lock(scanner->phase2_wait_lock);
-  char filename[MAX_PCAP_NAME_LEN];
-  memset(filename, 0, MAX_PCAP_NAME_LEN);
+  char *filename = smalloc(MAX_PCAP_NAME_LEN);
 
-  timestamp_filename((char**)&filename);
+  timestamp_filename((char**)&filename, 1);
+  scanner->current_pcap_file_name = (char *)filename;
+
   start_sniffer(scanner->sniffer, filename);
-
   start_workers();
-
   while(scanner->phase1 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase1_cond, scanner->phase1_lock);
   }
@@ -824,19 +816,17 @@ int scanner_main_loop(scan_args_t *scan_args)
   pthread_mutex_unlock(scanner->phase1_lock);
 
   sleep(60);
-
   stop_sniffer(scanner->sniffer);
+
   generate_phase2_packets();
-
   memset(filename, 0, MAX_PCAP_NAME_LEN);
-  timestamp_filename((char**)&filename);
+  timestamp_filename((char**)&filename, 2);
+  scanner->current_pcap_file_name = (char *)filename;
   start_sniffer(scanner->sniffer, filename);
-
   scanner->phase2_wait = 0;
+
   pthread_cond_signal(scanner->phase2_wait_cond);
   pthread_mutex_unlock(scanner->phase2_wait_lock);
-
-
   while(scanner->phase2 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase2_cond, scanner->phase2_lock);
   }
@@ -844,8 +834,12 @@ int scanner_main_loop(scan_args_t *scan_args)
 
   sleep(60);
   stop_sniffer(scanner->sniffer);
+  log_phase_statistics(&scan_stats.phase1);
+  // response_replay(global_qr_dict, &scan_stats.phase2);
+  log_phase_statistics(&scan_stats.phase2);
   delete_scanner(scanner);
   sfree(scanner);
+  free(filename);
   scanner = NULL;
   return 0;
 }
@@ -879,6 +873,7 @@ int new_worker(scanner_worker_t *worker, int id)
   if (setsockopt(worker->ssocket->sockfd, SOL_SOCKET,
 		 SO_BINDTODEVICE, CAPTURE_INTERFACE,
 		 strlen(CAPTURE_INTERFACE)) ) {
+    printf("%s %d %s %d %s\n", __func__, __LINE__, strerror(errno), errno, CAPTURE_INTERFACE);
     printf("getsockopt() for worker[%d]\n", id);
     return -1;
   }
@@ -888,10 +883,9 @@ int new_worker(scanner_worker_t *worker, int id)
 			       "Couldn't allocate thread for"
 			       " worker[%d]\n", id);
 
-  worker->random_data = smalloc_msg(sizeof(struct random_data),
-				    "Couldn't allocate random_data "
-				    "storage for worker[%d]\n", 
-				    id);
+  worker->random_data = malloc(sizeof(struct random_data));
+
+  assert(worker->random_data);
 
   worker->state_size = STATE_SIZE;
   worker->random_state = smalloc_msg(STATE_SIZE, "Couldn't allocate "
@@ -899,7 +893,7 @@ int new_worker(scanner_worker_t *worker, int id)
 				     "worker[%d]\n",
 				     id);
   double time = wall_time() + id;
-  srandom_r((long)time, worker->random_data);
+  //  srandom_r((long)time, worker->random_data);
   worker->seed = (long)time;
 
   if (initstate_r(worker->seed, worker->random_state, STATE_SIZE,
@@ -971,12 +965,17 @@ void init_stats()
  */
 static void init_scanner_random()
 {
-  scanner->random_data = smalloc( sizeof(struct random_data) );
+  scanner->random_data = malloc(sizeof(struct random_data) );
+
+  assert( scanner->random_data );
+
   scanner->state_size = STATE_SIZE;
-  scanner->random_state = smalloc(STATE_SIZE);
+  scanner->random_state = malloc(STATE_SIZE);
+
+  assert(scanner->random_state);
   double time = wall_time() + LUCKY;
-  srandom_r((long)time, scanner->random_data);
-  scanner->seed = (long)time;
+  //srandom_r((long)time, scanner->random_data);
+  scanner->seed = (long )time;
   if (initstate_r(scanner->seed, scanner->random_state, STATE_SIZE,
 		  scanner->random_data) < 0) {
     printf("Couldn't initialize random_state for scanner.\n");
@@ -995,6 +994,15 @@ static void init_workers()
   }
   return;
 }
+
+static void init_logfile()
+{
+  char *filename = smalloc(MAX_PCAP_NAME_LEN);
+  timestamp_str((char**)&filename, "log-file");
+  log_file=fopen(filename, "w");
+  free(filename);
+}
+
 /** 
  * Either build a scanner singleton or create a completely new one
  *  if we have already built on in the past. This is simply an 
@@ -1021,6 +1029,7 @@ scanner_t *new_scanner_singleton()
   init_sniffer(scanner->sniffer);
   init_locks();
   init_conds();
+  init_logfile();
   scanner->current_pcap_file_name = NULL;
   return scanner;
 }
@@ -1059,7 +1068,7 @@ void delete_workers(scanner_worker_t *worker)
   sfree(worker->random_state);
   worker->random_state = NULL;
 
-  for (int i = 0; i < ADDRS_PER_WORKER; i++) {
+  for (int i = 0; i < worker->probe_list_size; i++) {
     sfree(worker->probe_list[i].sin);
   }
   sfree(worker->probe_list);
@@ -1092,5 +1101,21 @@ void print_phase_statistics(phase_stats_t *phase_stats)
 	 phase_stats->total_responses);
   printf("\t  total responses with retransmissions: %d\n", 
 	 phase_stats->total_responses_with_retransmissions);
+  return;
+}
+
+void log_phase_statistics(phase_stats_t *phase_stats)
+{
+  fprintf(log_file, "Scan statistics: \n");
+  fprintf(log_file, "\t  total probes sent:                    %d\n",
+	  phase_stats->total_probes);
+  fprintf(log_file, "\t  total probes sent:                    %d\n",
+	  phase_stats->total_unique_probes);
+  fprintf(log_file, "\t  total unique responses:               %d\n",
+	  phase_stats->total_unique_responses);
+  fprintf(log_file, "\t  total responses:                      %d\n",
+	  phase_stats->total_responses);
+  fprintf(log_file, "\t  total responses with retransmissions: %d\n",
+	  phase_stats->total_responses_with_retransmissions);
   return;
 }
