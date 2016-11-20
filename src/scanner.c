@@ -412,7 +412,14 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
 	       psrc_addr, pdst_addr, &psport, &pdport);
 	printf("%s %d: probe_idx =  %d\n", __func__, __LINE__, probe_idx);
 	if ( prev_src_addr == NULL ) {
-	  
+	  union addr {
+	    unsigned int addr;
+	    unsigned char o1;
+	    unsigned char o2;
+	    unsigned char o3;
+	    unsigned char o4;
+	  };
+
 	  deepcopy_packet(worker, current_packet->value,
 			  wsrc_addr, wdst_addr, wsport,
 			  wdport, probe_idx);
