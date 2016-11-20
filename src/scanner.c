@@ -498,9 +498,10 @@ void copy_query_response_to_scanner(dict_t *qr,
   char *wdst_addr = smalloc(256);
   short wsport = 0;
   short wdport = 0;
+  int bound = 0;
   for (int i = 0; i < MAX_WORKERS; i++) {
     worker = &scanner->workers[i];
-    int bound = (i * probes_per_worker);
+    bound = (i * probes_per_worker);
     int probe_idx = 0;
     for (int j = bound; j < (bound + probes_per_worker); j++) {
       list_t *element_list = qr->elements[j];
@@ -514,18 +515,40 @@ void copy_query_response_to_scanner(dict_t *qr,
 	       &wsport, &wdport);
 	int good = !strcmp(wsrc_addr, SRC_IP);
 	assert( good );
-	copy_per_worker_phase2_copy(worker, qr, &probe_idx, wsrc_addr, 
-				    wdst_addr, wsport, wdport);
+	copy_per_worker_phase2_copy(worker, qr, &probe_idx, 
+				    wsrc_addr, wdst_addr, wsport, 
+				    wdport);
 	current_element = next_element;
       }
     }
   }
+
+  worker = &scanner->workers[0];
+  int probe_idx = probes_per_worker;
+  for (int i = bound; i < (bound + remainder); i++) {
+        for (int j = bound; j < (bound + probes_per_worker); j++) {
+      list_t *element_list = qr->elements[j];
+      list_node_t* current_element = element_list->list;
+      list_node_t *next_element = NULL;
+      while ( current_element ) {
+	next_element = current_element->next;
+	struct hash_args *hargs = current_element->value;
+	char *keystr = (char*)hargs->keystr;
+	sscanf(keystr, "%s %s %d %d", wsrc_addr, wdst_addr,
+	       &wsport, &wdport);
+	int good = !strcmp(wsrc_addr, SRC_IP);
+	assert( good );
+	copy_per_worker_phase2_copy(worker, qr, &probe_idx, 
+				    wsrc_addr, wdst_addr, wsport, 
+				    wdport);
+	current_element = next_element;
+      }
+    }
+  }
+
   sfree(wsrc_addr);
   sfree(wdst_addr);
   return ;
-  /* for (int i = 0; i < remainder; i++) { */
-  /*   deepcopy_packet(worker, NULL, (probes_per_worker + i)); */
-  /* } */
 }
 
 void generate_phase2_packets()
@@ -557,7 +580,6 @@ void send_scan_packet(unsigned char *restrict packet_buffer,
 		      int sockfd, scanner_worker_t *restrict worker,
 		      int probe_idx, int ttl)
 {
-
   struct sockaddr *dest_addr =
     (struct sockaddr *)worker->probe_list[probe_idx].sin;
   iphdr *iph = (iphdr *)packet_buffer;
@@ -567,15 +589,12 @@ void send_scan_packet(unsigned char *restrict packet_buffer,
     iph->check = csum((unsigned short *)packet_buffer,
 		      iph->tot_len);
   }
-
   else {
     iph->check = range_random(65536, worker->random_data,
 			      &result);
   }
-
   sendto(sockfd, packet_buffer, len, 0, dest_addr, 
 	 sizeof(struct sockaddr));
-
   return ;
 }
 
@@ -599,9 +618,7 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
   struct sockaddr *dest_addr =
     (struct sockaddr *)worker->probe_list[probe_idx].sin;
   iphdr *iph = (iphdr *)packet_buffer;
-
   int len = iph->tot_len;
-
 #ifdef UNITTEST
   int ret = sendto(sockfd, packet_buffer, len, 0, dest_addr,
 		   sizeof(struct sockaddr));
@@ -653,15 +670,32 @@ void phase1(scanner_worker_t *self)
   return ;
 }
 
-void phase2(scanner_worker_t *self)
-{  
-  send_packet(self);
 
-  pthread_mutex_lock(self->scanner->phase2_lock);
-  self->scanner->phase2 += 1;
-  pthread_cond_signal(self->scanner->phase2_cond);
-  pthread_mutex_unlock(self->scanner->phase2_lock);
+static void inc_phase_counter(scanner_worker_t *worker, int phase)
+{
+  switch(phase) {
+  case 1: 
+    pthread_mutex_lock(worker->scanner->phase1_lock);
+    worker->scanner->phase1 += 1;
+    pthread_cond_signal(worker->scanner->phase1_cond);
+    pthread_mutex_unlock(worker->scanner->phase1_lock);
+    break;
+  case 2:
+    pthread_mutex_lock(worker->scanner->phase2_lock);
+    worker->scanner->phase2 += 1;
+    pthread_cond_signal(worker->scanner->phase2_cond);
+    pthread_mutex_unlock(worker->scanner->phase2_lock);
+    break;
+  default:
+    assert(0);
+  }
   return;
+}
+
+void phase2(scanner_worker_t *self)
+{
+  send_packet(self);
+  return; 
 }
 
 void phase2_wait(scanner_worker_t *self)
@@ -695,18 +729,19 @@ void *find_responses(void *vworker)
 {
   scanner_worker_t *worker = vworker;
 
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < PHASE1_ITERATIONS; i++) {
     phase1(worker);
   }
 
-  pthread_mutex_lock(scanner->phase1_lock);
-  worker->scanner->phase1 += 1;
-  pthread_cond_signal(worker->scanner->phase1_cond);
-  pthread_mutex_unlock(worker->scanner->phase1_lock);
+  inc_phase_counter(worker, 1);
 
   phase2_wait(worker);
 
-  phase2(worker);
+  for (int i = 0; i < PHASE1_ITERATIONS; i++) {
+    phase2(worker);
+  }
+
+  inc_phase_counter(worker, 2);
 
   printf("DONE\n");
   return NULL;
@@ -772,8 +807,16 @@ int scanner_main_loop(scan_args_t *scan_args)
   pthread_mutex_lock(scanner->phase1_lock);
   pthread_mutex_lock(scanner->phase2_lock);
   pthread_mutex_lock(scanner->phase2_wait_lock);
+  char filename[MAX_PCAP_NAME_LEN];
+  memset(filename, 0, MAX_PCAP_NAME_LEN);
+  time_t t = time(NULL);
+  struct tm tm = *localtime(&t);
 
-  start_sniffer(scanner->sniffer, "/vagrant/test-launch.pcap");
+  sprintf(filename, "/vagrant/%d-%d-%d %d:%d:%d.pcap", 
+	  tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
+	  tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+  start_sniffer(scanner->sniffer, filename);
 
   for (int i = 0; i < MAX_WORKERS; i++) {
     if (pthread_create(scanner->workers[i].thread, NULL,
@@ -788,32 +831,34 @@ int scanner_main_loop(scan_args_t *scan_args)
   while(scanner->phase1 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase1_cond, scanner->phase1_lock);
   }
-  /**
-   * By this point, all of the workers should have 
-   * finished sending all of their phase 1 probes.
-   */
+
   pthread_mutex_unlock(scanner->phase1_lock);
-  
-  /**
-   * We should wait 1 minute before signalling the 
-   * sniffer to pause sniffing.
-   */
+
   sleep(60);
 
   stop_sniffer(scanner->sniffer);
-
   generate_phase2_packets();
-  
+
+  memset(filename, 0, MAX_PCAP_NAME_LEN);
+
+  t = time(NULL);
+  tm = *localtime(&t);
+
+  sprintf(filename, "/vagrant/%d-%d-%d %d:%d:%d.pcap", 
+	  tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
+	  tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+  start_sniffer(scanner->sniffer, filename);
   // Start sniffer again. 
   scanner->phase2_wait = 0;
   pthread_cond_signal(scanner->phase2_wait_cond);
   pthread_mutex_unlock(scanner->phase2_wait_lock);
-
   while(scanner->phase2 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase2_cond, scanner->phase2_lock);
   }
   pthread_mutex_unlock(scanner->phase2_lock);
-
+  sleep(60);
+  stop_sniffer(scanner->sniffer);
   delete_scanner(scanner);
   sfree(scanner);
   scanner = NULL;
@@ -868,19 +913,21 @@ int new_worker(scanner_worker_t *worker, int id)
 				     "random_state storage for "
 				     "worker[%d]\n",
 				     id);
+  double time = wall_time() + id;
+  srandom_r((long)time, worker->random_data);
+  worker->seed = (long)time;
 
-  if (initstate_r(TEST_SEED, worker->random_state, STATE_SIZE,
+  if (initstate_r(worker->seed, worker->random_state, STATE_SIZE,
 		  worker->random_data) < 0) {
     printf("Couldn't initialize random_state for worker[%d]'s.\n",
 	   id);
     assert(0);
-  }
-  
-  worker->probe_list = smalloc_msg(sizeof(probe_t) * ADDRS_PER_WORKER,
-				   "Couldn't allocate space for "
-				   "address list for worker[%d]\n", id);
+  }  
+  worker->probe_list = 
+    smalloc_msg(sizeof(probe_t) * ADDRS_PER_WORKER,
+		"Couldn't allocate space for "
+		"address list for worker[%d]\n", id);
   worker->probe_list_size = ADDRS_PER_WORKER;
-
   for (int i = 0; i < ADDRS_PER_WORKER; i++) {
     worker->probe_list[i].sin = 
       smalloc_msg(sizeof(struct sockaddr_in),
@@ -888,11 +935,6 @@ int new_worker(scanner_worker_t *worker, int id)
 		  "probe sockaddr_in for "
 		  "worker[%d]\n", id);
   }
-
-  double time = wall_time() + id;
-  srandom_r((long)time, worker->random_data);
-
-  worker->seed = (long)time;
   worker->worker_id = id;
   worker->probe_idx = 0;
   worker->current_ttl = START_TTL;
@@ -917,7 +959,6 @@ void init_locks()
   return;
 }
 
-
 void init_stats()
 {
   scan_stats.phase1.total_probes = 0;
@@ -940,6 +981,35 @@ void init_stats()
   return;
 }
 
+/**
+ * @warning: Need to free up all this crap too eventually!!!
+ */
+static void init_scanner_random()
+{
+  scanner->random_data = smalloc( sizeof(struct random_data) );
+  scanner->state_size = STATE_SIZE;
+  scanner->random_state = smalloc(STATE_SIZE);
+  double time = wall_time() + LUCKY;
+  srandom_r((long)time, scanner->random_data);
+  scanner->seed = (long)time;
+  if (initstate_r(scanner->seed, scanner->random_state, STATE_SIZE,
+		  scanner->random_data) < 0) {
+    printf("Couldn't initialize random_state for scanner.\n");
+    assert(0);
+  }
+  return;
+}
+
+static void init_workers()
+{
+  for (int i = 0 ; i < MAX_WORKERS; i++) {
+    if (new_worker(&scanner->workers[i], i) != i) {
+      exit(-1);
+    }
+    scanner->workers[i].scanner = scanner;
+  }
+  return;
+}
 /** 
  * Either build a scanner singleton or create a completely new one
  *  if we have already built on in the past. This is simply an 
@@ -960,26 +1030,13 @@ scanner_t *new_scanner_singleton()
   scanner->phase2_wait = 1;
   scanner->workers = malloc(sizeof(scanner_worker_t) * MAX_WORKERS);
   assert( scanner->workers );
-  scanner->current_pcap_file_name = NULL;
-  scanner->random_state = NULL;
-
-  scanner->random_data = smalloc( sizeof(struct random_data) );
- 
-  for (int i = 0 ; i < MAX_WORKERS; i++) {
-    if (new_worker(&scanner->workers[i], i) != i) {
-      exit(-1);
-    }
-    scanner->workers[i].scanner = scanner;
-  }
-
+  init_scanner_random();
+  init_workers();
   scanner->sniffer = smalloc( sizeof(sniffer_t) );
-
   init_sniffer(scanner->sniffer);
-  
   init_locks();
-  
   init_conds();
-
+  scanner->current_pcap_file_name = NULL;
   return scanner;
 }
 

@@ -77,17 +77,18 @@ void start_sniffer(sniffer_t *sniffer, void *args)
   if ( pid  ==  0 ) {
     char *capture_file = (char*)args;
     printf("sniffing sniffer in child\n");
-    const char *tcpdump[] = {"/usr/sbin/tcpdump" , "-i" , CAPTURE_INTERFACE, 
-			     "-w", capture_file, CAPTURE_FILTER, NULL};
-    const char *argp[] = {NULL};
-    int ret = execve(tcpdump[0], (char**)tcpdump, (char**)argp);
+    const char *tcpdump[] = {"/usr/sbin/tcpdump" , "-i",
+			     CAPTURE_INTERFACE, "-w", capture_file,
+			     CAPTURE_FILTER, NULL};
+    const char *envp[] = {NULL};
+    int ret = execve(tcpdump[0], (char**)tcpdump, (char**)envp);
     if ( ret == -1 ) {
-      printf("Failed to open tcpdump exiting %d %s\n", errno, strerror(errno));
+      printf("Failed to open tcpdump exiting %d %s\n", 
+	     errno, strerror(errno));
       exit(-1);
     }
-    return;
+    return ;
   } 
-
   else {
     sleep(1);
     sniffer->pid = pid;

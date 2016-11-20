@@ -20,6 +20,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#define MAX_PCAP_NAME_LEN 1024
+#define LUCKY 13
+#define PHASE1_ITERATIONS 10
+#define PHASE2_ITERATIONS 10
 #define DEBUG 0
 #define TEST_SEED 0
 #define STATE_SIZE 8
@@ -75,7 +79,8 @@ typedef struct scanner_t {
   char *current_pcap_file_name;
   struct random_data *random_data;
   char *random_state;
-
+  int seed; 
+  int state_size;
   int keep_scanning;
   int phase1;
   int phase2;

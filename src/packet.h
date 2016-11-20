@@ -78,6 +78,12 @@ typedef struct pseudo_header
 static inline unsigned short csum(unsigned short *ptr, int nbytes)
   __attribute__((always_inline));
 
+static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
+			    packet_value_t *response,
+			    char *wsrc_addr, char* wdst_addr,
+			    short wsport, short wdport,
+			    int probe_idx /* The specific probe */);
+
 static inline unsigned short random_sport(scanner_worker_t *restrict 
 					  worker)
   __attribute__((always_inline));
@@ -643,13 +649,10 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
    *
    */
   unsigned char *packet_to_copy = response->packet; 
-  probe_t *prev_probe = &worker->probe_list[probe_idx];
-
   memcpy(&worker->probe_list[probe_idx].probe_buff,
 	 (packet_to_copy+sizeof(struct ether_header)),
 	 len);
-  
-  worker->probe_list[probe_idx].sin->sin_addr.s_addr =  // Newly allocated probe lists needs to have some fields initialized
+  worker->probe_list[probe_idx].sin->sin_addr.s_addr = 
     inet_addr(wdst_addr);
 
   struct ip *ip = (struct ip*)
