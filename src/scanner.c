@@ -432,8 +432,8 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
 	      realloc(worker->probe_list,
 		      sizeof(probe_t) * probe_idx * 2);
 	    assert(worker->probe_list);
-	    for (int i = probe_idx; i < probe_idx * 2; i++){
-	      init_probe_t(&worker->probe_list[probe_idx]);
+	    for (int i = probe_idx; i < (probe_idx * 2); i++){
+	      init_probe_t(&worker->probe_list[i]);
 	    }
 	  }
 	}
@@ -454,7 +454,7 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
 	      assert(worker->probe_list);
 	      worker->probe_list_size = probe_idx * 2;
 	      for (int i = probe_idx; i < probe_idx * 2; i++) {
-		init_probe_t(&worker->probe_list[probe_idx]);
+		init_probe_t(&worker->probe_list[i]);
 	      }
 	    }
 	  }
@@ -470,7 +470,7 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
   *probe_id = probe_idx;
   sfree(packet_to_copy_str);
   sfree(psrc_addr);
-  sfree(psrc_addr);
+  sfree(pdst_addr);
   return;
 }
 
@@ -517,7 +517,7 @@ void copy_query_response_to_scanner(dict_t *qr,
     }
   }
   sfree(wsrc_addr);
-  sfree(wsrc_addr);
+  sfree(wdst_addr);
   return ;
   /* for (int i = 0; i < remainder; i++) { */
   /*   deepcopy_packet(worker, NULL, (probes_per_worker + i)); */
