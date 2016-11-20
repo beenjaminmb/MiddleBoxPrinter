@@ -388,11 +388,16 @@ void response_replay(dict_t **dp, phase_stats_t *phase_stats)
   return ;
 }
 
-static void copy_per_worker_phase2_copy(dict_t *qr, int *probe_idx)
+static void copy_per_worker_phase2_copy(scanner_worker_t *worker, dict_t *qr, int *probe_id, 
+					char *wsrc_addr, char *wdst_addr, int wsport, int wdport)
 {
+  char *packet_to_copy_str = smalloc(256);
+  char *psrc_addr = smalloc(256);
+  char *pdst_addr = smalloc(256);
+  short psport = 0;
+  short pdport = 0;    
   int n = qr->N;
-  int probe_id = *probe_idx;
-
+  int probe_idx = *probe_id;
   for(int k = 0; k < n; k++) {
     list_t *response_list = qr->elements[k];
     list_node_t* current_response = response_list->list;    
@@ -401,27 +406,22 @@ static void copy_per_worker_phase2_copy(dict_t *qr, int *probe_idx)
 	current_response->value;
       list_node_t *next_response = current_response->next;
       // This needs to be a check on the string of the hashargs value, not the keystring.
-      list_t *pkt_list_to_copy = response_args->value;
-      
+      list_t *pkt_list_to_copy = response_args->value;      
       list_node_t *current_packet = pkt_list_to_copy->list;
       char *prev_src_addr = NULL;
       short prev_sport = 0; 
       while( current_packet ) {
 	list_node_t *next_packet = current_packet->next;
-	
 	stringify_node(&packet_to_copy_str,
 		       current_packet->value, 0);
-	
 	sscanf(packet_to_copy_str, "%s %s %d %d",
-	       psrc_addr, pdst_addr, &psport, &pdport);
-	
+	       psrc_addr, pdst_addr, &psport, &pdport);	
 	printf("%s %d: probe_idx =  %d\n", __func__, __LINE__, probe_idx);
-	
 	if ( prev_src_addr == NULL ) {
 	  deepcopy_packet(worker, current_packet->value,
 			  wsrc_addr, wdst_addr, wsport,
 			  wdport, probe_idx);
-	  pprobe_id++;
+	  probe_idx++;
 	}
 	else {
 	  int not_seen = 
@@ -442,7 +442,10 @@ static void copy_per_worker_phase2_copy(dict_t *qr, int *probe_idx)
       current_response = next_response;
     }
   }
-  *probe_idx = probe_id;
+  sfree(packet_to_copy_str);
+  *probe_id = probe_idx;
+  sfree(psrc_addr);
+  sfree(psrc_addr);
   return;
 }
 
@@ -457,26 +460,15 @@ void copy_query_response_to_scanner(dict_t *qr,
   int n = qr->N;
   int probes_per_worker = n / MAX_WORKERS;
   int remainder = n % MAX_WORKERS;
-
   printf("%s %d: number of entries %d %d %d\n", __func__, __LINE__, 
 	ADDRS_PER_WORKER, phase_stats->total_unique_probes,  
 	phase_stats->total_unique_responses);
-
   assert((remainder + (probes_per_worker * MAX_WORKERS)) == n);
-
   scanner_worker_t *worker = &scanner->workers[0];
   char *wsrc_addr = smalloc(256);
   char *wdst_addr = smalloc(256);
   short wsport = 0;
   short wdport = 0;
-
-  char *psrc_addr = smalloc(256);
-  char *pdst_addr = smalloc(256);
-  short psport = 0;
-  short pdport = 0;  
-  
-  char *packet_to_copy_str = smalloc(256);
-	      
   for (int i = 0; i < MAX_WORKERS; i++) {
     worker = &scanner->workers[i];
     int bound = (i * probes_per_worker);
@@ -488,33 +480,23 @@ void copy_query_response_to_scanner(dict_t *qr,
       while ( current_element ) {
 	next_element = current_element->next;
 	struct hash_args *hargs = current_element->value;/* Start new function "per_worker_phase2_copy" */
-
 	char *keystr = (char*)hargs->keystr;
 	sscanf(keystr, "%s %s %d %d", wsrc_addr, wdst_addr,
 	       &wsport, &wdport);
 	int good = !strcmp(wsrc_addr, SRC_IP);
 	assert( good );
-	/**
-	 * No we make a copy of every probe the
-	 * ellicited a response for this one
-	 * host.
-	 */
-	copy_per_worker_phase2_copy(qr, &probe_idx);
+	copy_per_worker_phase2_copy(worker, qr, &probe_idx, wsrc_addr, 
+				    wdst_addr, wsport, wdport);
 	current_element = next_element;
       }
     }
   }
-
-  /* for (int i = 0; i < remainder; i++) { */
-  /*   deepcopy_packet(worker, NULL, (probes_per_worker + i)); */
-  /* } */
-
-  sfree(packet_to_copy_str);
-  sfree(psrc_addr);
-  sfree(psrc_addr);
   sfree(wsrc_addr);
   sfree(wsrc_addr);
   return ;
+  /* for (int i = 0; i < remainder; i++) { */
+  /*   deepcopy_packet(worker, NULL, (probes_per_worker + i)); */
+  /* } */
 }
 
 void generate_phase2_packets()
@@ -537,21 +519,7 @@ void generate_phase2_packets()
 			 &scan_stats.phase1);
 
   response_replay(&query_response, &scan_stats.phase1);
-  /**
-   query_response[i] = list_t {
-                         list_node_t { 
-			   .next, .prev, 
-                           .value = struct hash_arg {
-                                      .keystr = src, dst, sport, dport
-		                      .value = list_t* {
-				             { .next, .prev
-				               .value = 
-				             },... 
-                                          }
-                                       }
-                                    }
-                       }
-  */
+
   copy_query_response_to_scanner(query_response, &scan_stats.phase1);
 
   dict_destroy_fn(query_response, (free_fn)free_list);
