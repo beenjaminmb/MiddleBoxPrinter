@@ -38,9 +38,7 @@ void stop_sniffer(sniffer_t *sniffer)
 #ifdef USE_PCAP
   assert(0);
 #else
-  int status = 0;
-  kill(sniffer->pid, SIGKILL);
-  waitpid(sniffer->pid, &status, 1);
+  kill(sniffer->pid, SIGCHLD);
   sniffer->pid = 0;
 #endif
   return;

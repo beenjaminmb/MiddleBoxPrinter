@@ -3,6 +3,7 @@
  * @email: bmixonb1@cs.unm.edu
  */
 #include <pthread.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <pcap.h>
@@ -387,6 +388,64 @@ void response_replay(dict_t **dp, phase_stats_t *phase_stats)
   return ;
 }
 
+static void copy_per_worker_phase2_copy(dict_t *qr, int *probe_idx)
+{
+  int n = qr->N;
+  int probe_id = *probe_idx;
+
+  for(int k = 0; k < n; k++) {
+    list_t *response_list = qr->elements[k];
+    list_node_t* current_response = response_list->list;    
+    while ( current_response ) {
+      struct hash_args *response_args = /*I should call this probe args*/
+	current_response->value;
+      list_node_t *next_response = current_response->next;
+      // This needs to be a check on the string of the hashargs value, not the keystring.
+      list_t *pkt_list_to_copy = response_args->value;
+      
+      list_node_t *current_packet = pkt_list_to_copy->list;
+      char *prev_src_addr = NULL;
+      short prev_sport = 0; 
+      while( current_packet ) {
+	list_node_t *next_packet = current_packet->next;
+	
+	stringify_node(&packet_to_copy_str,
+		       current_packet->value, 0);
+	
+	sscanf(packet_to_copy_str, "%s %s %d %d",
+	       psrc_addr, pdst_addr, &psport, &pdport);
+	
+	printf("%s %d: probe_idx =  %d\n", __func__, __LINE__, probe_idx);
+	
+	if ( prev_src_addr == NULL ) {
+	  deepcopy_packet(worker, current_packet->value,
+			  wsrc_addr, wdst_addr, wsport,
+			  wdport, probe_idx);
+	  pprobe_id++;
+	}
+	else {
+	  int not_seen = 
+	    (strcmp(prev_src_addr, pdst_addr)) & 
+	    (prev_sport != psport) ? 1 : 0;
+	  
+	  if ( not_seen ) {
+	    deepcopy_packet(worker, current_packet->value,
+			    wsrc_addr, wdst_addr, wsport,
+			    wdport, probe_idx);
+	    probe_idx++;
+	  }
+	}
+	current_packet = next_packet;
+	prev_src_addr = psrc_addr;
+	prev_sport = psport;
+      }
+      current_response = next_response;
+    }
+  }
+  *probe_idx = probe_id;
+  return;
+}
+
 
 /**
  * 1. Each worker get's n / MAX_WORKERS, IP address to send each of 
@@ -400,9 +459,9 @@ void copy_query_response_to_scanner(dict_t *qr,
   int remainder = n % MAX_WORKERS;
 
   printf("%s %d: number of entries %d %d %d\n", __func__, __LINE__, 
-	ADDRS_PER_WORKER,
-	phase_stats->total_unique_probes,  
+	ADDRS_PER_WORKER, phase_stats->total_unique_probes,  
 	phase_stats->total_unique_responses);
+
   assert((remainder + (probes_per_worker * MAX_WORKERS)) == n);
 
   scanner_worker_t *worker = &scanner->workers[0];
@@ -428,7 +487,8 @@ void copy_query_response_to_scanner(dict_t *qr,
       list_node_t *next_element = NULL;
       while ( current_element ) {
 	next_element = current_element->next;
-	struct hash_args *hargs = current_element->value;
+	struct hash_args *hargs = current_element->value;/* Start new function "per_worker_phase2_copy" */
+
 	char *keystr = (char*)hargs->keystr;
 	sscanf(keystr, "%s %s %d %d", wsrc_addr, wdst_addr,
 	       &wsport, &wdport);
@@ -439,56 +499,7 @@ void copy_query_response_to_scanner(dict_t *qr,
 	 * ellicited a response for this one
 	 * host.
 	 */
-	for(int k = 0; k < n; k++) {
-	  list_t *response_list = qr->elements[k];
-	  list_node_t* current_response = element_list->list;
-
-	  while ( current_response ) {
-	    struct hash_args *response_args =
-	      current_response->value;
-	    list_node_t *next_response = current_response->next;
-	    // This needs to be a check on the string of the hashargs value, not the keystring.
-	    list_t *pkt_list_to_copy = response_args->value;
-	    
-	    list_node_t *current_packet = pkt_list_to_copy->list;
-	    char *prev_src_addr = NULL;
-	    short prev_sport = 0; 
-	    while( current_packet ) {
-	      list_node_t *next_packet = current_packet->next;
-
-	      stringify_node(&packet_to_copy_str,
-			     current_packet->value, 0);
-
-	      sscanf(packet_to_copy_str, "%s %s %d %d",
-		     psrc_addr, pdst_addr, &psport, &pdport);
-
-	      printf("%s %d: probe_idx =  %d\n", __func__, __LINE__, probe_idx);
-
-	      if ( prev_src_addr == NULL ) {
-		deepcopy_packet(worker, current_packet->value,
-				wsrc_addr, wdst_addr, wsport,
-				wdport, probe_idx);
-		probe_idx++;
-	      }
-	      else {
-		int not_seen = 
-		  (strcmp(prev_src_addr, pdst_addr)) & 
-		  (prev_sport != psport) ? 1 : 0;
-		
-		if ( not_seen ) {
-		  deepcopy_packet(worker, current_packet->value,
-				  wsrc_addr, wdst_addr, wsport,
-				  wdport, probe_idx);
-		  probe_idx++;
-		}
-	      }
-	      current_packet = next_packet;
-	      prev_src_addr = psrc_addr;
-	      prev_sport = psport;
-	    }
-	    current_response = next_response;
-	  }
-	}
+	copy_per_worker_phase2_copy(qr, &probe_idx);
 	current_element = next_element;
       }
     }
@@ -755,6 +766,11 @@ void *worker_routine(void *vself)
 int scanner_main_loop(scan_args_t *scan_args)
 {
   new_scanner_singleton();
+
+  if (signal(SIGCHLD, SIG_IGN) == SIG_ERR) {
+    exit(1);
+  }
+
   init_blacklist(scan_args->blacklist);
   pthread_mutex_lock(scanner->continue_lock);
   pthread_mutex_lock(scanner->phase1_lock);

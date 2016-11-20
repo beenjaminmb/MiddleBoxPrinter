@@ -69,27 +69,4 @@ pthread_cond_t *new_cond();
 
 pthread_mutex_t *new_mutex();
 
-#ifdef EXPERIMENTAL
-
-static char* subnet_prefix(char *ip){
-  printf("%s", ip);
-  return NULL;
-}
-
-static void read_blacklist(dict **d)
-{
-  char ip_address[256];
-  FILE *file = fopen("blacklist.txt", "r");
-  while ((fgets(ip_address, 256, file))) {
-    int len = strlen(ip_address);
-    char *value = malloc(len+1);
-    value[len] = '\0';
-    strcpy(value, ip_address);
-    subnet_prefix(ip_address);
-    dict_insert(d, value);
-  }
-  return;
-}
-#endif /* EXPERIMENTAL */
-
 #endif /* _UTIL_ */
