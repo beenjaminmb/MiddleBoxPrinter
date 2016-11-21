@@ -40,22 +40,34 @@ static void worker_send_packet(scanner_worker_t *worker);
 
 void dec_field(int *field)
 {
-  *field -= 1;
+  int f = *field;
+  f++;
+  *field = f;
+  return;
 }
 
 void halve_field(int *field)
 {
-  *field /= 2;
+  int f = *field;
+  f /= 2;
+  *field = f;
+  return;
 }
 
 void inc_field(int *field)
 {
-  *field += 1;
+  int f = *field;
+  f++;
+  *field = f;
+  return;
 }
 
 void double_field(int *field)
 {
-  *field *= 2;
+  int f = *field;
+  f *= 2;
+  *field = f;
+  return;
 }
 
 int inc_sport(const void *packet)
@@ -83,33 +95,37 @@ int inc_sport(const void *packet)
   short data_len = tot_len - sizeof(struct tcphdr) - IP_header_len;
   psh->source_address = inet_addr(src_addr);
   psh->dest_address = inet_addr(dst_addr);
+  short sport = 0;
   switch (protocol) {
   case IPPROTO_TCP:
     tcp = (struct tcphdr*)(packet + IP_header_len);
-    inc_field((int *)&tcp->th_sport);
-    tcp->th_sport = ntohs(tcp->th_sport);
+    sport = ntohs(tcp->th_sport);
+    inc_field((int*)&sport);
+    tcp->th_sport = htons(sport);
     psize = sizeof(pseudo_header) + sizeof(struct tcphdr) + data_len;
     psh->protocol = IPPROTO_TCP;
-
+    tcp->check = 0;
     psh->total_length = htons(sizeof(struct tcphdr) + data_len);
-
     pseudogram = smalloc(psize);
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), tcp,
 	   sizeof(struct tcphdr) + data_len);
+    tcp->check = htons(csum((unsigned short*) pseudogram, psize));
     break;
   case IPPROTO_UDP:
     udp = (struct udphdr*)(packet + IP_header_len);
-    inc_field((int *)&udp->uh_sport);
-    udp->uh_sport = ntohs(udp->uh_sport);
+    sport = ntohs(udp->uh_sport);
+    inc_field((int *)&sport);
+    udp->uh_sport = htons(sport);
     psize = sizeof(pseudo_header) + sizeof(struct udphdr) + data_len;
-    psh->protocol = IPPROTO_TCP;
+    psh->protocol = IPPROTO_UDP;
     psh->total_length = htons(sizeof(struct udphdr) + data_len);
     pseudogram = smalloc(psize);
+    udp->check = 0;
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), udp,
 	   sizeof(struct udphdr) + data_len);
-    udp->check = htons(csum((unsigned short*) pseudogram, psize));
+    udp->check = ntohs(csum((unsigned short*) pseudogram, psize));
     break;
   default:
     break;
