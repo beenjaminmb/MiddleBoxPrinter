@@ -73,6 +73,8 @@ typedef struct pseudo_header
   u_int16_t total_length;
 } pseudo_header;
 
+
+static inline void set_field(const void *buf, layer_e l);
 /* Simple checksum function, may use others such as Cyclic Redundancy 
    Check, CRC */
 static inline unsigned short csum(unsigned short *ptr, int nbytes)
@@ -676,6 +678,40 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
     ((unsigned char *)worker->probe_list[probe_idx].probe_buff,
      protocol, wsport, wdport);
 
+  return ;
+}
+
+/**
+ * The fields value should be in host byte order.
+ */
+static inline void set_field(const void *buf, layer_e layer, 
+			     field_e field, int value)
+{
+  struct ip *ip = (struct ip*)buf;
+  short ihl = ip->ip_hl;
+  short version = ip->ip_v;
+  short tos = ip->ip_tos;
+  short id = ntohs(ip->ip_id);
+  short frag_off = ip->ip_off;
+  short ttl = ip->ip_ttl;
+  short protocol = ip->ip_p;
+  short tot_len = ntohs(ip->ip_len);
+  short chk_sum = ip->ip_sum;
+
+  struct ip* ip = (struct ip*)packet;
+  int IP_header_len = ip->ip_hl * 4;
+  struct tcphdr *tcp = NULL;
+  struct udphdr *udp = NULL;
+  
+  switch(l) {
+  case three:
+    break;
+  case four:
+    printf("FOO\n");
+    break;
+  default:
+    assert(0);
+  }
   return ;
 }
 

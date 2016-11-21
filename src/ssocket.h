@@ -14,6 +14,12 @@
  */
 typedef int (*packet_fn)(const void *buf);
 
+typedef enum layer {
+  one, two, three, four
+} layer_e;
+
+typedef enum l4field {} l4field_e;
+
 ssize_t ssendto(int sockfd, const void *buf, size_t len, int flags,
 		const struct sockaddr *dest_addr, socklen_t addrlen);
 

@@ -34,6 +34,14 @@ static dict_t *global_qr_dict = NULL;
 static FILE *log_file = NULL;
 
 static void inc_phase_counter(scanner_worker_t *worker, int phase);
+static void worker_send_packet(scanner_worker_t *worker);
+
+
+int inc_port(const void *packet)
+{
+  layer_e l = four;
+  set_field(l);
+}
 
 void *per_flow_experiment(void *vworker)
 {
@@ -62,7 +70,16 @@ void *per_flow_experiment(void *vworker)
   /* These three lines are internal */
   phase2_wait(worker);
 
-  phase2(worker);
+  int nprobes = worker->probe_list_size;
+  int sockfd = worker->ssocket->sockfd;
+  for (int probe_idx = 0; probe_idx < nprobes; probe_idx++) {
+    struct sockaddr *dest_addr =
+      (struct sockaddr *)worker->probe_list[probe_idx].sin;
+    iphdr *iph = (iphdr *)worker->probe_list[probe_idx].probe_buff;
+    int len = iph->tot_len;
+    ssendn_fn(sockfd, worker->probe_list[probe_idx].probe_buff,
+	      len, 0, dest_addr, sizeof(struct sockaddr));
+  }
 
   inc_phase_counter(worker, 2);
   
