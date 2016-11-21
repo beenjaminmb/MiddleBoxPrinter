@@ -37,10 +37,86 @@ static void inc_phase_counter(scanner_worker_t *worker, int phase);
 static void worker_send_packet(scanner_worker_t *worker);
 
 
-int inc_port(const void *packet)
+
+void dec_field(int *field)
 {
-  layer_e l = four;
-  set_field(l);
+  *field -= 1;
+}
+
+void halve_field(int *field)
+{
+  *field /= 2;
+}
+
+void inc_field(int *field)
+{
+  *field += 1;
+}
+
+void double_field(int *field)
+{
+  *field *= 2;
+}
+
+int inc_sport(const void *packet)
+{
+  struct ip *ip = (struct ip*)packet;
+  struct tcphdr *tcp = NULL;
+  struct udphdr *udp = NULL;
+  pseudo_header *psh = smalloc(sizeof(pseudo_header));
+
+  char *pseudogram = NULL;
+  int IP_header_len = ip->ip_hl * 4;
+  int psize = 0;
+  short protocol = ip->ip_p;
+  char stringy[256];
+  struct packet_value pv;
+  pv.packet = packet;
+  memset(stringy, 0, 256);
+  stringify_node((char**)&stringy, &pv, 0);
+  char *src_addr = smalloc(128);
+  char *dst_addr = smalloc(128);
+  short ssport = 0;
+  short sdport = 0;
+  split_stringify(stringy, &src_addr, &dst_addr, &ssport, &sdport);
+  short tot_len = ntohs(ip->ip_len);
+  short data_len = tot_len - sizeof(struct tcphdr) - IP_header_len;
+  psh->source_address = inet_addr(src_addr);
+  psh->dest_address = inet_addr(dst_addr);
+  switch (protocol) {
+  case IPPROTO_TCP:
+    tcp = (struct tcphdr*)(packet + IP_header_len);
+    inc_field((int *)&tcp->th_sport);
+    tcp->th_sport = ntohs(tcp->th_sport);
+    psize = sizeof(pseudo_header) + sizeof(struct tcphdr) + data_len;
+    psh->protocol = IPPROTO_TCP;
+
+    psh->total_length = htons(sizeof(struct tcphdr) + data_len);
+
+    pseudogram = smalloc(psize);
+    memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
+    memcpy(pseudogram + sizeof(pseudo_header), tcp,
+	   sizeof(struct tcphdr) + data_len);
+    break;
+  case IPPROTO_UDP:
+    udp = (struct udphdr*)(packet + IP_header_len);
+    inc_field((int *)&udp->uh_sport);
+    udp->uh_sport = ntohs(udp->uh_sport);
+    psize = sizeof(pseudo_header) + sizeof(struct udphdr) + data_len;
+    psh->protocol = IPPROTO_TCP;
+    psh->total_length = htons(sizeof(struct udphdr) + data_len);
+    pseudogram = smalloc(psize);
+    memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
+    memcpy(pseudogram + sizeof(pseudo_header), udp,
+	   sizeof(struct udphdr) + data_len);
+    udp->check = htons(csum((unsigned short*) pseudogram, psize));
+    break;
+  default:
+    break;
+  }
+  ip->ip_sum = csum((unsigned short *)packet,
+		    ip->ip_len);
+  return 0;
 }
 
 void *per_flow_experiment(void *vworker)
@@ -50,7 +126,7 @@ void *per_flow_experiment(void *vworker)
    *  
    * 2. Generate some phase 2 probes. 
    * 
-   * 3. Perform a ssendto_fn.
+   * 3. Perform a ssendn_fn.
    */
   scanner_worker_t *worker = vworker;
  
@@ -78,7 +154,8 @@ void *per_flow_experiment(void *vworker)
     iphdr *iph = (iphdr *)worker->probe_list[probe_idx].probe_buff;
     int len = iph->tot_len;
     ssendn_fn(sockfd, worker->probe_list[probe_idx].probe_buff,
-	      len, 0, dest_addr, sizeof(struct sockaddr));
+	      len, 0, dest_addr, sizeof(struct sockaddr),
+	      5, inc_sport);
   }
 
   inc_phase_counter(worker, 2);
@@ -844,7 +921,7 @@ static void start_workers()
 {
   for (int i = 0; i < MAX_WORKERS; i++) {
     if (pthread_create(scanner->workers[i].thread, NULL,
-		       basic_experiment,
+		       per_flow_experiment,
 		       (void *)&scanner->workers[i]) < 0) {
       printf("Couldn't initialize thread for worker[%d]\n", i);
       exit(-1);
