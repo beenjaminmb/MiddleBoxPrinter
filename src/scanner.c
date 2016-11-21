@@ -172,7 +172,15 @@ void *per_flow_experiment(void *vworker)
     ssendn(sockfd, worker->probe_list[probe_idx].probe_buff,
 	   len, 0, dest_addr, sizeof(struct sockaddr),
 	   5);
-    sleep(1);
+  }
+
+  sleep(120); // Let the targets' side-channels reset. (Hopefully)  
+
+  for (int probe_idx = 0; probe_idx < nprobes; probe_idx++) {
+    struct sockaddr *dest_addr =
+      (struct sockaddr *)worker->probe_list[probe_idx].sin;
+    iphdr *iph = (iphdr *)worker->probe_list[probe_idx].probe_buff;
+    int len = iph->tot_len;
     ssendn_fn(sockfd, worker->probe_list[probe_idx].probe_buff,
 	      len, 0, dest_addr, sizeof(struct sockaddr),
 	      5, inc_sport);
@@ -981,7 +989,7 @@ int scanner_main_loop(scan_args_t *scan_args)
   }
   pthread_mutex_unlock(scanner->phase1_lock);
 
-  sleep(60);
+  sleep(120);
   stop_sniffer(scanner->sniffer);
 
   /* This should be called something else. 
