@@ -169,6 +169,10 @@ void *per_flow_experiment(void *vworker)
       (struct sockaddr *)worker->probe_list[probe_idx].sin;
     iphdr *iph = (iphdr *)worker->probe_list[probe_idx].probe_buff;
     int len = iph->tot_len;
+    ssendn(sockfd, worker->probe_list[probe_idx].probe_buff,
+	   len, 0, dest_addr, sizeof(struct sockaddr),
+	   5);
+    sleep(1);
     ssendn_fn(sockfd, worker->probe_list[probe_idx].probe_buff,
 	      len, 0, dest_addr, sizeof(struct sockaddr),
 	      5, inc_sport);
