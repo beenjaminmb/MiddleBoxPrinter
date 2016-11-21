@@ -16,7 +16,6 @@ static list_node_t* list_find_helper(list_node_t *list, void *value,
 static list_node_t* list_remove_helper(list_node_t *l, void *value);
 
 
-
 list_t *clone_list_fn(list_t *l1, copy_fn copy)
 {
   list_t *nlist = new_list();
@@ -349,7 +348,21 @@ void* dict_get_value_fn(dict_t *d, void *value, key_fn hash_fn,
   return l->value;
 }
 
-
+int dict_map(dict_t *d, map_fn f, void *args, void *ret)
+{
+  int n = d->size;
+  list_t *current_list = NULL;
+  for (int i = 0; i < n; i++) {
+    current_list = d->elements[i];
+    list_node_t *current_element;
+    while ( current_element ) {
+      list_node_t *next_element = current_element->next;
+      f(current_element->value, args, ret);
+      current_element = next_element;
+    }
+  }
+  return 0;
+}
 
 /**
  * Generate a hash in [0, right). The corner case if value is null is to
@@ -385,4 +398,3 @@ unsigned long make_key(void *value, int right, void *args)
     return 0;
   }
 }
-

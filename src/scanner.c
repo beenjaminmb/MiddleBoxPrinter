@@ -33,7 +33,6 @@ static scan_statistics_t scan_stats;
 static dict_t *global_qr_dict = NULL;
 static FILE *log_file = NULL;
 
-
 static void inc_phase_counter(scanner_worker_t *worker, int phase);
 
 void *per_flow_experiment(void *vworker)
@@ -59,10 +58,8 @@ void *per_flow_experiment(void *vworker)
   // Internal: Send the phase 1 packets.
   phase1(worker); 
 
-  inc_phase_counter(worker, 1);
-  
+  inc_phase_counter(worker, 1);  
   /* These three lines are internal */
-
   phase2_wait(worker);
 
   phase2(worker);
@@ -111,6 +108,14 @@ static void worker_send_packet(scanner_worker_t *worker)
     ssendto(sockfd, worker->probe_list[probe_idx].probe_buff,
 	    len, 0, dest_addr, sizeof(struct sockaddr));
   }
+  return ;
+}
+
+void split_stringify(char *keystr, char **src_addr, char **dst_addr,
+		     short *sport, short *dport)
+{
+  sscanf(keystr ,"%s %s %hd %hd", 
+	 *src_addr, *dst_addr, sport, dport);
   return ;
 }
 
@@ -257,6 +262,7 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
 #endif
     return ;
   }
+  /*Might be able to replace to block of code below with stringify.*/
   const unsigned char *tmppacket = packet;
   packet += sizeof(struct ether_header);
   struct ip *ip = (struct ip*)packet;
@@ -516,9 +522,8 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
 /**
  * 1. Each worker get's n / MAX_WORKERS, IP address to send each of 
  *    the n responding hosts.
- * 
  */
-void copy_query_response_to_scanner(dict_t *qr, 
+void copy_query_response_to_workers(dict_t *qr, 
 				    phase_stats_t *phase_stats)
 {
   int n = qr->N;
@@ -604,7 +609,7 @@ void generate_phase2_packets()
     split_query_response(scanner->current_pcap_file_name,
 			 &scan_stats.phase1);
   response_replay(&query_response, &scan_stats.phase1);
-  copy_query_response_to_scanner(query_response, &scan_stats.phase1);
+  copy_query_response_to_workers(query_response, &scan_stats.phase1);
   global_qr_dict = query_response;
   return ;
 }

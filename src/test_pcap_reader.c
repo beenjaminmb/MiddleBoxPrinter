@@ -196,7 +196,7 @@ int test_response_reply()
 }
 
 
-int test_copy_query_response_to_scanner()
+int test_copy_query_response_to_workers()
 {
   phase_stats_t phase_stats = {
     .total_probes = 0,
@@ -216,7 +216,7 @@ int test_copy_query_response_to_scanner()
 	 __func__, __LINE__, time);
 
   print_qr_dict(qr);
-  copy_query_response_to_scanner(qr, &phase_stats);
+  copy_query_response_to_workers(qr, &phase_stats);
   dict_destroy_fn(qr, (free_fn)free_list);
   print_phase_statistics(&phase_stats);
   return 0;
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
   // assert( (test_split_qr() == 0) );
 
   //assert( (test_response_reply() == 0) );
-  assert( (test_copy_query_response_to_scanner()) == 0);
+  assert( (test_copy_query_response_to_workers()) == 0);
 
   return 0;
 }

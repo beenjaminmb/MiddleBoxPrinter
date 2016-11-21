@@ -36,7 +36,9 @@ typedef unsigned long (*free_fn)(void *);
 typedef int (*equal_fn)(void *v1, void *v2);
 
 /* User defined deep copy function. */
-typedef void* (copy_fn)(void *value);
+typedef void* (*copy_fn)(void *value);
+
+typedef void (*map_fn)(void *value, void *args, void *ret);
 
 list_t *clone_list_fn(list_t *l1, copy_fn copy);
 
@@ -176,4 +178,8 @@ int dict_destroy_fn(dict_t  *d, free_fn ufree);
  */
 unsigned long free_list(void *list);
 
+/**
+ * Function useful for 
+ */
+int dict_map(dict_t *d, map_fn f, void *args, void *ret);
 #endif /* _DTABLE_ */
