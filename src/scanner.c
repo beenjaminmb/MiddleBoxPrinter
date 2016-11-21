@@ -18,6 +18,7 @@
 #include "worker.h"
 #include "util.h"
 #include "dtable.h"
+#include "ssocket.h"
 #include <arpa/inet.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -50,7 +51,7 @@ unsigned long free_list(void *args)
   return 0;
 }
 
-void send_packet(scanner_worker_t *worker)
+static void worker_send_packet(scanner_worker_t *worker)
 {
   int nprobes = worker->probe_list_size;
   int sockfd = worker->ssocket->sockfd;
@@ -59,8 +60,8 @@ void send_packet(scanner_worker_t *worker)
       (struct sockaddr *)worker->probe_list[probe_idx].sin;
     iphdr *iph = (iphdr *)worker->probe_list[probe_idx].probe_buff;
     int len = iph->tot_len;
-    sendto(sockfd, worker->probe_list[probe_idx].probe_buff,
-	   len, 0, dest_addr, sizeof(struct sockaddr));
+    ssendto(sockfd, worker->probe_list[probe_idx].probe_buff,
+	    len, 0, dest_addr, sizeof(struct sockaddr));
   }
   return ;
 }
@@ -575,8 +576,8 @@ void send_scan_packet(unsigned char *restrict packet_buffer,
     iph->check = range_random(65536, worker->random_data,
 			      &result);
   }
-  sendto(sockfd, packet_buffer, len, 0, dest_addr, 
-	 sizeof(struct sockaddr));
+  ssendto(sockfd, packet_buffer, len, 0, dest_addr, 
+	  sizeof(struct sockaddr));
   return ;
 }
 
@@ -602,11 +603,11 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
   iphdr *iph = (iphdr *)packet_buffer;
   int len = iph->tot_len;
 #ifdef UNITTEST
-  int ret = sendto(sockfd, packet_buffer, len, 0, dest_addr,
-		   sizeof(struct sockaddr));
+  int ret = ssendto(sockfd, packet_buffer, len, 0, dest_addr,
+		    sizeof(struct sockaddr));
 #else
-  sendto(sockfd, packet_buffer, len, 0, dest_addr,
-	 sizeof(struct sockaddr));
+  ssendto(sockfd, packet_buffer, len, 0, dest_addr,
+	  sizeof(struct sockaddr));
 #endif
 
 #ifdef UNITTEST
@@ -676,7 +677,7 @@ static void inc_phase_counter(scanner_worker_t *worker, int phase)
 
 void phase2(scanner_worker_t *self)
 {
-  send_packet(self);
+  worker_send_packet(self);
   return; 
 }
 

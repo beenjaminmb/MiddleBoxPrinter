@@ -23,6 +23,12 @@
 #define DO_UDP(x) ((x >= 50) & (x < 75))
 #define DO_ICMP(x) ((x > 74) & (x <= 100))
 
+typedef struct scan_args_t {
+  char *blacklist;
+  
+} scan_args_t;
+
+
 extern int errno;
 
 static inline double wall_time() __attribute__((always_inline));
@@ -73,6 +79,6 @@ void timestamp_filename(char **fnamep, int phase);
 
 void timestamp_str(char **fnamep, char* str);
 
-void parse_args(int argc, char *argv, struct scan_args *scan_args);
+void parse_args(int argc, char *argv[], scan_args_t *scan_args);
 
 #endif /* _UTIL_ */

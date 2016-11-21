@@ -32,7 +32,6 @@ typedef unsigned long (*key_fn)(void *, int, void*);
 /* User defined freeing function. */
 typedef unsigned long (*free_fn)(void *);
 
-
 /* User defined equality function. */
 typedef int (*equal_fn)(void *v1, void *v2);
 

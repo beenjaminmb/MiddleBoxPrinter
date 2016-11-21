@@ -31,12 +31,6 @@
 // #define QR_DICT_SIZE 2
 #define QR_DICT_SIZE 4096
 
-typedef struct scan_args_t {
-  char *blacklist;
-  
-} scan_args_t;
-
-
 typedef struct phase_stats_t {
   int total_probes;
   int total_unique_probes;

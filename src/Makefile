@@ -4,13 +4,13 @@ CFLAGS=-O0 -g -Wall -std=gnu99
 DIST_FLAGS=-O0 -g -Wall -std=gnu99
 LDLIBS=-pthread -lpcap -lm
 
-targets = main.c dtable.c scanner.c sniffer.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
+targets = main.c dtable.c scanner.c sniffer.c ssocket.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
 
-test_scanner = test_scanner.c dtable.c scanner.c sniffer.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
+test_scanner = test_scanner.c dtable.c scanner.c sniffer.c ssocket.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c 
 
 tablesrc = test_dict.c dtable.c
 
-testpcap = test_pcap_reader.c dtable.c scanner.c sniffer.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
+testpcap = test_pcap_reader.c dtable.c scanner.c sniffer.c ssocket.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
 
 SKYTHE=sc-ythe
 

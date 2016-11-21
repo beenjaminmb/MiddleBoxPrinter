@@ -91,7 +91,7 @@ void timestamp_filename(char **fnamep, int phase)
 }
 
 
-void parse_args(int argc, char *argv[], struct scan_args_t* scan_args)
+void parse_args(int argc, char *argv[], scan_args_t* scan_args)
 {
   return;
 }
