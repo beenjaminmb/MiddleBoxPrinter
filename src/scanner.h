@@ -8,7 +8,6 @@
 
 #include "util.h"
 #include "blacklist.h"
-#include "worker.h"
 #include "sniffer.h"
 #include "dtable.h"
 #include <pthread.h>
@@ -18,6 +17,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include "worker.h"
 
 #define MAX_PCAP_NAME_LEN 1024
 #define LUCKY 13
@@ -97,7 +97,7 @@ void send_scan_packet(unsigned char *restrict packet_buffer,
 /**
  * Used for experiments in this project.
  */
-void *find_responses(void *vworker);
+void *basic_experiment(void *vworker);
 
 /**
  * @warning: NOT CURRENTLY USED

@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <signal.h>
-#include <sys/socket.h>
-#include <sys/types.h>
+//#include <sys/socket.h>
+//#include <sys/types.h>
 #include <pcap.h>
 #include <errno.h>
 #include <string.h>
@@ -14,8 +14,8 @@
 #include <net/ethernet.h>
 #include "scanner.h"
 #include "sniffer.h"
-#include "packet.h"
 #include "worker.h"
+#include "packet.h"
 #include "util.h"
 #include "dtable.h"
 #include "ssocket.h"
@@ -32,6 +32,54 @@ static struct scanner_t *scanner = NULL;
 static scan_statistics_t scan_stats;
 static dict_t *global_qr_dict = NULL;
 static FILE *log_file = NULL;
+
+
+static void inc_phase_counter(scanner_worker_t *worker, int phase);
+
+void *per_flow_experiment(void *vworker)
+{
+  /**
+   * 1. Collect some probes via phase 1.
+   *  
+   * 2. Generate some phase 2 probes. 
+   * 
+   * 3. Perform a ssendto_fn.
+   */
+  scanner_worker_t *worker = vworker;
+ 
+  /**
+   * 1. Initialize a set of packets to interogate the side-channel
+   *    initially.
+   */
+  for (int i = 0; i < ADDRS_PER_WORKER; i++) {
+    make_phase1_packet((unsigned char *)
+		       &worker->probe_list[i].probe_buff,
+		       worker, i);
+  }
+  // Internal: Send the phase 1 packets.
+  phase1(worker); 
+
+  inc_phase_counter(worker, 1);
+  
+  /* These three lines are internal */
+
+  phase2_wait(worker);
+
+  phase2(worker);
+
+  inc_phase_counter(worker, 2);
+  
+  /**
+   * phase3_wait(worker);
+   *
+   * phase3(worker);
+   * 
+   * inc_phase_counter(worker, 3);
+   */
+  printf("DONE\n");
+  return NULL;
+}
+
 unsigned long free_list(void *args)
 {
   struct hash_args *hargs = args;
@@ -66,6 +114,10 @@ static void worker_send_packet(scanner_worker_t *worker)
   return ;
 }
 
+/**
+ * This code needs to be refactored with other code so that it 
+ * can generalize some of the repeated behavior.
+ */
 void stringify_node(char **str, void *vnode, int direction)
 {
   char *s = *str;
@@ -164,8 +216,6 @@ unsigned long fourtuple_hash(void *v, int right, void *args)
   return key;
 }
 
-
-
 unsigned long hash_qr(void *v, int right, void *args)
 {
   unsigned long key = str_key(v, right, args);
@@ -236,11 +286,8 @@ void process_packet(dict_t **dictp, const unsigned char *packet,
   memcpy(value, (void*)tmppacket, caplen);
 
   int is_probe = (strcmp((const char*)src_addr, SRC_IP) == 0);
-
   int is_response = (strcmp((const char*)dst_addr,
 			    (const char*)SRC_IP) == 0);
-
-
   if ( is_probe ) {
 
     phase_stats->total_probes += 1;
@@ -466,10 +513,10 @@ static void copy_per_worker_phase2_copy(scanner_worker_t *worker,
   return;
 }
 
-
 /**
  * 1. Each worker get's n / MAX_WORKERS, IP address to send each of 
  *    the n responding hosts.
+ * 
  */
 void copy_query_response_to_scanner(dict_t *qr, 
 				    phase_stats_t *phase_stats)
@@ -501,7 +548,7 @@ void copy_query_response_to_scanner(dict_t *qr,
 	       &wsport, &wdport);
 	int good = !strcmp(wsrc_addr, SRC_IP);
 	assert( good );
-	fprintf(log_file, "%s,%s\n", wdst_addr, wdport);
+	fprintf(log_file, "%s,%d\n", wdst_addr, wdport);
 	copy_per_worker_phase2_copy(worker, qr, &probe_idx, 
 				    wsrc_addr, wdst_addr, wsport, 
 				    wdport);
@@ -535,6 +582,9 @@ void copy_query_response_to_scanner(dict_t *qr,
   return ;
 }
 
+/** 
+ * This needs to be reworked so that the code can be more like a library 
+ */
 void generate_phase2_packets()
 {
   /**
@@ -631,33 +681,22 @@ send_phase1_packet(unsigned char *restrict packet_buffer,
   return ;
 }
 
-void phase1(scanner_worker_t *self)
+/* This is really a default phase 1 scan. */
+void phase1(scanner_worker_t *self) 
 {
-  for (int i = 0; i < ADDRS_PER_WORKER; i++) {
-    make_phase1_packet((unsigned char *)
-		       &self->probe_list[i].probe_buff,
-		       self, i);
-  }
-
   for (int probe_idx = 0;
        probe_idx < ADDRS_PER_WORKER; probe_idx++) {
     send_phase1_packet((unsigned char *)
 		       &self->probe_list[probe_idx].probe_buff,
 		       self, probe_idx, self->ssocket->sockfd);
-  }  
-
-#ifdef UNITTEST
-  printf("%d %s %f\n",__LINE__,__func__, ADDRS_PER_WORKER);
-#endif
-
+  }
   return ;
 }
-
 
 static void inc_phase_counter(scanner_worker_t *worker, int phase)
 {
   switch(phase) {
-  case 1: 
+  case 1:
     pthread_mutex_lock(worker->scanner->phase1_lock);
     worker->scanner->phase1 += 1;
     pthread_cond_signal(worker->scanner->phase1_cond);
@@ -683,14 +722,12 @@ void phase2(scanner_worker_t *self)
 
 void phase2_wait(scanner_worker_t *self)
 {
-
   pthread_mutex_lock(self->scanner->phase2_wait_lock);
   while( self->scanner->phase2_wait ) {
     pthread_cond_wait(self->scanner->phase2_wait_cond,
 		      self->scanner->phase2_wait_lock);
   }
   pthread_mutex_unlock(self->scanner->phase2_wait_lock);
-
   return;
 }
 
@@ -707,10 +744,19 @@ void phase2_wait(scanner_worker_t *self)
  * 
  * 3. Once finished, find packets that illicited a response.
  * 
+ * @note: In the future, this needs to be generalized. 
+ * The user should have to register a set of up to three
+ * functions that will have some desired effect.
  */
-void *find_responses(void *vworker)
+void *basic_experiment(void *vworker)
 {
   scanner_worker_t *worker = vworker;
+
+  for (int i = 0; i < ADDRS_PER_WORKER; i++) {
+    make_phase1_packet((unsigned char *)
+		       &worker->probe_list[i].probe_buff,
+		       worker, i);
+  }
 
   for (int i = 0; i < PHASE1_ITERATIONS; i++) {
     phase1(worker);
@@ -723,9 +769,7 @@ void *find_responses(void *vworker)
   for (int i = 0; i < PHASE1_ITERATIONS; i++) {
     phase2(worker);
   }
-
   inc_phase_counter(worker, 2);
-  
   printf("DONE\n");
   return NULL;
 }
@@ -778,7 +822,7 @@ static void start_workers()
 {
   for (int i = 0; i < MAX_WORKERS; i++) {
     if (pthread_create(scanner->workers[i].thread, NULL,
-		       find_responses,
+		       basic_experiment,
 		       (void *)&scanner->workers[i]) < 0) {
       printf("Couldn't initialize thread for worker[%d]\n", i);
       exit(-1);
@@ -799,6 +843,7 @@ int scanner_main_loop(scan_args_t *scan_args)
   }
 
   init_blacklist(scan_args->blacklist);
+
   pthread_mutex_lock(scanner->continue_lock);
   pthread_mutex_lock(scanner->phase1_lock);
   pthread_mutex_lock(scanner->phase2_lock);
@@ -807,23 +852,33 @@ int scanner_main_loop(scan_args_t *scan_args)
 
   timestamp_filename((char**)&filename, 1);
   scanner->current_pcap_file_name = (char *)filename;
-
   start_sniffer(scanner->sniffer, filename);
+
   start_workers();
+  
+  /* Wait until all workers have finished phase1. */
   while(scanner->phase1 < MAX_WORKERS) {
     pthread_cond_wait(scanner->phase1_cond, scanner->phase1_lock);
   }
-
   pthread_mutex_unlock(scanner->phase1_lock);
 
   sleep(60);
   stop_sniffer(scanner->sniffer);
 
-  generate_phase2_packets();
+  /* This should be called something else. 
+   * Maybe just have this start phase 2 and when that happens, 
+   * all of the workers go on to generate their phase 2 packets.
+   *
+   */
+  generate_phase2_packets(); 
+
   memset(filename, 0, MAX_PCAP_NAME_LEN);
   timestamp_filename((char**)&filename, 2);
   scanner->current_pcap_file_name = (char *)filename;
   start_sniffer(scanner->sniffer, filename);
+
+
+
   scanner->phase2_wait = 0;
 
   pthread_cond_signal(scanner->phase2_wait_cond);
@@ -835,9 +890,11 @@ int scanner_main_loop(scan_args_t *scan_args)
 
   sleep(60);
   stop_sniffer(scanner->sniffer);
-  log_phase_statistics(&scan_stats.phase1);
-  // response_replay(global_qr_dict, &scan_stats.phase2);
-  log_phase_statistics(&scan_stats.phase2);
+
+  //log_phase_statistics(&scan_stats.phase1);
+  //response_replay(global_qr_dict, &scan_stats.phase2);
+  //log_phase_statistics(&scan_stats.phase2);
+
   delete_scanner(scanner);
   sfree(scanner);
   free(filename);
@@ -874,7 +931,8 @@ int new_worker(scanner_worker_t *worker, int id)
   if (setsockopt(worker->ssocket->sockfd, SOL_SOCKET,
 		 SO_BINDTODEVICE, CAPTURE_INTERFACE,
 		 strlen(CAPTURE_INTERFACE)) ) {
-    printf("%s %d %s %d %s\n", __func__, __LINE__, strerror(errno), errno, CAPTURE_INTERFACE);
+    printf("%s %d %s %d %s\n", __func__, __LINE__,
+	   strerror(errno), errno, CAPTURE_INTERFACE);
     printf("getsockopt() for worker[%d]\n", id);
     return -1;
   }

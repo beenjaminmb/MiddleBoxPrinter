@@ -6,7 +6,7 @@ LDLIBS=-pthread -lpcap -lm
 
 targets = main.c dtable.c scanner.c sniffer.c ssocket.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
 
-test_scanner = test_scanner.c dtable.c scanner.c sniffer.c ssocket.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c 
+test_scanner = test_scanner.c dtable.c scanner.c sniffer.c ssocket.c blacklist.c constraint.c logger.c lockfd.c xalloc.c util.c
 
 tablesrc = test_dict.c dtable.c
 

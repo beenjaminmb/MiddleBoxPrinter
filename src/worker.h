@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <pcap/pcap.h>
 #include "scanner.h"
+#include "util.h"
 #include <sys/socket.h>
 #include <netinet/ip.h>
 #include <netinet/ether.h>

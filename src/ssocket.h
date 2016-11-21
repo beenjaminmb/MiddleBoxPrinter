@@ -12,7 +12,7 @@
  * that if the function is not succesfully applied the program
  * will dump core.
  */
-typedef int (*packet_fn)(void *buf);
+typedef int (*packet_fn)(const void *buf);
 
 ssize_t ssendto(int sockfd, const void *buf, size_t len, int flags,
 		const struct sockaddr *dest_addr, socklen_t addrlen);
