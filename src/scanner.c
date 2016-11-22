@@ -72,66 +72,50 @@ void double_field(int *field)
 
 int inc_sport(const void *packet)
 {
-  struct ip *ip = (struct ip*)packet;
+  iphdr *ip = (iphdr*)packet;
   struct tcphdr *tcp = NULL;
   struct udphdr *udp = NULL;
-  pseudo_header *psh = smalloc(sizeof(pseudo_header));
-
-  char *pseudogram = NULL;
-  int IP_header_len = ip->ip_hl * 4;
-  int psize = 0;
-  short protocol = ip->ip_p;
-  char stringy[256];
-  struct packet_value pv;
-  pv.packet = packet;
-  memset(stringy, 0, 256);
-  stringify_node((char**)&stringy, &pv, 0);
   char *src_addr = smalloc(128);
   char *dst_addr = smalloc(128);
-  short ssport = 0;
-  short sdport = 0;
+  int IP_header_len = ip->ihl * 4;
+  short protocol = ip->protocol;
+  char *stringy = smalloc(256);
+  struct packet_value pv;
+  pv.packet = packet;
+  stringify_node((char**)&stringy, &pv, 0);
+  unsigned short ssport = 0;
+  unsigned short sdport = 0;
   split_stringify(stringy, &src_addr, &dst_addr, &ssport, &sdport);
-  short tot_len = ntohs(ip->ip_len);
-  short data_len = tot_len - sizeof(struct tcphdr) - IP_header_len;
-  psh->source_address = inet_addr(src_addr);
-  psh->dest_address = inet_addr(dst_addr);
-  short sport = 0;
+  unsigned short tot_len = ip->tot_len;
+  unsigned short data_len = 0;
+  unsigned short check = 0;
   switch (protocol) {
   case IPPROTO_TCP:
     tcp = (struct tcphdr*)(packet + IP_header_len);
-    sport = ntohs(tcp->th_sport);
-    inc_field((int*)&sport);
-    tcp->th_sport = htons(sport);
-    psize = sizeof(pseudo_header) + sizeof(struct tcphdr) + data_len;
-    psh->protocol = IPPROTO_TCP;
-    tcp->check = 0;
-    psh->total_length = htons(sizeof(struct tcphdr) + data_len);
-    pseudogram = smalloc(psize);
-    memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
-    memcpy(pseudogram + sizeof(pseudo_header), tcp,
-	   sizeof(struct tcphdr) + data_len);
-    tcp->check = htons(csum((unsigned short*) pseudogram, psize));
+    ssport = ntohs(tcp->th_sport);
+    inc_field((int*)&ssport);
+    tcp->th_sport = htons(ssport);
+    check = htons(ntohs(tcp->check) - 1);
+    tcp->check = check;
     break;
   case IPPROTO_UDP:
     udp = (struct udphdr*)(packet + IP_header_len);
-    sport = ntohs(udp->uh_sport);
-    inc_field((int *)&sport);
-    udp->uh_sport = htons(sport);
-    psize = sizeof(pseudo_header) + sizeof(struct udphdr) + data_len;
-    psh->protocol = IPPROTO_UDP;
-    psh->total_length = htons(sizeof(struct udphdr) + data_len);
-    pseudogram = smalloc(psize);
-    udp->check = 0;
-    memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
-    memcpy(pseudogram + sizeof(pseudo_header), udp,
-	   sizeof(struct udphdr) + data_len);
-    udp->check = ntohs(csum((unsigned short*) pseudogram, psize));
+    ssport = ntohs(udp->uh_sport);
+    inc_field((int *)&ssport);
+    udp->uh_sport = htons(ssport);
+    check = htons(ntohs(udp->check) - 1);
+    udp->check = check;
     break;
   default:
     break;
   }
-  ip->ip_sum = csum((unsigned short *)packet,
-		    ip->ip_len);
+
+  ip->ttl = START_TTL;
+  ip->check = csum((unsigned short *)packet,
+		   ip->tot_len);
+  sfree(src_addr);
+  sfree(dst_addr);
+  sfree(stringy);
   return 0;
 }
 
@@ -180,7 +164,7 @@ void *per_flow_experiment(void *vworker)
     struct sockaddr *dest_addr =
       (struct sockaddr *)worker->probe_list[probe_idx].sin;
     iphdr *iph = (iphdr *)worker->probe_list[probe_idx].probe_buff;
-    int len = iph->tot_len;
+    short len = iph->tot_len;
     ssendn_fn(sockfd, worker->probe_list[probe_idx].probe_buff,
 	      len, 0, dest_addr, sizeof(struct sockaddr),
 	      5, inc_sport);
@@ -226,7 +210,7 @@ static void worker_send_packet(scanner_worker_t *worker)
     struct sockaddr *dest_addr =
       (struct sockaddr *)worker->probe_list[probe_idx].sin;
     iphdr *iph = (iphdr *)worker->probe_list[probe_idx].probe_buff;
-    int len = iph->tot_len;
+    int len = ntohs(iph->tot_len);
     ssendto(sockfd, worker->probe_list[probe_idx].probe_buff,
 	    len, 0, dest_addr, sizeof(struct sockaddr));
   }
@@ -1004,8 +988,6 @@ int scanner_main_loop(scan_args_t *scan_args)
   scanner->current_pcap_file_name = (char *)filename;
   start_sniffer(scanner->sniffer, filename);
 
-
-
   scanner->phase2_wait = 0;
 
   pthread_cond_signal(scanner->phase2_wait_cond);
@@ -1015,7 +997,7 @@ int scanner_main_loop(scan_args_t *scan_args)
   }
   pthread_mutex_unlock(scanner->phase2_lock);
 
-  sleep(60);
+  sleep(90);
   stop_sniffer(scanner->sniffer);
 
   //log_phase_statistics(&scan_stats.phase1);

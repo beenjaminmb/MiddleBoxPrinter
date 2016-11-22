@@ -410,7 +410,7 @@ static inline iphdr *set_ip(unsigned char *restrict buffer,
 			    short ihl, short version, short tos,
 			    short id, short frag_off, short ttl,
 			    short p, short check, char *saddr,
-			    int datalen)
+			    int tot_len)
 {
   iphdr *iph = (iphdr *)buffer;
   iph->ihl = ihl;
@@ -424,7 +424,7 @@ static inline iphdr *set_ip(unsigned char *restrict buffer,
   iph->saddr = inet_addr( saddr );
   iph->daddr = sin->sin_addr.s_addr;
   iph->check = check;
-  iph->tot_len = htons(datalen);
+  iph->tot_len = tot_len;
   return iph;
 }
 
@@ -497,7 +497,7 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
   psh->placeholder = 0;
   if ( DO_TCP(prand) ) { /* Make a TCP packet */
     worker->probe_list[packet_idx].proto = IPPROTO_TCP; 
-    ip->tot_len = htons(sizeof(iphdr) + sizeof(tcphdr) + data_len);
+    ip->tot_len = sizeof(iphdr) + sizeof(tcphdr) + data_len;
     ip->protocol = IPPROTO_TCP;
     tcphdr *tcph = make_tcpheader(packet_buffer, worker, packet_idx);
     psh->protocol = IPPROTO_TCP;
@@ -522,7 +522,7 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
     memcpy(pseudogram, (char*)psh, sizeof(pseudo_header));
     memcpy(pseudogram + sizeof(pseudo_header), udph,
 	   sizeof(udphdr) + data_len);
-    udph->check = htons(csum((unsigned short*) pseudogram, psize));
+    udph->check = csum((unsigned short*) pseudogram, psize);
     goto DONE;
   }
   else if ( DO_ICMP(prand) ) { /* Make ICMP packet */
@@ -530,7 +530,8 @@ static inline int make_packet(unsigned char *restrict packet_buffer,
     ip->protocol = IPPROTO_ICMP;
     worker->probe_list[packet_idx].proto = IPPROTO_ICMP;
     icmphdr *icmph = make_icmpheader (packet_buffer, worker, 0);
-    icmph->checksum = htons (csum((unsigned short*) icmph, sizeof(icmphdr)));
+    icmph->checksum = htons (csum((unsigned short*) icmph,
+				  sizeof(icmphdr)));
     goto RETURN;
   }
   else {/* random junk */
@@ -602,6 +603,7 @@ make_phase1_packet(unsigned char *restrict packet_buffer,
     ip->protocol = IPPROTO_UDP;
     worker->probe_list[packet_idx].proto = IPPROTO_UDP;
     udphdr *udph = make_udpheader(packet_buffer, worker, data_len);
+    udph->check = 0;
     psh->protocol = IPPROTO_UDP;
     psh->total_length = htons(sizeof(udphdr) + data_len);
     int psize = sizeof(pseudo_header) + sizeof(udphdr) + data_len;
@@ -671,7 +673,7 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
 
   struct ip *ip = (struct ip*)
     &worker->probe_list[probe_idx].probe_buff;
-  
+
   short ihl = ip->ip_hl;
   short version = ip->ip_v;
   short tos = ip->ip_tos;
@@ -679,7 +681,7 @@ static void deepcopy_packet(scanner_worker_t *worker, /* The worker */
   short frag_off = ip->ip_off;
   short ttl = ip->ip_ttl;
   short protocol = ip->ip_p;
-  short tot_len = ntohs(ip->ip_len);
+  short tot_len = ip->ip_len;
   short chk_sum = ip->ip_sum;
   
   set_ip((unsigned char *)worker->probe_list[probe_idx].probe_buff, 

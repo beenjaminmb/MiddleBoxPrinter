@@ -27,7 +27,7 @@
 #define MAX_ADDR_SIZE sizeof("255.255.255.255\0")
 #define MTU 1500 /* Make size for a probe including payload*/
 #define NORMAL_MTU 576 /* Official MTU of the Internet. */
-#define RATE 5000000.0 /* 1000 packets per second, 1 Gb/sec */
+#define RATE 200000.0 /* 1000 packets per second, 1 Gb/sec */
 #define PERIOD 60.0 /* Period in seconds == 1 minute */
 #define AVG_PACKET_SIZE 6000.0 /* 750 Bytes == 6000bits */
 #define MAX_WORKERS 1
