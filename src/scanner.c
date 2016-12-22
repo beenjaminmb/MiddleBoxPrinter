@@ -884,7 +884,10 @@ void *basic_experiment(void *vworker)
   printf("DONE\n");
   return NULL;
 }
-
+/**
+ * This function is relavant only to the middle-box fingerprinting
+ * experiments, not to the expirments for this research.
+ */
 void *worker_routine(void *vself)
 {
   printf("%d %s ",__LINE__, __func__);
